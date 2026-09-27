@@ -11,4 +11,5 @@ test("replaces image links only and retains long activation links", () => {
     const activation = `https://example.com/activate?token=${"a".repeat(500)}`;
     assert.equal(mailBody(`[image: logo] <https://example.com/logo.png>\n${activation}\nhttps://example.com/photo.jpg`, ""), `[图片]\n${activation}\n[图片]`);
     assert.equal(mailBody("", `<img src="https://example.com/logo.png"><a href="${activation}">激活账号</a>`), `[图片]激活账号 ${activation}`);
+    assert.equal(mailBody("", `<a href="${activation}"><img src="https://example.com/button.png"></a>`), `[图片] ${activation}`);
 });

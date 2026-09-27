@@ -6,7 +6,7 @@ export function mailBody(text: string, html: string): string {
             const href = attributes.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
             const url = (href?.[1] || href?.[2] || href?.[3] || "").replace(/&amp;/gi, "&");
             const label = content.replace(/<[^>]+>/g, " ").trim();
-            return label === "[图片]" ? label : /^https?:\/\//i.test(url) && label !== url
+            return /^https?:\/\//i.test(url) && label !== url
                 ? `${label} ${url}` : label;
         })
         .replace(/<\s*(br|\/p|\/div|\/section|\/article|\/tr|\/table|\/h[1-6]|\/li)\b[^>]*>/gi, "\n")
