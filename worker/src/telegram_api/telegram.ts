@@ -10,6 +10,7 @@ import { sendTelegramAttachments } from "./tg_file_upload";
 import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress, unbindTelegramByAddress } from "./common";
 import { commonParseMail } from "../common";
 import { mailBody } from "./mail_body";
+import { mailMessageParts } from "./mail_message";
 import { UserFromGetMe } from "telegraf/types";
 import i18n from "../i18n";
 import { LocaleMessages } from "../i18n/type";
@@ -385,26 +386,26 @@ const parseMail = async (
     }
     try {
         const parsedEmail = await commonParseMail(parsedEmailContext);
-        let parsedText = mailBody(parsedEmail?.text || "", parsedEmail?.html || "");
-        if (parsedText.length && parsedText.length > 1000) {
-            parsedText = parsedText.substring(0, 1000) + `\n\n...\n${msgs.TgMsgTooLongMsg}`;
-        }
+        const parsedText = mailBody(parsedEmail?.text || "", parsedEmail?.html || "");
+        const preview = parsedText.length > 1000
+            ? parsedText.substring(0, 1000) + `\n\n...\n${msgs.TgMsgTooLongMsg}` : parsedText;
+        const body = parsedText || msgs.TgParseFailedViewInAppMsg;
+        const header = chinese
+            ? `📩 新邮件\n━━━━━━━━━━━━━━\n`
+                + `主题：${parsedEmail?.subject || "（无主题）"}\n`
+                + `收件：${address}\n`
+                + `发件：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
+                + (created_at ? `时间：${created_at}\n` : "")
+                + `\n📄 邮件正文\n──────────────\n`
+            : `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
+                + `To: ${address}\n`
+                + (created_at ? `Date: ${created_at}\n` : "")
+                + `Subject: ${parsedEmail?.subject || ""}\nContent:\n`;
+        const footer = chinese ? `\n━━━━━━━━━━━━━━` : "";
         return {
             isHtml: false,
-            mail: chinese
-                ? `📩 新邮件\n━━━━━━━━━━━━━━\n`
-                    + `主题：${parsedEmail?.subject || "（无主题）"}\n`
-                    + `收件：${address}\n`
-                    + `发件：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
-                    + (created_at ? `时间：${created_at}\n` : "")
-                    + `\n📄 邮件正文\n──────────────\n`
-                    + `${parsedText || msgs.TgParseFailedViewInAppMsg}\n`
-                    + `━━━━━━━━━━━━━━`
-                : `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
-                    + `To: ${address}\n`
-                    + (created_at ? `Date: ${created_at}\n` : "")
-                    + `Subject: ${parsedEmail?.subject}\n`
-                    + `Content:\n${parsedText || msgs.TgParseFailedViewInAppMsg}`
+            header, body, footer,
+            mail: header + (preview || msgs.TgParseFailedViewInAppMsg) + footer
         };
     } catch (e) {
         return {
@@ -437,7 +438,7 @@ export async function sendMailToTelegram(
         const createdAt = isGlobalPush
             ? new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
             : new Date().toUTCString();
-        const { mail } = await parseMail(msgs, parsedEmailContext, address, createdAt, isGlobalPush);
+        const { mail, header, body, footer } = await parseMail(msgs, parsedEmailContext, address, createdAt, isGlobalPush);
         if (!mail) return;
         const attachments = parsedEmailContext.parsedEmail?.attachments || [];
         const buttons = [];
@@ -447,9 +448,24 @@ export async function sendMailToTelegram(
             url.searchParams.set("mail_id", mailId);
             buttons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
         }
-        await bot.telegram.sendMessage(targetUserId, mail, {
-            ...Markup.inlineKeyboard([...buttons])
-        });
+        const fullMail = body === undefined ? mail : header + body + footer;
+        const parts = mailMessageParts(fullMail);
+        for (const [index, part] of parts.entries()) {
+            await bot.telegram.sendMessage(targetUserId, part.text, {
+                entities: part.entities,
+                ...(index === 0 ? Markup.inlineKeyboard([...buttons]) : {})
+            });
+        }
+        if (/https?:\/\/[^\s<>"']{3800}/i.test(fullMail)) {
+            const form = new FormData();
+            form.append("chat_id", targetUserId);
+            form.append("document", new Blob([fullMail], { type: "text/plain;charset=utf-8" }), "完整邮件.txt");
+            form.append("caption", "超长链接完整保存在原文文件中，可复制使用。");
+            const response = await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/sendDocument`, {
+                method: "POST", body: form
+            });
+            if (!response.ok) throw new Error(`Telegram original mail upload failed: ${response.status}`);
+        }
         // send attachments via native fetch (telegraf multipart upload is incompatible with CF Workers)
         if (getBooleanValue(c.env.ENABLE_TG_PUSH_ATTACHMENT) && attachments.length > 0) {
             const caption = isGlobalPush
