@@ -95,7 +95,7 @@ export async function pushWeChatMail(c: Context<HonoCustomType>, info: Parameter
     const bytes = new Uint8Array(4);
     crypto.getRandomValues(bytes);
     const uin = btoa(String((bytes[0] * 16777216 + bytes[1] * 65536 + bytes[2] * 256 + bytes[3]) >>> 0));
-    const send = async (contextToken: string) => {
+    const send = async (contextToken: string | null) => {
         const response = await fetch(`${ILINK_API}/ilink/bot/sendmessage`, {
             method: "POST",
             headers: {
@@ -111,6 +111,7 @@ export async function pushWeChatMail(c: Context<HonoCustomType>, info: Parameter
         });
         return response.json<{ message_id?: string }>();
     };
-    const result = await send(config.contextToken);
+    let result = await send(config.contextToken);
+    if (!result.message_id) result = await send(null);
     if (!result.message_id) throw new Error("iLink sendmessage failed");
 }
