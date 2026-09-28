@@ -11,6 +11,7 @@ import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUse
 import { commonParseMail } from "../common";
 import { mailBody } from "./mail_body";
 import { mailMessageParts } from "./mail_message";
+import { getPushAccounts, type TelegramPushAccount } from "./push_accounts";
 import {
     buildCompactMailMessage,
     createMailSnapshot,
@@ -426,23 +427,24 @@ export async function sendMailToTelegram(
     parsedEmailContext: ParsedEmailContext,
     message_id: string | null
 ) {
-    if (!c.env.TELEGRAM_BOT_TOKEN || !c.env.KV) {
+    if (!c.env.KV) {
         return;
     }
+    const accounts = (await getPushAccounts(c)).filter((account): account is TelegramPushAccount => account.kind === "tg");
+    if (!accounts.length && !c.env.TELEGRAM_BOT_TOKEN) return;
     const userId = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
     const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
     const globalPush = settings?.enableGlobalMailPush && settings?.globalMailPushList;
-    if (!userId && !globalPush) {
+    if (!accounts.length && !userId && !globalPush) {
         return;
     }
     const mailId = await c.env.DB.prepare(
         `SELECT id FROM raw_mails where address = ? and message_id = ?`
     ).bind(address, message_id).first<string>("id");
-    const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
     let snapshotPromise: Promise<string | null> | null = null;
     let wechatPushed = false;
 
-    const buildAndSend = async (targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
+    const buildAndSend = async (bot: Telegraf, botToken: string, targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
         const createdAt = isGlobalPush
             ? new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
             : new Date().toUTCString();
@@ -501,7 +503,7 @@ export async function sendMailToTelegram(
             form.append("chat_id", targetUserId);
             form.append("document", new Blob([fullMail], { type: "text/plain;charset=utf-8" }), "完整邮件.txt");
             form.append("caption", "超长链接完整保存在原文文件中，可复制使用。");
-            const response = await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/sendDocument`, {
+            const response = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
                 method: "POST", body: form
             });
             if (!response.ok) throw new Error(`Telegram original mail upload failed: ${response.status}`);
@@ -511,19 +513,35 @@ export async function sendMailToTelegram(
             const caption = isGlobalPush
                 ? `发件人：${parsedEmailContext.parsedEmail?.sender || ""}\n主题：${parsedEmailContext.parsedEmail?.subject || ""}`
                 : `From: ${parsedEmailContext.parsedEmail?.sender || ""}\nSubject: ${parsedEmailContext.parsedEmail?.subject || ""}`;
-            await sendTelegramAttachments(c.env.TELEGRAM_BOT_TOKEN, targetUserId, attachments, caption);
+            await sendTelegramAttachments(botToken, targetUserId, attachments, caption);
         }
     };
 
+    if (accounts.length) {
+        const msgs = i18n.getMessages(c.env.DEFAULT_LANG || "zh");
+        for (const account of accounts) {
+            const targets = account.targets.length ? account.targets : globalPush ? settings?.globalMailPushList || [] : userId ? [userId] : [];
+            if (!targets.length) continue;
+            try {
+                const bot = newTelegramBot(c, account.token);
+                for (const target of targets) await buildAndSend(bot, account.token, target, msgs);
+            } catch (error) {
+                console.error(`telegram push failed [${account.id}]`, error);
+            }
+        }
+        return;
+    }
+
+    const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
     if (globalPush) {
         const globalMsgs = i18n.getMessages(c.env.DEFAULT_LANG || 'zh');
         for (const pushId of settings.globalMailPushList) {
-            await buildAndSend(pushId, globalMsgs, true);
+            await buildAndSend(bot, c.env.TELEGRAM_BOT_TOKEN, pushId, globalMsgs, true);
         }
     }
 
     if (userId) {
         const userMsgs = await getTgMessages(c, undefined, userId);
-        await buildAndSend(userId, userMsgs);
+        await buildAndSend(bot, c.env.TELEGRAM_BOT_TOKEN, userId, userMsgs);
     }
 }

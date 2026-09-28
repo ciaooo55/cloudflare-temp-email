@@ -1,12 +1,13 @@
 import type { Context } from "hono";
 import type { TelegramSettings } from "./settings";
+import { getPushAccounts, type WeChatPushAccount } from "./push_accounts";
 
 const SNAPSHOT_TTL = 86400;
 const ILINK_API = "https://ilinkai.weixin.qq.com";
 
 export type VerificationInfo = { isVerification: boolean; code: string | null; verifyLink?: string | null };
 
-const VERIFICATION_KEYWORDS = "验证码|驗證碼|校验码|校驗碼|动态码|動態碼|认证码|認證碼|确认码|確認碼|安全码|安全碼|認証コード|確認コード|verification\\s*code|security\\s*code|auth(?:entication)?\\s*code|one[- ]time\\s*(?:code|password)|OTP|passcode";
+const VERIFICATION_KEYWORDS = "验证码|驗證碼|校验码|校驗碼|动态码|動態碼|认证码|認證碼|确认码|確認碼|安全码|安全碼|認証コード|確認コード|confirmation\\s*code|login\\s*code|verification\\s*code|security\\s*code|auth(?:entication)?\\s*code|one[- ]time\\s*(?:code|password)|OTP|passcode|password\\s*reset\\s*code|one[- ]time\\s*pin|(?:2fa|two[- ]factor(?:\\s*authentication)?)\\s*code|apple\\s*id\\s*code|apple\\s*id\\s*代码|(?:whatsapp|instagram|facebook)\\s*code|一次性密码|一次性密碼|动态密码|動態密碼|动态口令|動態口令";
 
 function normalizeVerificationText(value: string): string {
     return value
@@ -19,7 +20,8 @@ function normalizeVerificationText(value: string): string {
         .replace(/[۰-۹]/g, digit => String.fromCharCode(digit.charCodeAt(0) - 0x6f0 + 0x30))
         .replace(/\b(\d(?:\s\d){3,9})\b/g, value => value.replace(/\s+/g, ""))
         .replace(/\b(\d{3}) (\d{3})\b/g, "$1$2")
-        .replace(/\b(\d{4}) (\d{4})\b/g, "$1$2");
+        .replace(/\b(\d{4}) (\d{4})\b/g, "$1$2")
+        .replace(/\b(\d{3})-(\d{3})\b/g, "$1$2");
 }
 
 export function extractVerificationCode(text: string): VerificationInfo {
@@ -27,14 +29,26 @@ export function extractVerificationCode(text: string): VerificationInfo {
     if (!new RegExp(`(?:${VERIFICATION_KEYWORDS})`, "i").test(plain)) {
         return { isVerification: false, code: null };
     }
-    const beforeKeyword = new RegExp(`(?:${VERIFICATION_KEYWORDS})[^A-Za-z0-9]{0,30}([A-Za-z0-9]{4,10})(?![A-Za-z0-9])`, "gi");
+    const beforeKeyword = new RegExp(`(?:${VERIFICATION_KEYWORDS})(?:[^A-Za-z0-9]|\\bis\\b|\\bare\\b){0,30}(?:G-|FB-)?([A-Za-z0-9]{4,10})(?![A-Za-z0-9])`, "gi");
     let match: RegExpExecArray | null;
     while ((match = beforeKeyword.exec(plain))) {
         if (/\d/.test(match[1])) return { isVerification: true, code: match[1] };
+        beforeKeyword.lastIndex = match.index + 1;
+    }
+    const afterPunctuation = new RegExp(`(?:${VERIFICATION_KEYWORDS})[\\s\\S]{0,60}?(?:\\bis\\b|\\bare\\b|[:：])\\s*(?:G-|FB-)?([A-Za-z0-9]{4,10})(?![A-Za-z0-9])`, "gi");
+    while ((match = afterPunctuation.exec(plain))) {
+        if (/\d/.test(match[1])) return { isVerification: true, code: match[1] };
+        afterPunctuation.lastIndex = match.index + 1;
     }
     const afterKeyword = new RegExp(`([A-Za-z0-9]{4,10})[^A-Za-z0-9]{0,30}(?:${VERIFICATION_KEYWORDS})(?![A-Za-z0-9])`, "gi");
     while ((match = afterKeyword.exec(plain))) {
         if (/\d/.test(match[1])) return { isVerification: true, code: match[1] };
+        afterKeyword.lastIndex = match.index + 1;
+    }
+    const isYourCode = new RegExp(`([A-Za-z0-9]{4,10})(?![A-Za-z0-9])\\s+is\\s+your\\s+(?:[A-Za-z]+\\s+){0,2}(?:${VERIFICATION_KEYWORDS})(?![A-Za-z0-9])`, "gi");
+    while ((match = isYourCode.exec(plain))) {
+        if (/\d/.test(match[1])) return { isVerification: true, code: match[1] };
+        isYourCode.lastIndex = match.index + 1;
     }
     return { isVerification: true, code: null };
 }
@@ -126,6 +140,7 @@ export function buildCompactMailMessage(info: {
     const offset = text.length;
     text += info.snapshotUrl;
     entities.push({ type: "url", offset, length: info.snapshotUrl.length });
+    text += "\n\n🐶🐶🐶🐶🐶🐶🐶🐶";
     return { text, entities };
 }
 
@@ -143,28 +158,41 @@ export function buildWeChatMailText(info: { subject: string; address: string; se
 }
 
 export async function pushWeChatMail(c: Context<HonoCustomType>, info: Parameters<typeof buildWeChatMailText>[0]): Promise<void> {
-    const config = await c.env.KV?.get<{ botToken?: string; toUserId?: string; contextToken?: string }>("ilink:config", "json");
-    if (!config?.botToken || !config.toUserId || !config.contextToken) return;
+    const accounts = (await getPushAccounts(c)).filter((account): account is WeChatPushAccount => account.kind === "wx");
+    if (!accounts.length) {
+        const config = await c.env.KV?.get<{ botToken?: string; toUserId?: string; contextToken?: string }>("ilink:config", "json");
+        if (!config?.botToken || !config.toUserId || !config.contextToken) return;
+        accounts.push({ kind: "wx", id: "legacy", botToken: config.botToken, toUserId: config.toUserId, contextToken: config.contextToken });
+    }
+    const failures: string[] = [];
+    for (const account of accounts) {
+        try {
+            await sendWeChatMail(account, info);
+        } catch (error) {
+            failures.push(`${account.id}: ${(error as Error).message}`);
+        }
+    }
+    if (failures.length) throw new Error(failures.join(" | "));
+}
+
+async function sendWeChatMail(account: WeChatPushAccount, info: Parameters<typeof buildWeChatMailText>[0]): Promise<void> {
     const bytes = new Uint8Array(4);
     crypto.getRandomValues(bytes);
     const uin = btoa(String((bytes[0] * 16777216 + bytes[1] * 65536 + bytes[2] * 256 + bytes[3]) >>> 0));
-    const send = async (contextToken: string | null) => {
-        const response = await fetch(`${ILINK_API}/ilink/bot/sendmessage`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json", AuthorizationType: "ilink_bot_token",
-                Authorization: `Bearer ${config.botToken}`, "X-WECHAT-UIN": uin,
-                "iLink-App-Id": "bot", "iLink-App-ClientVersion": "131328"
-            },
-            body: JSON.stringify({ msg: {
-                from_user_id: "", to_user_id: config.toUserId, client_id: `cfmail-${Date.now()}`,
-                message_type: 2, message_state: 2, context_token: contextToken,
-                item_list: [{ type: 1, text_item: { text: buildWeChatMailText(info) } }]
-            }, base_info: { channel_version: "1.0.3" } })
-        });
-        return response.json<{ message_id?: string }>();
-    };
-    let result = await send(config.contextToken);
-    if (!result.message_id) result = await send(null);
-    if (!result.message_id) throw new Error("iLink sendmessage failed");
+    const response = await fetch(`${ILINK_API}/ilink/bot/sendmessage`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json", AuthorizationType: "ilink_bot_token",
+            Authorization: `Bearer ${account.botToken}`, "X-WECHAT-UIN": uin,
+            "iLink-App-Id": "bot", "iLink-App-ClientVersion": "131328"
+        },
+        body: JSON.stringify({ msg: {
+            from_user_id: "", to_user_id: account.toUserId, client_id: `cfmail-${Date.now()}`,
+            message_type: 2, message_state: 2, context_token: account.contextToken,
+            item_list: [{ type: 1, text_item: { text: buildWeChatMailText(info) } }]
+        }, base_info: { channel_version: "1.0.3" } })
+    });
+    if (!response.ok) throw new Error(`iLink HTTP ${response.status}`);
+    const result = await response.json<{ ret?: number; errmsg?: string }>();
+    if (result.ret !== 0) throw new Error(`iLink ret=${result.ret}: ${result.errmsg || "unknown error"}`);
 }
