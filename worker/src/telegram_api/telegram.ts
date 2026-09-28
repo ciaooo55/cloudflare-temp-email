@@ -14,7 +14,7 @@ import { mailMessageParts } from "./mail_message";
 import {
     buildCompactMailMessage,
     createMailSnapshot,
-    extractVerificationCode,
+    extractVerificationCodeWithSubject,
     pushWeChatMail,
 } from "./mail_snapshot";
 import { UserFromGetMe } from "telegraf/types";
@@ -466,7 +466,12 @@ export async function sendMailToTelegram(
                 address,
                 sender: parsedEmailContext.parsedEmail?.sender || "",
                 createdAt,
-                codeInfo: extractVerificationCode(body || ""),
+                codeInfo: extractVerificationCodeWithSubject(
+                    parsedEmailContext.parsedEmail?.subject || "",
+                    body || "",
+                    parsedEmailContext.parsedEmail?.html || "",
+                    parsedEmailContext.parsedEmail?.text || ""
+                ),
                 snapshotUrl,
             };
             const compact = buildCompactMailMessage(info);

@@ -4,18 +4,62 @@ import type { TelegramSettings } from "./settings";
 const SNAPSHOT_TTL = 86400;
 const ILINK_API = "https://ilinkai.weixin.qq.com";
 
-export type VerificationInfo = { isVerification: boolean; code: string | null };
+export type VerificationInfo = { isVerification: boolean; code: string | null; verifyLink?: string | null };
 
-const VERIFICATION_KEYWORDS = "验证码|驗證碼|校验码|校驗碼|动态码|動態碼|认证码|認證碼|認証コード|確認コード|verification\\s*code|security\\s*code|auth(?:entication)?\\s*code|one[- ]time\\s*(?:code|password)|OTP|passcode";
+const VERIFICATION_KEYWORDS = "验证码|驗證碼|校验码|校驗碼|动态码|動態碼|认证码|認證碼|确认码|確認碼|安全码|安全碼|認証コード|確認コード|verification\\s*code|security\\s*code|auth(?:entication)?\\s*code|one[- ]time\\s*(?:code|password)|OTP|passcode";
+
+function normalizeVerificationText(value: string): string {
+    return value
+        .replace(/&#(?:(\d+)|[xX]([0-9a-fA-F]+));?/g, (match, decimal, hexadecimal) => {
+            const codePoint = decimal ? Number(decimal) : parseInt(hexadecimal, 16);
+            return codePoint >= 32 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+        })
+        .replace(/[０-９]/g, digit => String.fromCharCode(digit.charCodeAt(0) - 0xff10 + 0x30))
+        .replace(/[٠-٩]/g, digit => String.fromCharCode(digit.charCodeAt(0) - 0x660 + 0x30))
+        .replace(/[۰-۹]/g, digit => String.fromCharCode(digit.charCodeAt(0) - 0x6f0 + 0x30))
+        .replace(/\b(\d(?:\s\d){3,9})\b/g, value => value.replace(/\s+/g, ""))
+        .replace(/\b(\d{3}) (\d{3})\b/g, "$1$2")
+        .replace(/\b(\d{4}) (\d{4})\b/g, "$1$2");
+}
 
 export function extractVerificationCode(text: string): VerificationInfo {
-    const plain = String(text || "").replace(/<[^>]*>/g, " ");
+    const plain = normalizeVerificationText(String(text || "").replace(/<[^>]*>/g, " "));
     if (!new RegExp(`(?:${VERIFICATION_KEYWORDS})`, "i").test(plain)) {
         return { isVerification: false, code: null };
     }
-    const match = new RegExp(`(?:${VERIFICATION_KEYWORDS})[^A-Za-z0-9]{0,30}([A-Za-z0-9]{4,10})(?![A-Za-z0-9])`, "i").exec(plain);
-    const code = match?.[1] && /\d/.test(match[1]) ? match[1] : null;
-    return { isVerification: true, code };
+    const beforeKeyword = new RegExp(`(?:${VERIFICATION_KEYWORDS})[^A-Za-z0-9]{0,30}([A-Za-z0-9]{4,10})(?![A-Za-z0-9])`, "gi");
+    let match: RegExpExecArray | null;
+    while ((match = beforeKeyword.exec(plain))) {
+        if (/\d/.test(match[1])) return { isVerification: true, code: match[1] };
+    }
+    const afterKeyword = new RegExp(`([A-Za-z0-9]{4,10})[^A-Za-z0-9]{0,30}(?:${VERIFICATION_KEYWORDS})(?![A-Za-z0-9])`, "gi");
+    while ((match = afterKeyword.exec(plain))) {
+        if (/\d/.test(match[1])) return { isVerification: true, code: match[1] };
+    }
+    return { isVerification: true, code: null };
+}
+
+export function extractVerificationLink(html: string, text: string): string | null {
+    const excluded = /(unsub|optout|退訂|退订|preference)/i;
+    const linkKeyword = /(verif|confirm|activate|验证|驗證|确认|確認|激活|auth|token|otp)/i;
+    const links: { url: string; anchor: string }[] = [];
+    for (const match of String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]{0,200}?)<\/a\s*>/gi)) {
+        links.push({ url: match[1], anchor: match[2].replace(/<[^>]*>/g, " ") });
+        if (links.length >= 60) break;
+    }
+    const candidate = links.find(link => /^https?:\/\//i.test(link.url) && !excluded.test(link.url) && (linkKeyword.test(link.url) || linkKeyword.test(link.anchor)));
+    if (candidate) return candidate.url;
+    for (const match of String(text || "").matchAll(/https?:\/\/[^\s<>"']+/gi)) {
+        const url = match[0].replace(/[.,;!?)\]]+$/, "");
+        if (!excluded.test(url) && linkKeyword.test(url)) return url;
+    }
+    return null;
+}
+
+export function extractVerificationCodeWithSubject(subject: string, body: string, html: string, text: string): VerificationInfo {
+    const info = extractVerificationCode(subject ? `${subject}\n${body}` : body);
+    if (info.isVerification && !info.code) info.verifyLink = extractVerificationLink(html, text);
+    return info;
 }
 
 function escapeHtml(value: string): string {
@@ -69,6 +113,11 @@ export function buildCompactMailMessage(info: {
             text += info.codeInfo.code;
             entities.push({ type: "pre", offset, length: info.codeInfo.code.length });
             text += info.chinese ? "\n👆 点按上方代码即可复制" : "\n👆 Tap the code above to copy";
+        } else if (info.codeInfo.verifyLink) {
+            text += info.chinese ? "\n🔗 验证链接\n" : "\n🔗 Verification link\n";
+            const offset = text.length;
+            text += info.codeInfo.verifyLink;
+            entities.push({ type: "url", offset, length: info.codeInfo.verifyLink.length });
         } else {
             text += info.chinese ? "⚠️ 未能自动识别，请点击下方链接查看" : "⚠️ Could not auto-detect, please open the link below";
         }
@@ -84,7 +133,11 @@ export function buildWeChatMailText(info: { subject: string; address: string; se
     const lines = ["📩 新邮件", "━━━━━━━━━━━━━━", `主题：${info.subject || "（无主题）"}`, `收件：${info.address}`, `发件：${info.sender || "未知"}`, `时间：${info.createdAt}`];
     let text = lines.join("\n");
     if (info.codeInfo.isVerification) {
-        text += `\n\n🔐 验证码\n${info.codeInfo.code ? `${info.codeInfo.code}\n（长按复制）` : "⚠️ 未能自动识别，请点击下方链接查看"}`;
+        text += info.codeInfo.code
+            ? `\n\n🔐 验证码\n${info.codeInfo.code}\n（长按复制）`
+            : info.codeInfo.verifyLink
+                ? `\n\n🔐 验证码\n🔗 验证链接：\n${info.codeInfo.verifyLink}`
+                : "\n\n🔐 验证码\n⚠️ 未能自动识别，请点击下方链接查看";
     }
     return `${text}\n\n🔗 查看完整邮件：\n${info.snapshotUrl}`;
 }
