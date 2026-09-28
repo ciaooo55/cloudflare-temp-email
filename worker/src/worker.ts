@@ -24,6 +24,7 @@ const API_PATHS = [
 	"/admin/",
 	"/telegram/",
 	"/external/",
+	"/m/",
 ];
 
 const app = new Hono<HonoCustomType>()
@@ -53,7 +54,7 @@ app.use('/*', async (c, next) => {
 
 	// check header x-custom-auth
 	const passwords = getPasswords(c);
-	if (!c.req.path.startsWith("/open_api") && !c.req.path.startsWith("/telegram/") && passwords && passwords.length > 0) {
+	if (!c.req.path.startsWith("/open_api") && !c.req.path.startsWith("/telegram/") && !c.req.path.startsWith("/m/") && passwords && passwords.length > 0) {
 		const auth = c.req.raw.headers.get("x-custom-auth");
 		if (!auth || !passwords.includes(auth)) {
 			return c.text(msgs.CustomAuthPasswordMsg, 401)
@@ -278,6 +279,26 @@ const health_check = async (c: Context<HonoCustomType>) => {
 
 app.get('/', health_check)
 app.get('/health_check', health_check)
+app.get('/m/:token', async c => {
+	const token = c.req.param('token');
+	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
+	let html: string | null = null;
+	try {
+		html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`) : null;
+	} catch (error) {
+		console.error('snapshot fetch failed', error);
+	}
+	if (!html) return c.text('邮件已过期或不存在', 404);
+	return new Response(html, {
+		headers: {
+			'Content-Type': 'text/html;charset=utf-8',
+			'Content-Security-Policy': "default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; font-src http: https: data:",
+			'X-Content-Type-Options': 'nosniff',
+			'X-Robots-Tag': 'noindex, nofollow',
+			'Cache-Control': 'private, max-age=3600',
+		},
+	});
+});
 app.all('/*', async c => c.text("Not Found", 404))
 
 

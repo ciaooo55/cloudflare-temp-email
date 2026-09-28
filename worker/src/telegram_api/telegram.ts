@@ -11,6 +11,12 @@ import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUse
 import { commonParseMail } from "../common";
 import { mailBody } from "./mail_body";
 import { mailMessageParts } from "./mail_message";
+import {
+    buildCompactMailMessage,
+    createMailSnapshot,
+    extractVerificationCode,
+    pushWeChatMail,
+} from "./mail_snapshot";
 import { UserFromGetMe } from "telegraf/types";
 import i18n from "../i18n";
 import { LocaleMessages } from "../i18n/type";
@@ -433,6 +439,8 @@ export async function sendMailToTelegram(
         `SELECT id FROM raw_mails where address = ? and message_id = ?`
     ).bind(address, message_id).first<string>("id");
     const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
+    let snapshotPromise: Promise<string | null> | null = null;
+    let wechatPushed = false;
 
     const buildAndSend = async (targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
         const createdAt = isGlobalPush
@@ -449,12 +457,39 @@ export async function sendMailToTelegram(
             buttons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
         }
         const fullMail = body === undefined ? mail : header + body + footer;
-        const parts = mailMessageParts(fullMail);
-        for (const [index, part] of parts.entries()) {
-            await bot.telegram.sendMessage(targetUserId, part.text, {
-                entities: part.entities,
-                ...(index === 0 ? Markup.inlineKeyboard([...buttons]) : {})
+        snapshotPromise ??= createMailSnapshot(c, settings, parsedEmailContext);
+        const snapshotUrl = await snapshotPromise;
+        if (snapshotUrl) {
+            const info = {
+                chinese: isGlobalPush,
+                subject: parsedEmailContext.parsedEmail?.subject || "",
+                address,
+                sender: parsedEmailContext.parsedEmail?.sender || "",
+                createdAt,
+                codeInfo: extractVerificationCode(body || ""),
+                snapshotUrl,
+            };
+            const compact = buildCompactMailMessage(info);
+            await bot.telegram.sendMessage(targetUserId, compact.text, {
+                entities: compact.entities,
+                ...Markup.inlineKeyboard([...buttons])
             });
+            if (!wechatPushed) {
+                wechatPushed = true;
+                try {
+                    await pushWeChatMail(c, info);
+                } catch (error) {
+                    console.error("wechat push failed", error);
+                }
+            }
+        } else {
+            const parts = mailMessageParts(fullMail);
+            for (const [index, part] of parts.entries()) {
+                await bot.telegram.sendMessage(targetUserId, part.text, {
+                    entities: part.entities,
+                    ...(index === 0 ? Markup.inlineKeyboard([...buttons]) : {})
+                });
+            }
         }
         if (/https?:\/\/[^\s<>"']{3800}/i.test(fullMail)) {
             const form = new FormData();
