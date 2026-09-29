@@ -33,6 +33,12 @@ const ALLOWED_DOMAINS = [
     'ciaooo66.dpdns.org', 'ciaooo77.dpdns.org',
 ];
 
+// 检查域名是否在允许列表中（支持子域名，如 ciaooo55.looo.cloud 匹配 looo.cloud）
+const isDomainAllowed = (domain: string): boolean => {
+    const d = domain.toLowerCase();
+    return ALLOWED_DOMAINS.some(allowed => d === allowed || d.endsWith('.' + allowed));
+};
+
 const fetchAll = async () => {
     try {
         const s = await api.fetch(`/admin/notify/snapshot`)
@@ -123,7 +129,7 @@ const batchBind = async () => {
     for (const addr of unique) {
         if (!emailRe.test(addr)) {
             invalid.push(`${addr} (格式错误)`);
-        } else if (!ALLOWED_DOMAINS.includes(addr.split('@')[1])) {
+        } else if (!isDomainAllowed(addr.split('@')[1])) {
             invalid.push(`${addr} (域名不在列表中)`);
         } else if (boundSet.has(addr)) {
             invalid.push(`${addr} (已绑定)`);

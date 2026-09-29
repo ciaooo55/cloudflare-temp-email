@@ -198,14 +198,25 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
 
 async function getBark(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await getJsonSetting<BarkSettings>(c, CONSTANTS.BARK_SETTINGS_KEY);
-    const devices = (settings?.devices || []).map(d => ({
-        id: d.id, name: d.name, enabled: d.enabled, maskedKeys: maskBarkKeys(d.keys || ""),
-    }));
-    // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏）
+    const devices = (settings?.devices || []).flatMap(d => {
+        // 网页配置的设备若 keys 含逗号，拆成一行一个
+        const keys = (d.keys || "").split(",").map(k => k.trim()).filter(Boolean);
+        if (keys.length <= 1) {
+            return [{ id: d.id, name: d.name, enabled: d.enabled, maskedKeys: maskBarkKeys(d.keys || "") }];
+        }
+        return keys.map((k, i) => ({
+            id: `${d.id}#${i}`, name: i === 0 ? d.name : `${d.name} ${i + 1}`,
+            enabled: d.enabled, maskedKeys: maskBarkKeys(k),
+        }));
+    });
+    // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏），多个 Key 拆成一行一个
     if (!devices.length && c.env.BARK_DEVICE_KEYS) {
-        devices.push({
-            id: "env", name: "系统默认推送", enabled: true,
-            maskedKeys: maskBarkKeys(c.env.BARK_DEVICE_KEYS),
+        const envKeys = c.env.BARK_DEVICE_KEYS.split(",").map(k => k.trim()).filter(Boolean);
+        envKeys.forEach((k, i) => {
+            devices.push({
+                id: `env#${i}`, name: i === 0 ? "系统默认推送" : `系统默认推送 ${i + 1}`,
+                enabled: true, maskedKeys: maskBarkKeys(k),
+            });
         });
     }
     return c.json({ devices, pushUrl: settings?.pushUrl || DEFAULT_BARK_PUSH_URL });
@@ -233,12 +244,20 @@ async function testBark(c: Context<HonoCustomType>): Promise<Response> {
     const { deviceId } = await c.req.json<{ deviceId?: string }>().catch(() => ({} as { deviceId?: string }));
     const settings = await getJsonSetting<BarkSettings>(c, CONSTANTS.BARK_SETTINGS_KEY);
     const pushUrl = settings?.pushUrl?.trim() || DEFAULT_BARK_PUSH_URL;
-    let devices = (settings?.devices || []).filter(d => d.enabled && d.keys);
-    // 系统默认配置（环境变量）
+    let devices: Array<{ id: string; name: string; enabled: boolean; keys: string }> = [];
+    // 网页配置的设备，拆分多 Key
+    for (const d of (settings?.devices || [])) {
+        if (!d.enabled || !d.keys) continue;
+        const keys = d.keys.split(",").map(k => k.trim()).filter(Boolean);
+        keys.forEach((k, i) => {
+            devices.push({ id: keys.length > 1 ? `${d.id}#${i}` : d.id, name: d.name, enabled: true, keys: k });
+        });
+    }
+    // 系统默认配置（环境变量），多个 Key 拆成一行一个
     if (c.env.BARK_DEVICE_KEYS) {
-        devices.push({
-            id: "env", name: "系统默认推送", enabled: true,
-            keys: c.env.BARK_DEVICE_KEYS,
+        const envKeys = c.env.BARK_DEVICE_KEYS.split(",").map(k => k.trim()).filter(Boolean);
+        envKeys.forEach((k, i) => {
+            devices.push({ id: `env#${i}`, name: "系统默认推送", enabled: true, keys: k });
         });
     }
     if (deviceId) {

@@ -137,7 +137,7 @@ onMounted(fetchData)
                         <td>
                             <n-flex>
                                 <n-button size="small" @click="testDevice(d)">{{ t('test') }}</n-button>
-                                <n-button v-if="d.id !== 'env'" size="small" type="error" ghost @click="deleteDevice(d)">{{ t('delete') }}</n-button>
+                                <n-button v-if="!d.id.startsWith('env')" size="small" type="error" ghost @click="deleteDevice(d)">{{ t('delete') }}</n-button>
                             </n-flex>
                         </td>
                     </tr>
