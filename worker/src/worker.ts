@@ -234,6 +234,7 @@ app.get('/m/:token', async c => {
 	const token = c.req.param('token');
 	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
 	// 快照-邮箱绑定：绑定过期后快照链接失效
+	let isBoundSnapshot = false;
 	if (c.env.KV) {
 		try {
 			const boundAddr = await c.env.KV.get(`snapshot-bindrev:${token}`);
@@ -247,6 +248,7 @@ app.get('/m/:token', async c => {
 					]);
 					return c.text('该快照绑定已到期', 404);
 				}
+				isBoundSnapshot = true;
 			}
 		} catch (error) {
 			console.error('snapshot binding check failed', error);
@@ -259,13 +261,15 @@ app.get('/m/:token', async c => {
 		console.error('snapshot fetch failed', error);
 	}
 	if (!html) return c.text('邮件已过期或不存在', 404);
+	// 绑定的快照内容随新邮件更新，用短缓存保证及时刷新；一次性快照内容不变，可长缓存抗刷
+	const cacheControl = isBoundSnapshot ? 'public, max-age=30' : 'public, max-age=86400';
 	return new Response(html, {
 		headers: {
 			'Content-Type': 'text/html;charset=utf-8',
 			'Content-Security-Policy': "default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; font-src http: https: data:",
 			'X-Content-Type-Options': 'nosniff',
 			'X-Robots-Tag': 'noindex, nofollow',
-			'Cache-Control': 'private, max-age=3600',
+			'Cache-Control': cacheControl,
 		},
 	});
 });
