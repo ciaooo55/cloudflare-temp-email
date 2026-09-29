@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { useScopedI18n } from '@/i18n/app'
 import { useRouter } from 'vue-router'
 
@@ -8,26 +8,29 @@ import { api } from '../api'
 import { getRouterPathWithLang, hashPassword } from '../utils'
 import Turnstile from '../components/Turnstile.vue'
 
-import SenderAccess from './admin/SenderAccess.vue'
-import Statistics from "./admin/Statistics.vue"
-import SendBox from './admin/SendBox.vue';
-import Account from './admin/Account.vue';
-import CreateAccount from './admin/CreateAccount.vue';
-import AccountSettings from './admin/AccountSettings.vue';
-import Mails from './admin/Mails.vue';
-import MailsUnknow from './admin/MailsUnknow.vue';
-import About from './common/About.vue';
-import Maintenance from './admin/Maintenance.vue';
-import DatabaseManager from './admin/DatabaseManager.vue';
-import Appearance from './common/Appearance.vue';
-import Telegram from './admin/Telegram.vue';
-import Bark from './admin/Bark.vue';
-import Snapshot from './admin/Snapshot.vue';
-import Webhook from './admin/Webhook.vue';
-import MailWebhook from './admin/MailWebhook.vue';
-import WorkerConfig from './admin/WorkerConfig.vue';
-import IpBlacklistSettings from './admin/IpBlacklistSettings.vue';
-import AiExtractSettings from './admin/AiExtractSettings.vue';
+// Admin tab views are lazy-loaded: each chunk is fetched only when its tab is first opened,
+// keeping the admin first-screen bundle small. (n-tab-pane uses displayDirective="if",
+// so inactive panes are not rendered and their chunks are not requested.)
+const SenderAccess = defineAsyncComponent(() => import('./admin/SenderAccess.vue'));
+const Statistics = defineAsyncComponent(() => import("./admin/Statistics.vue"));
+const SendBox = defineAsyncComponent(() => import('./admin/SendBox.vue'));
+const Account = defineAsyncComponent(() => import('./admin/Account.vue'));
+const CreateAccount = defineAsyncComponent(() => import('./admin/CreateAccount.vue'));
+const AccountSettings = defineAsyncComponent(() => import('./admin/AccountSettings.vue'));
+const Mails = defineAsyncComponent(() => import('./admin/Mails.vue'));
+const MailsUnknow = defineAsyncComponent(() => import('./admin/MailsUnknow.vue'));
+const About = defineAsyncComponent(() => import('./common/About.vue'));
+const Maintenance = defineAsyncComponent(() => import('./admin/Maintenance.vue'));
+const DatabaseManager = defineAsyncComponent(() => import('./admin/DatabaseManager.vue'));
+const Appearance = defineAsyncComponent(() => import('./common/Appearance.vue'));
+const Telegram = defineAsyncComponent(() => import('./admin/Telegram.vue'));
+const Bark = defineAsyncComponent(() => import('./admin/Bark.vue'));
+const Snapshot = defineAsyncComponent(() => import('./admin/Snapshot.vue'));
+const Webhook = defineAsyncComponent(() => import('./admin/Webhook.vue'));
+const MailWebhook = defineAsyncComponent(() => import('./admin/MailWebhook.vue'));
+const WorkerConfig = defineAsyncComponent(() => import('./admin/WorkerConfig.vue'));
+const IpBlacklistSettings = defineAsyncComponent(() => import('./admin/IpBlacklistSettings.vue'));
+const AiExtractSettings = defineAsyncComponent(() => import('./admin/AiExtractSettings.vue'));
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,

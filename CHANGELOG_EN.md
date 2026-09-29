@@ -8,6 +8,12 @@
 
 ## v1.13.0(main)
 
+- perf: |Performance| 20 admin tab views switched to lazy loading (`defineAsyncComponent`): first-screen JS drops from ~1.6MB to ~1MB (Admin chunk 477KB → 45KB); each tab's code is downloaded only when first opened
+- perf: |Performance| Statistics API now runs its 6 `count(*)` queries in parallel via D1 `batch()` instead of sequentially — statistics page loads faster
+- perf: |Performance| Removed the redundant second mail-parse call in the receiving pipeline; the already-cached parse result is reused
+- refactor: |Simplify| Deleted ~2600 lines of dead code: 27 legacy i18n scopes from the multi-user/OAuth2/redeem-code/old-frontend era (plus their dead keys in all four languages), `AdminContact.vue`, `frontend/src/models/index.ts`, worker `UserInfo`/`UserOauth2Settings` types, and the commented-out WASM parse block; `hideObjectFields` was verified to still hide the password field in the address list API and is kept
+- fix: |Cleanup| `cleanup()` SQL unified to parameterized style; the `mails_unknow` cleanup branch now deletes in `LIMIT` batches like the other branches (avoids one oversized delete when unknown-address mail piles up)
+- fix: |Copy| Admin \"Worker Config\" page now shows human-readable labeled rows instead of raw internal config keys like `HAS_PASSWORD`; \"verified address list\" copy no longer mentions internal sending APIs; the About page shows \"No announcement yet.\" instead of a blank page when there is no announcement
 - perf: |Anti-abuse| Snapshot access now uses edge caching (Cache API): repeated visits to the same snapshot are preferentially served from edge cache, reducing KV reads and page regeneration (requests still hit the Worker and count normally); cache purge is attempted on new mail arrival or binding delete/replace for timely refresh, and old links stop working once the cache expires
 - perf: |Performance| Admin "global mailbox settings" API now reads 8 KV keys in parallel instead of sequentially — cold-start load drops from 15s to under 1s
 - fix: |Security| AI-extracted verification codes/links must actually appear in the email body, otherwise treated as hallucination and discarded with fallback to local regex (fixes AI returning 482913 when the mail contains 123456)

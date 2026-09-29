@@ -140,8 +140,9 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // trigger another worker
     try {
-        const parsedEmail = (await commonParseMail(parsedEmailContext));
-        const parsedText = parsedEmail?.text ?? ""
+        // parsedEmail is already cached in parsedEmailContext by commonParseMail;
+        // reuse it instead of calling commonParseMail again.
+        const parsedText = parsedEmailContext.parsedEmail?.text ?? ""
         const rpcEmail: RPCEmailMessage = {
             from: message.from,
             to: toAddress,

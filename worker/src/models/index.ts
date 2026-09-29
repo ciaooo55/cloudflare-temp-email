@@ -120,17 +120,6 @@ export class AddressCreationSettings {
     }
 }
 
-export class UserInfo {
-
-    geoData: GeoData;
-    userEmail: string;
-
-    constructor(geoData: GeoData, userEmail: string) {
-        this.geoData = geoData;
-        this.userEmail = userEmail;
-    }
-}
-
 export class WebhookSettings {
     enabled: boolean = false
     url: string = ''
@@ -151,26 +140,6 @@ export class WebhookSettings {
         "aiExtractResult": "${aiExtractResult}",
         "aiExtractResultText": "${aiExtractResultText}",
     }, null, 2)
-}
-
-export type UserOauth2Settings = {
-    name: string;
-    icon?: string;                // SVG icon string for the provider
-    clientID: string;
-    clientSecret: string;
-    authorizationURL: string;
-    accessTokenURL: string;
-    accessTokenFormat: string;
-    userInfoURL: string;
-    redirectURL: string;
-    logoutURL?: string;
-    userEmailKey: string;
-    enableEmailFormat?: boolean;  // Enable email format transformation
-    userEmailFormat?: string;     // Regex pattern to match email
-    userEmailReplace?: string;    // Replacement template using $1, $2, etc.
-    scope: string;
-    enableMailAllowList?: boolean | undefined;
-    mailAllowList?: string[] | undefined;
 }
 
 export type EmailRuleSettings = {

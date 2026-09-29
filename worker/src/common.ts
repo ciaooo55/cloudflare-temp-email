@@ -494,16 +494,18 @@ export const cleanup = async (
             await batchDeleteAddressWithData(
                 c,
                 `id IN (`
-                + `SELECT id FROM address WHERE updated_at < datetime('now', '-${cleanDays} day') `
-                + `ORDER BY updated_at, id LIMIT ${cleanupBatchSize})`
+                + `SELECT id FROM address WHERE updated_at < datetime('now', ?) `
+                + `ORDER BY updated_at, id LIMIT ?)`,
+                [`-${cleanDays} day`, cleanupBatchSize]
             )
             break;
         case "addressCreated":
             await batchDeleteAddressWithData(
                 c,
                 `id IN (`
-                + `SELECT id FROM address WHERE created_at < datetime('now', '-${cleanDays} day') `
-                + `ORDER BY created_at, id LIMIT ${cleanupBatchSize})`
+                + `SELECT id FROM address WHERE created_at < datetime('now', ?) `
+                + `ORDER BY created_at, id LIMIT ?)`,
+                [`-${cleanDays} day`, cleanupBatchSize]
             )
             break;
         case "mails":
@@ -518,9 +520,14 @@ export const cleanup = async (
             break;
         case "mails_unknow":
             await c.env.DB.prepare(`
-                DELETE FROM raw_mails WHERE address NOT IN
-                (select name from address) AND created_at < datetime('now', '-${cleanDays} day')`
-            ).run();
+                DELETE FROM raw_mails WHERE id IN (
+                    SELECT id FROM raw_mails
+                    WHERE address NOT IN (select name from address)
+                    AND created_at < datetime('now', ?)
+                    ORDER BY created_at, id
+                    LIMIT ?
+                )`
+            ).bind(`-${cleanDays} day`, cleanupBatchSize).run();
             break;
         case "sendbox":
             await c.env.DB.prepare(`
@@ -536,7 +543,11 @@ export const cleanup = async (
             // Delete addresses that have no emails and were created more than N days ago
             await batchDeleteAddressWithData(
                 c,
-                `name NOT IN (SELECT DISTINCT address FROM raw_mails WHERE address IS NOT NULL) AND created_at < datetime('now', '-${cleanDays} day')`
+                `id IN (SELECT id FROM address `
+                + `WHERE name NOT IN (SELECT DISTINCT address FROM raw_mails WHERE address IS NOT NULL) `
+                + `AND created_at < datetime('now', ?) `
+                + `ORDER BY created_at, id LIMIT ?)`,
+                [`-${cleanDays} day`, cleanupBatchSize]
             )
             break;
         default:
@@ -548,23 +559,24 @@ export const cleanup = async (
 const batchDeleteAddressWithData = async (
     c: Context<HonoCustomType>,
     addressQueryCondition: string,
+    bindParams: unknown[] = [],
 ): Promise<boolean> => {
     await c.env.DB.prepare(
         `DELETE FROM raw_mails WHERE address IN ( ` +
         `SELECT name FROM address WHERE ${addressQueryCondition})`
-    ).run();
+    ).bind(...bindParams).run();
     await c.env.DB.prepare(
         `DELETE FROM sendbox WHERE address IN ( ` +
         `SELECT name FROM address WHERE ${addressQueryCondition})`
-    ).run();
+    ).bind(...bindParams).run();
     await c.env.DB.prepare(
         `DELETE FROM address_sender WHERE address IN ( ` +
         `SELECT name FROM address WHERE ${addressQueryCondition})`
-    ).run();
+    ).bind(...bindParams).run();
     // delete address
     await c.env.DB.prepare(`
         DELETE FROM address WHERE ${addressQueryCondition}`
-    ).run();
+    ).bind(...bindParams).run();
     return true;
 }
 
@@ -710,30 +722,7 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
         return parsedEmailContext.parsedEmail;
     }
     const raw_mail = parsedEmailContext.rawEmail;
-    // NOTE: WASM parse email
-    // try {
-    //     const { parse_message_wrapper } = await import('mail-parser-wasm-worker');
-
-    //     const parsedEmail = parse_message_wrapper(raw_mail);
-    //     parsedEmailContext.parsedEmail = {
-    //         sender: parsedEmail.sender || "",
-    //         subject: parsedEmail.subject || "",
-    //         text: parsedEmail.text || "",
-    //         headers: parsedEmail.headers?.map(
-    //             (header) => ({ key: header.key, value: header.value })
-    //         ) || [],
-    //         html: parsedEmail.body_html || "",
-    //         attachments: (parsedEmail.attachments || []).map(att => ({
-    //             filename: att.filename || "attachment",
-    //             mimeType: att.content_type || "application/octet-stream",
-    //             content: att.content,
-    //             disposition: "attachment",
-    //         })),
-    //     };
-    //     return parsedEmailContext.parsedEmail;
-    // } catch (e) {
-    //     console.error("Failed use mail-parser-wasm-worker to parse email", e);
-    // }
+    // NOTE: PostalMime parse email
     try {
         const { default: PostalMime } = await import('postal-mime');
         const parsedEmail = await PostalMime.parse(raw_mail);
