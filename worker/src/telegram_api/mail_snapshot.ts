@@ -94,7 +94,7 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
     const parsed = parsedEmailContext.parsedEmail;
     if (!parsed || (!parsed.html && !parsed.text)) return null;
     let origin = "";
-    for (const value of [settings?.miniAppUrl, c.env.SNAPSHOT_BASE_URL]) {
+    for (const value of [c.env.SNAPSHOT_BASE_URL, settings?.miniAppUrl]) {
         try {
             if (value) {
                 origin = new URL(value).origin;

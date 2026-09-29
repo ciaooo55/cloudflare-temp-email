@@ -1,6 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildSnapshotHtml, buildCompactMailMessage, extractVerificationCode, extractVerificationCodeWithSubject, extractVerificationLink } from "./mail_snapshot.ts";
+import { buildSnapshotHtml, buildCompactMailMessage, createMailSnapshot, extractVerificationCode, extractVerificationCodeWithSubject, extractVerificationLink } from "./mail_snapshot.ts";
+
+test("prefers the snapshot domain over the Mini App URL", async () => {
+    const context = {
+        env: {
+            KV: { put: async () => {} },
+            SNAPSHOT_BASE_URL: "https://snapshot.example.com"
+        }
+    };
+    const url = await createMailSnapshot(
+        context,
+        { miniAppUrl: "https://app.example.com" },
+        { parsedEmail: { html: "<p>Mail</p>" } }
+    );
+    assert.match(url, /^https:\/\/snapshot\.example\.com\/m\/[0-9a-f]{64}$/);
+});
 
 test("extracts multilingual verification codes", () => {
     assert.deepEqual(extractVerificationCode("验证码：123456"), { isVerification: true, code: "123456" });

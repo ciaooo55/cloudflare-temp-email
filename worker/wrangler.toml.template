@@ -7,7 +7,7 @@ keep_vars = true
 
 [vars]
 BRIDGE_DESTINATION = "mail@ciaooo55.de5.net"
-SNAPSHOT_BASE_URL = "https://cloudflaretempemail.18715260182.workers.dev"
+SNAPSHOT_BASE_URL = "https://m.ciaooo55.us.ci"
 DEFAULT_DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo.de5.net", "free555.de5.net", "free55.de5.net", "free5.us.ci", "kkk88.ccwu.cc", "yyy22.de5.net", "ciaooo66.dpdns.org", "ciaooo77.dpdns.org", "ciaooo77.us.ci"]
 DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo.de5.net", "free555.de5.net", "free55.de5.net", "free5.us.ci", "kkk88.ccwu.cc", "yyy22.de5.net", "ciaooo66.dpdns.org", "ciaooo77.dpdns.org", "ciaooo77.us.ci"]
 
