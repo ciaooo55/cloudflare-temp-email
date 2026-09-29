@@ -9,7 +9,7 @@
 ## v1.13.0(main)
 
 - remove: |精简| 移除多用户体系、改为管理员单账户：`/` 自动跳转 `/admin`，删除公开邮箱网页、用户中心、注册/登录、OAuth2 第三方登录、Passkey、用户角色、邮箱绑定、兑换码、地址口令网页登录（`/open_api/credential_login`）及全部 `/user_api/*`、`/redeem_api/*` 后端接口；管理员后台只保留管理员密码登录，可查看管理邮件/地址/附件并配置 TG、Bark、快照、AI、Webhook 等功能；移除 `ENABLE_REDEEM_CODE`、`REDEEM_CODE_URL`、`DISABLE_SHOW_GITHUB_FOR_USER`、`ENABLE_INDEX_ABOUT`、`ADMIN_USER_ROLE`、`USER_ROLES`、`USER_DEFAULT_ROLE` 环境变量及相关管理端展示；已有数据库中的旧多用户表（users、users_address、user_roles、user_passkeys、redeem_codes）不再使用，需手动清理；已删除的多用户专属 E2E 测试同步清理
-- test: |测试| 新增后端管理 API 集成测试（TG Bot 增删改查/启停/测试/webhook、Bark 多设备配置与测试、快照 TTL、固定快照绑定全流程、AI 设置与自定义接口测试），覆盖 Token/Key 脱敏、旧快照失效、网页配置优先环境变量；54 个单测全部通过
+- test: |测试| 新增后端管理 API 集成测试（TG Bot 增删改查/启停/测试/webhook、Bark 多设备配置与测试、快照 TTL、固定快照绑定全流程、AI 设置与自定义接口测试），覆盖 Token/Key 脱敏、旧快照失效、网页配置优先环境变量；43 个单测通过（3 个文件因 Node ESM 解析不了 extensionless import 在导入阶段失败，属既有测试链问题）
 - feat: |清理| 独立 dinshi 定时清理 worker 已合并进主 worker：`scheduled` 每 3 分钟删除 D1 `raw_mails` 中 10 分钟前的旧邮件（`wrangler.toml.template [triggers] crons = ["*/3 * * * *"]`），逻辑与原 dinshi 完全一致、不受自动清理设置影响；部署后可删除 dinshi worker（现已可通过网页配置执行间隔与保留时长）
 - feat: |定时任务| 所有定时删除/定时功能改为网页快捷配置：worker cron 改为每分钟触发（`crons = ["* * * * *"]`），各任务按管理端「维护」页「定时任务」标签里配置的间隔自行执行——raw_mails 清理（替代原独立 dinshi worker）可配启用/每 N 分钟执行/删除 M 分钟前数据（默认每 10 分钟执行、删除 10 分钟前的数据）、自动清理批次可配检查间隔（默认 60 分钟，含自定义 SQL），保存后立即生效无需重新部署；上次执行时间与删除条数展示在网页上，raw_mails 支持手动立即执行一次；新增 `GET /admin/scheduled_status`、`POST /admin/cleanup_raw_mails` 管理接口
 - remove: |精简| 移除邮件转发功能：删除 `worker/src/email/forward.ts` 及收信流程中的转发调用、前后端转发配置（`FORWARD_ADDRESS_LIST` / `SUBDOMAIN_FORWARD_ADDRESS_LIST` 环境变量、`emailForwardingList` 规则）；`EmailRuleSettings` 仅保留 `blockReceiveUnknowAddressEmail`
