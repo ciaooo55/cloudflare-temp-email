@@ -44,15 +44,26 @@ const normalizeAddressCreationSettingsUpdate = (
 
 const get = async (c: Context<HonoCustomType>) => {
     try {
-        const blockList = await getJsonSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY);
-        const sendBlockList = await getJsonSetting(c, CONSTANTS.SEND_BLOCK_LIST_KEY);
-        const verifiedAddressList = await getJsonSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY);
-        const fromBlockList = c.env.KV ? await c.env.KV.get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, 'json') : [];
-        const emailRuleSettings = await getJsonSetting<EmailRuleSettings>(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY);
-        const noLimitSendAddressList = await getJsonSetting(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY);
-        const addressCreationSettings = await getAddressCreationSettings(c);
+        const [
+            blockList,
+            sendBlockList,
+            verifiedAddressList,
+            fromBlockList,
+            emailRuleSettings,
+            noLimitSendAddressList,
+            addressCreationSettings,
+            sendMailLimitConfig,
+        ] = await Promise.all([
+            getJsonSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY),
+            getJsonSetting(c, CONSTANTS.SEND_BLOCK_LIST_KEY),
+            getJsonSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY),
+            c.env.KV ? c.env.KV.get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, 'json') : Promise.resolve([]),
+            getJsonSetting<EmailRuleSettings>(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY),
+            getJsonSetting(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY),
+            getAddressCreationSettings(c),
+            getSendMailLimitConfig(c),
+        ]);
         const addressCreationSubdomainMatchStatus = await getAddressCreationSubdomainMatchStatus(c, addressCreationSettings);
-        const sendMailLimitConfig = await getSendMailLimitConfig(c);
         return c.json({
             blockList: blockList || [],
             sendBlockList: sendBlockList || [],
