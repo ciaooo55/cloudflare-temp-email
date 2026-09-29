@@ -449,16 +449,37 @@ async function sendBarkPush(env: Bindings, mail: {
     }
 }
 
-export async function sendMailToTelegram(
+export async function sendMailNotifications(
     c: Context<HonoCustomType>, address: string,
     parsedEmailContext: ParsedEmailContext,
     message_id: string | null
 ) {
+    const settings = await c.env.KV?.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
+    let snapshotPromise: Promise<string | null> | null = null;
+    if (c.env.BARK_DEVICE_KEYS) {
+        const parsed = await commonParseMail(parsedEmailContext);
+        let snapshotUrl: string | null = null;
+        try {
+            snapshotPromise = createMailSnapshot(c, settings, parsedEmailContext);
+            snapshotUrl = await snapshotPromise;
+        } catch (error) {
+            console.error("bark snapshot failed", error);
+            snapshotPromise = null;
+        }
+        await sendBarkPush(c.env, {
+            subject: parsed?.subject || "",
+            sender: parsed?.sender || "",
+            to: address,
+            bodyText: mailBody(parsed?.text || "", parsed?.html || ""),
+            html: parsed?.html || "",
+            text: parsed?.text || "",
+            snapshotUrl,
+        });
+    }
     if (!c.env.TELEGRAM_BOT_TOKEN || !c.env.KV) {
         return;
     }
     const userId = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
-    const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
     const globalPush = settings?.enableGlobalMailPush && settings?.globalMailPushList;
     if (!userId && !globalPush) {
         return;
@@ -467,8 +488,6 @@ export async function sendMailToTelegram(
         `SELECT id FROM raw_mails where address = ? and message_id = ?`
     ).bind(address, message_id).first<string>("id");
     const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
-    let snapshotPromise: Promise<string | null> | null = null;
-    let barkSent = false;
 
     const buildAndSend = async (targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
         const createdAt = isGlobalPush
@@ -515,18 +534,6 @@ export async function sendMailToTelegram(
                     ...(index === 0 ? Markup.inlineKeyboard([...buttons]) : {})
                 });
             }
-        }
-        if (!barkSent) {
-            barkSent = true;
-            await sendBarkPush(c.env, {
-                subject: parsedEmailContext.parsedEmail?.subject || "",
-                sender: parsedEmailContext.parsedEmail?.sender || "",
-                to: address,
-                bodyText: body || "",
-                html: parsedEmailContext.parsedEmail?.html || "",
-                text: parsedEmailContext.parsedEmail?.text || "",
-                snapshotUrl,
-            });
         }
         if (/https?:\/\/[^\s<>"']{3800}/i.test(fullMail)) {
             const form = new FormData();

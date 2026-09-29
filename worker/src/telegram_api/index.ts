@@ -2,13 +2,13 @@ import { Hono } from 'hono'
 import { ServerResponse } from 'node:http'
 import { Writable } from 'node:stream'
 
-import { newTelegramBot, initTelegramBotCommands, sendMailToTelegram } from './telegram'
+import { newTelegramBot, initTelegramBotCommands, sendMailNotifications } from './telegram'
 import settings from './settings'
 import miniapp from './miniapp'
 import i18n from '../i18n'
 
 export const api = new Hono<HonoCustomType>();
-export { sendMailToTelegram }
+export { sendMailNotifications }
 
 api.use("/telegram/*", async (c, next) => {
     const msgs = i18n.getMessagesbyContext(c);

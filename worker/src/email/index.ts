@@ -1,7 +1,7 @@
 import { Context } from "hono";
 
 import { getJsonSetting } from "../utils";
-import { sendMailToTelegram } from "../telegram_api";
+import { sendMailNotifications } from "../telegram_api";
 import { auto_reply } from "./auto_reply";
 import { isBlocked } from "./black_list";
 import { triggerWebhook, triggerAnotherWorker, commonParseMail } from "../common";
@@ -101,13 +101,13 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     // forward email
     await forwardEmail(message, env, recipient);
 
-    // send email to telegram
+    // send mail notifications
     try {
-        await sendMailToTelegram(
+        await sendMailNotifications(
             { env: env } as Context<HonoCustomType>,
             recipient, parsedEmailContext, message_id);
     } catch (error) {
-        console.error("send mail to telegram error", error);
+        console.error("send mail notifications error", error);
     }
 
     // send webhook
