@@ -16,8 +16,6 @@ import ip_blacklist_settings from './ip_blacklist_settings'
 import ai_extract_settings from './ai_extract_settings'
 import notify_settings from './notify_settings'
 import config_api from './config_api'
-// TEMPORARY: email simulation endpoint, DELETE AFTER TESTING
-import simulate_email from './simulate_email'
 
 export const api = new Hono<HonoCustomType>()
 
@@ -74,9 +72,6 @@ api.get('/admin/worker/configs', worker_config.getConfig)
 // send mail by admin
 api.post('/admin/send_mail', sendMailbyAdmin)
 api.post('/admin/send_mail_by_binding', sendMailByBindingAdmin)
-
-// TEMPORARY: simulate receiving an email, DELETE AFTER TESTING
-api.post('/admin/simulate_email', simulate_email.simulateEmail)
 
 // db api
 api.get('admin/db_version', db_api.getVersion)
