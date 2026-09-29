@@ -52,6 +52,14 @@ api.post("/telegram/webhook/:botId", async (c) => {
     if (!bot?.token) {
         return c.text("bot not found", 404);
     }
+    // Security: verify the request actually came from Telegram
+    // Telegram sends the secret_token in X-Telegram-Bot-Api-Secret-Token header
+    if (bot.webhookSecret) {
+        const providedSecret = c.req.header("X-Telegram-Bot-Api-Secret-Token");
+        if (providedSecret !== bot.webhookSecret) {
+            return c.text("unauthorized", 401);
+        }
+    }
     const tgBot = newTelegramBot(c, bot.token);
     let body = null;
     const res = new Writable();
@@ -66,6 +74,14 @@ api.post("/telegram/webhook/:botId", async (c) => {
 });
 
 api.post("/telegram/webhook", async (c) => {
+    // Security: verify the request actually came from Telegram (system default bot)
+    const storedSecret = await c.env.KV.get("telegram:webhook-secret:default");
+    if (storedSecret) {
+        const providedSecret = c.req.header("X-Telegram-Bot-Api-Secret-Token");
+        if (providedSecret !== storedSecret) {
+            return c.text("unauthorized", 401);
+        }
+    }
     const token = c.env.TELEGRAM_BOT_TOKEN;
     const bot = newTelegramBot(c, token);
     let body = null;
@@ -85,8 +101,13 @@ api.post("/admin/telegram/init", async (c) => {
     const token = c.env.TELEGRAM_BOT_TOKEN;
     const webhookUrl = `https://${domain}/telegram/webhook`;
     console.log(`setting webhook to ${webhookUrl}`);
+    // Security: generate a secret token for webhook verification
+    const secretBytes = new Uint8Array(32);
+    crypto.getRandomValues(secretBytes);
+    const webhookSecret = [...secretBytes].map(b => b.toString(16).padStart(2, "0")).join("");
     const bot = newTelegramBot(c, token);
-    await bot.telegram.setWebhook(webhookUrl)
+    await bot.telegram.setWebhook(webhookUrl, { secret_token: webhookSecret })
+    await c.env.KV.put("telegram:webhook-secret:default", webhookSecret);
     await initTelegramBotCommands(c, bot);
     return c.json({
         message: "webhook set successfully",

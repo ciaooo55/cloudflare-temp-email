@@ -89,6 +89,9 @@ function escapeHtml(value: string): string {
 export function buildSnapshotHtml(html: string, text: string, subject: string): string {
     let content = String(html || "")
         .replace(/<(script|style|iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+        // Security: strip <meta> tags to prevent meta refresh phishing redirects
+        // (CSP does not block meta refresh, and the snapshot URL is a trusted domain)
+        .replace(/<meta\b[^>]*>/gi, "")
         .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
         .replace(/\s(?:href|src)\s*=\s*(?:"\s*(?:javascript|vbscript):[^"]*"|'\s*(?:javascript|vbscript):[^']*'|\s*(?:javascript|vbscript):[^\s>]+)/gi, " href=\"#\"");
     if (!content) {

@@ -18,6 +18,8 @@ export type TelegramBotEntry = {
     allowedChatIds?: string;
     /** 群组ID白名单（逗号分隔），留空表示不限制 */
     allowedGroupIds?: string;
+    /** Telegram webhook secret_token，用于验证回调请求确实来自 Telegram */
+    webhookSecret?: string;
 };
 
 export type BarkDeviceEntry = {
@@ -180,15 +182,27 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
     const bot = await findBot(c, id);
     if (!bot) return c.json({ ok: false, error: "bot not found" }, 404);
     try {
+        // Security: generate a secret token for webhook verification
+        // Telegram will send it in X-Telegram-Bot-Api-Secret-Token header
+        const secretBytes = new Uint8Array(32);
+        crypto.getRandomValues(secretBytes);
+        const webhookSecret = [...secretBytes].map(b => b.toString(16).padStart(2, "0")).join("");
         const webhookUrl = `https://${new URL(c.req.url).host}/telegram/webhook/${id}`;
         const res = await fetch(`https://api.telegram.org/bot${bot.token}/setWebhook`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: webhookUrl }),
+            body: JSON.stringify({ url: webhookUrl, secret_token: webhookSecret }),
         });
         const json = await res.json<{ ok: boolean; description?: string }>().catch(() => null);
         if (!res.ok || !json?.ok) {
             return c.json({ ok: false, error: json?.description || `setWebhook failed: ${res.status}` });
+        }
+        // Save the secret for verification on incoming webhook calls
+        const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
+        const idx = bots.findIndex(b => b.id === id);
+        if (idx >= 0) {
+            bots[idx].webhookSecret = webhookSecret;
+            await c.env.KV.put(CONSTANTS.TELEGRAM_BOTS_KEY, JSON.stringify(bots));
         }
         return c.json({ ok: true, webhookUrl });
     } catch (e) {
