@@ -486,7 +486,7 @@ const parseMail = async (
 
 async function sendBarkPush(env: Bindings, mail: {
     subject: string; sender: string; to: string; bodyText: string; html: string; text: string; snapshotUrl: string | null;
-}, deviceKeys?: string[], pushUrl?: string) {
+}, deviceKeys?: string[], pushUrl?: string, aiExtract?: ExtractResult | null) {
     try {
         const rawKeys = deviceKeys && deviceKeys.length
             ? deviceKeys
@@ -494,7 +494,7 @@ async function sendBarkPush(env: Bindings, mail: {
         const keys = [...new Set(rawKeys.map(key => key.trim()).filter(Boolean))];
         if (!keys.length) return;
         const codeInfo = extractVerificationCodeWithSubject(mail.subject, mail.bodyText, mail.html, mail.text);
-        const code = codeInfo.code;
+        const code = (aiExtract?.type === 'auth_code' && aiExtract.result) ? aiExtract.result : codeInfo.code;
         const params = new URLSearchParams({
             device_keys: keys.join(","),
             title: code ? `🔑 ${code}` : "📩 新邮件",
@@ -596,7 +596,7 @@ export async function sendMailNotifications(
             html: parsed?.html || "",
             text: parsed?.text || "",
             snapshotUrl,
-        }, push.barkKeys, barkPushUrl);
+        }, push.barkKeys, barkPushUrl, aiExtract);
     })() : null;
 
     const tgTask = wantTg ? (async () => {
@@ -631,12 +631,19 @@ export async function sendMailNotifications(
                 address,
                 sender: parsedEmailContext.parsedEmail?.sender || "",
                 createdAt,
-                codeInfo: extractVerificationCodeWithSubject(
-                    parsedEmailContext.parsedEmail?.subject || "",
-                    body || "",
-                    parsedEmailContext.parsedEmail?.html || "",
-                    parsedEmailContext.parsedEmail?.text || ""
-                ),
+                codeInfo: (() => {
+                    const local = extractVerificationCodeWithSubject(
+                        parsedEmailContext.parsedEmail?.subject || "",
+                        body || "",
+                        parsedEmailContext.parsedEmail?.html || "",
+                        parsedEmailContext.parsedEmail?.text || ""
+                    );
+                    // AI 提取优先：有 AI 验证码结果时覆盖本地提取的 code
+                    if (aiExtract?.type === 'auth_code' && aiExtract.result) {
+                        return { ...local, code: aiExtract.result };
+                    }
+                    return local;
+                })(),
                 snapshotUrl: newSnapshotUrl,
             };
             const compact = buildCompactMailMessage(info);
