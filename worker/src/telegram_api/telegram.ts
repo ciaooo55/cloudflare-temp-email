@@ -370,7 +370,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         const mailId = mailRow?.id;
         const created_at = mailRow?.created_at;
         const { mail } = raw
-            ? await parseMail(msgs, { rawEmail: raw }, queryAddress, created_at, mailRow?.metadata)
+            ? await parseMail(msgs, { rawEmail: raw }, queryAddress, created_at, false, mailRow?.metadata)
             : { mail: msgs.TgNoMoreMailsMsg };
         const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
         const miniAppButtons = []
