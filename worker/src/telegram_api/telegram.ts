@@ -525,14 +525,34 @@ export async function sendMailNotifications(
     // 按域名解析推送目标：多个 TG bot / 多组 Bark 设备 keys（环境变量 + 网页配置合并）
     const push = resolvePushConfig(c.env, getMailDomain(address));
     let barkPushUrl = DEFAULT_BARK_PUSH_URL;
+    // 网页配置的机器人（含白名单）
+    let webBots: Array<{ token: string; allowedChatIds: string; allowedGroupIds: string }> = [];
     try {
         const web = await getWebPushConfig(c);
         push.telegramTokens = [...new Set([...push.telegramTokens, ...web.telegramTokens])];
         push.barkKeys = [...new Set([...push.barkKeys, ...web.barkKeys])];
         barkPushUrl = web.barkPushUrl || DEFAULT_BARK_PUSH_URL;
+        webBots = web.telegramBots;
     } catch (e) {
         console.error("load web push config failed", e);
     }
+
+    // 白名单检查：空表示不限制
+    const isAllowedByBot = (botToken: string, targetChatId: string): boolean => {
+        const bot = webBots.find(b => b.token === botToken);
+        if (!bot) return true; // 环境变量配置的机器人，不限制
+        const chatIds = bot.allowedChatIds.split(",").map(s => s.trim()).filter(Boolean);
+        const groupIds = bot.allowedGroupIds.split(",").map(s => s.trim()).filter(Boolean);
+        // 如果都没设置，不限制
+        if (!chatIds.length && !groupIds.length) return true;
+        // 用户ID是正数，群组ID是负数
+        const isGroup = targetChatId.startsWith("-");
+        if (isGroup) {
+            return groupIds.length === 0 || groupIds.includes(targetChatId);
+        } else {
+            return chatIds.length === 0 || chatIds.includes(targetChatId);
+        }
+    };
 
     // TG 目标预检（需要 KV 做地址绑定查询）
     let tgUserId: string | null = null;
@@ -655,6 +675,7 @@ export async function sendMailNotifications(
         if (tgGlobalList.length) {
             const globalMsgs = i18n.getMessages(c.env.DEFAULT_LANG || 'zh');
             for (const pushId of tgGlobalList) {
+                if (!isAllowedByBot(token, pushId)) continue;
                 try {
                     await buildAndSend(pushId, globalMsgs, true);
                 } catch (e) {
@@ -664,11 +685,15 @@ export async function sendMailNotifications(
         }
 
         if (tgUserId) {
-            try {
-                const userMsgs = await getTgMessages(c, undefined, tgUserId);
-                await buildAndSend(tgUserId, userMsgs);
-            } catch (e) {
-                console.error("tg push to bound user failed", e);
+            if (!isAllowedByBot(token, tgUserId)) {
+                // 该机器人白名单不包含此用户，跳过
+            } else {
+                try {
+                    const userMsgs = await getTgMessages(c, undefined, tgUserId);
+                    await buildAndSend(tgUserId, userMsgs);
+                } catch (e) {
+                    console.error("tg push to bound user failed", e);
+                }
             }
         }
             } catch (e) {

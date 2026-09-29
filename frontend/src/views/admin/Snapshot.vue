@@ -137,21 +137,32 @@ const batchBind = async () => {
     if (!valid.length) return;
     batchBinding.value = true;
     let success = 0;
-    let failed = 0;
+    const failedList: string[] = [];
     for (const addr of valid) {
         try {
             const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                 method: 'POST',
                 body: JSON.stringify({ address: addr, durationHours: newDuration.value }),
             });
-            if (res.binding) success++;
-            else failed++;
-        } catch {
-            failed++;
+            if (res.binding) {
+                success++;
+            } else {
+                failedList.push(`${addr} (${res.error || '未知错误'})`);
+            }
+        } catch (e) {
+            const msg = (e as Error).message || '请求失败';
+            // 提取后端返回的错误信息
+            const match = msg.match(/\[400\]:\s*(.+)/);
+            const errMsg = match ? match[1] : msg;
+            failedList.push(`${addr} (${errMsg})`);
         }
     }
     batchBinding.value = false;
-    message.success(`批量绑定完成：成功 ${success} 个，失败 ${failed} 个`);
+    if (failedList.length) {
+        message.error(`批量绑定完成：成功 ${success} 个，失败 ${failedList.length} 个：\n` + failedList.join('\n'), { duration: 8000 });
+    } else {
+        message.success(`批量绑定完成：成功 ${success} 个`);
+    }
     if (success > 0) {
         batchInput.value = '';
         await fetchAll();

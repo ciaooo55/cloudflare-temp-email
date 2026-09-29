@@ -14,6 +14,10 @@ export type TelegramBotEntry = {
     token: string;
     enabled: boolean;
     createdAt: string;
+    /** 用户ID白名单（逗号分隔），留空表示不限制 */
+    allowedChatIds?: string;
+    /** 群组ID白名单（逗号分隔），留空表示不限制 */
+    allowedGroupIds?: string;
 };
 
 export type BarkDeviceEntry = {
@@ -60,19 +64,25 @@ async function listTelegramBots(c: Context<HonoCustomType>): Promise<Response> {
     const result = bots.map(b => ({
         id: b.id, name: b.name, enabled: b.enabled,
         createdAt: b.createdAt, maskedToken: maskTelegramToken(b.token || ""),
+        allowedChatIds: b.allowedChatIds || "",
+        allowedGroupIds: b.allowedGroupIds || "",
     }));
     // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏）
     if (!result.length && c.env.TELEGRAM_BOT_TOKEN) {
         result.push({
             id: "env", name: "系统默认推送", enabled: true,
             createdAt: Date.now(), maskedToken: maskTelegramToken(c.env.TELEGRAM_BOT_TOKEN),
+            allowedChatIds: "",
+            allowedGroupIds: "",
         });
     }
     return c.json(result);
 }
 
 async function createTelegramBot(c: Context<HonoCustomType>): Promise<Response> {
-    const { name, token } = await c.req.json<{ name?: string; token?: string }>();
+    const { name, token, allowedChatIds, allowedGroupIds } = await c.req.json<{
+        name?: string; token?: string; allowedChatIds?: string; allowedGroupIds?: string;
+    }>();
     if (!token || !token.trim()) {
         return c.json({ error: "token is required" }, 400);
     }
@@ -83,6 +93,8 @@ async function createTelegramBot(c: Context<HonoCustomType>): Promise<Response> 
         token: token.trim(),
         enabled: true,
         createdAt: new Date().toISOString(),
+        allowedChatIds: (allowedChatIds || "").trim(),
+        allowedGroupIds: (allowedGroupIds || "").trim(),
     };
     bots.push(entry);
     await saveSetting(c, CONSTANTS.TELEGRAM_BOTS_KEY, JSON.stringify(bots));
@@ -91,13 +103,17 @@ async function createTelegramBot(c: Context<HonoCustomType>): Promise<Response> 
 
 async function updateTelegramBot(c: Context<HonoCustomType>): Promise<Response> {
     const id = c.req.param("id") || "";
-    const { name, token, enabled } = await c.req.json<{ name?: string; token?: string; enabled?: boolean }>();
+    const { name, token, enabled, allowedChatIds, allowedGroupIds } = await c.req.json<{
+        name?: string; token?: string; enabled?: boolean; allowedChatIds?: string; allowedGroupIds?: string;
+    }>();
     const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
     const bot = bots.find(b => b.id === id);
     if (!bot) return c.json({ error: "bot not found" }, 404);
     if (typeof name === "string" && name.trim()) bot.name = name.trim();
     if (typeof token === "string" && token.trim()) bot.token = token.trim();
     if (typeof enabled === "boolean") bot.enabled = enabled;
+    if (typeof allowedChatIds === "string") bot.allowedChatIds = allowedChatIds.trim();
+    if (typeof allowedGroupIds === "string") bot.allowedGroupIds = allowedGroupIds.trim();
     await saveSetting(c, CONSTANTS.TELEGRAM_BOTS_KEY, JSON.stringify(bots));
     return c.json({ success: true });
 }
@@ -314,13 +330,32 @@ export async function getSnapshotTtlSeconds(c: Context<HonoCustomType>): Promise
     }
 }
 
-export async function getWebPushConfig(c: Context<HonoCustomType>): Promise<{ telegramTokens: string[]; barkKeys: string[]; barkPushUrl: string }> {
+export type WebPushBot = {
+    token: string;
+    allowedChatIds: string;
+    allowedGroupIds: string;
+};
+
+export async function getWebPushConfig(c: Context<HonoCustomType>): Promise<{
+    telegramBots: WebPushBot[];
+    telegramTokens: string[];
+    barkKeys: string[];
+    barkPushUrl: string;
+}> {
     const [bots, bark] = await Promise.all([
         getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY).catch(() => null),
         getJsonSetting<BarkSettings>(c, CONSTANTS.BARK_SETTINGS_KEY).catch(() => null),
     ]);
+    const telegramBots: WebPushBot[] = (bots || [])
+        .filter(b => b.enabled && b.token)
+        .map(b => ({
+            token: b.token,
+            allowedChatIds: b.allowedChatIds || "",
+            allowedGroupIds: b.allowedGroupIds || "",
+        }));
     return {
-        telegramTokens: (bots || []).filter(b => b.enabled && b.token).map(b => b.token),
+        telegramBots,
+        telegramTokens: telegramBots.map(b => b.token),
         barkKeys: (bark?.devices || []).filter(d => d.enabled && d.keys)
             .flatMap(d => d.keys.split(",")).map(k => k.trim()).filter(Boolean),
         barkPushUrl: bark?.pushUrl?.trim() || DEFAULT_BARK_PUSH_URL,

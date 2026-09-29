@@ -42,11 +42,15 @@ type BotItem = {
     enabled: boolean;
     createdAt: string;
     maskedToken: string;
+    allowedChatIds: string;
+    allowedGroupIds: string;
 }
 
 const bots = ref<BotItem[]>([])
 const newBotName = ref('')
 const newBotToken = ref('')
+const newBotChatIds = ref('')
+const newBotGroupIds = ref('')
 const showTestModal = ref(false)
 const testBotId = ref('')
 const testChatId = ref('')
@@ -68,12 +72,34 @@ const addBot = async () => {
     try {
         await api.fetch(`/admin/notify/telegram_bots`, {
             method: 'POST',
-            body: JSON.stringify({ name: newBotName.value, token: newBotToken.value }),
+            body: JSON.stringify({
+                name: newBotName.value,
+                token: newBotToken.value,
+                allowedChatIds: newBotChatIds.value,
+                allowedGroupIds: newBotGroupIds.value,
+            }),
         })
         newBotName.value = '';
         newBotToken.value = '';
+        newBotChatIds.value = '';
+        newBotGroupIds.value = '';
         message.success(t('successTip'))
         await fetchBots();
+    } catch (error) {
+        message.error((error as Error).message || "error");
+    }
+}
+
+const saveBotWhitelist = async (bot: BotItem) => {
+    try {
+        await api.fetch(`/admin/notify/telegram_bots/${bot.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                allowedChatIds: bot.allowedChatIds,
+                allowedGroupIds: bot.allowedGroupIds,
+            }),
+        })
+        message.success(t('successTip'))
     } catch (error) {
         message.error((error as Error).message || "error");
     }
@@ -201,12 +227,14 @@ onMounted(async () => {
                 </n-button>
             </n-flex>
             <n-card :bordered="false" embedded :title="t('botManagement')" style="margin-top: 12px;">
-                <n-text depth="3" style="font-size: 12px;">{{ t('botManagementTip') }}</n-text>
+                <n-text depth="3" style="font-size: 12px;">{{ t('botManagementTip') }}<br />每个机器人一行，可单独设置用户ID白名单和群组ID白名单（逗号分隔），留空表示不限制。</n-text>
                 <n-table :bordered="false" style="margin-top: 8px;">
                     <thead>
                         <tr>
                             <th>{{ t('botName') }}</th>
                             <th>{{ t('botToken') }}</th>
+                            <th>用户ID白名单</th>
+                            <th>群组ID白名单</th>
                             <th>{{ t('enabled') }}</th>
                             <th>{{ t('actions') }}</th>
                         </tr>
@@ -215,24 +243,38 @@ onMounted(async () => {
                         <tr v-for="bot in bots" :key="bot.id">
                             <td>{{ bot.name }}</td>
                             <td><n-text code>{{ bot.maskedToken }}</n-text></td>
+                            <td>
+                                <n-input v-model:value="bot.allowedChatIds" placeholder="如：123456,789012，留空不限制"
+                                    style="width: 180px;" size="small" @change="saveBotWhitelist(bot)" />
+                            </td>
+                            <td>
+                                <n-input v-model:value="bot.allowedGroupIds" placeholder="如：-100123456，留空不限制"
+                                    style="width: 180px;" size="small" @change="saveBotWhitelist(bot)" />
+                            </td>
                             <td><n-switch v-model:value="bot.enabled" @update:value="toggleBot(bot)" :round="false" /></td>
                             <td>
                                 <n-flex>
                                     <n-button size="small" @click="openTestModal(bot)">{{ t('test') }}</n-button>
                                     <n-button size="small" @click="setBotWebhook(bot)">{{ t('setWebhook') }}</n-button>
-                                    <n-button size="small" type="error" ghost @click="deleteBot(bot)">{{ t('delete') }}</n-button>
+                                    <n-button v-if="bot.id !== 'env'" size="small" type="error" ghost @click="deleteBot(bot)">{{ t('delete') }}</n-button>
                                 </n-flex>
                             </td>
                         </tr>
                         <tr v-if="!bots.length">
-                            <td colspan="4"><n-text depth="3">{{ t('noBots') }}</n-text></td>
+                            <td colspan="6"><n-text depth="3">{{ t('noBots') }}</n-text></td>
                         </tr>
                     </tbody>
                 </n-table>
-                <n-flex style="margin-top: 12px;">
-                    <n-input v-model:value="newBotName" :placeholder="t('namePlaceholder')" style="width: 200px;" />
-                    <n-input v-model:value="newBotToken" :placeholder="t('tokenPlaceholder')" style="flex: 1;" show-password-on="click" type="password" />
-                    <n-button type="primary" @click="addBot">{{ t('add') }}</n-button>
+                <n-flex style="margin-top: 12px;" vertical>
+                    <n-flex>
+                        <n-input v-model:value="newBotName" :placeholder="t('namePlaceholder')" style="width: 200px;" />
+                        <n-input v-model:value="newBotToken" :placeholder="t('tokenPlaceholder')" style="flex: 1;" show-password-on="click" type="password" />
+                    </n-flex>
+                    <n-flex>
+                        <n-input v-model:value="newBotChatIds" placeholder="用户ID白名单（逗号分隔，留空不限制）" style="flex: 1;" />
+                        <n-input v-model:value="newBotGroupIds" placeholder="群组ID白名单（逗号分隔，留空不限制）" style="flex: 1;" />
+                        <n-button type="primary" @click="addBot">{{ t('add') }}</n-button>
+                    </n-flex>
                 </n-flex>
             </n-card>
             <n-modal v-model:show="showTestModal" preset="dialog" :title="t('test')">
