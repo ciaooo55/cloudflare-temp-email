@@ -208,7 +208,7 @@ async function testBark(c: Context<HonoCustomType>): Promise<Response> {
             body: `来自临时邮箱管理后台\n时间: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
             level: "timeSensitive", group: "temp-mail", isArchive: "1",
         });
-        const res = await fetch(`${pushUrl.replace(/\/+$/, "")}/push?${params}`, {
+        const res = await fetch(`${pushUrl.replace(/\/+$/, "").replace(/\/push$/, "")}/push?${params}`, {
             signal: AbortSignal.timeout(15000),
         });
         if (!res.ok) return c.json({ ok: false, error: `Bark 服务返回 ${res.status}` });
