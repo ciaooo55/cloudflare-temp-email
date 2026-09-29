@@ -192,6 +192,12 @@ export async function refreshBoundSnapshot(
             buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || ""),
             { expirationTtl: remainingSec }
         );
+        // 内容已更新，清除边缘缓存保证及时刷新（否则 30 秒内看到的还是旧邮件）
+        if (binding.url) {
+            try {
+                await caches.default.delete(new Request(binding.url, { method: 'GET' }));
+            } catch { /* ignore */ }
+        }
     } catch (e) {
         console.error("refresh bound snapshot failed", e);
         return null;
@@ -221,13 +227,30 @@ export async function getSnapshotBinding(c: Context<HonoCustomType>, address: st
 /** 删除绑定：正向绑定 + 反向索引 + 快照 HTML 全部删除 */
 export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address: string, token?: string): Promise<void> {
     if (!c.env.KV) return;
-    const binding = token ? { token } as SnapshotBinding : await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), "json");
+    // 需要 binding.url 来清除边缘缓存：token 直传时先经反向索引找到地址再读 binding
+    let binding: SnapshotBinding | null = null;
+    if (token) {
+        try {
+            const addr = await c.env.KV.get(snapshotBindRevKey(token));
+            if (addr) binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), "json");
+        } catch { /* ignore */ }
+    } else {
+        try {
+            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), "json");
+        } catch { /* ignore */ }
+    }
     const t = token || binding?.token;
     await Promise.allSettled([
         c.env.KV.delete(snapshotBindKey(address)),
         t ? c.env.KV.delete(snapshotBindRevKey(t)) : Promise.resolve(),
         t ? c.env.KV.delete(`mailhtml:${t}`) : Promise.resolve(),
     ]);
+    // 清除边缘缓存，保证旧链接立即失效（防刷缓存不影响删除语义）
+    if (binding?.url) {
+        try {
+            await caches.default.delete(new Request(binding.url, { method: 'GET' }));
+        } catch { /* ignore */ }
+    }
 }
 
 /** 列出全部有效绑定；顺手清理过期项 */

@@ -233,6 +233,14 @@ app.get('/health_check', health_check)
 app.get('/m/:token', async c => {
 	const token = c.req.param('token');
 	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
+	// 边缘缓存防刷：同一快照的重复访问直接走边缘缓存，不消耗 Worker/KV 额度
+	// 注意：Cache API 按 PoP 独立，但已能吸收绝大多数刷量
+	const cache = caches.default;
+	const cacheKey = new Request(c.req.url, { method: 'GET' });
+	try {
+		const cached = await cache.match(cacheKey);
+		if (cached) return cached;
+	} catch { /* cache miss, continue */ }
 	// 快照-邮箱绑定：绑定过期后快照链接失效
 	let isBoundSnapshot = false;
 	if (c.env.KV) {
@@ -263,7 +271,7 @@ app.get('/m/:token', async c => {
 	if (!html) return c.text('邮件已过期或不存在', 404);
 	// 绑定的快照内容随新邮件更新，用短缓存保证及时刷新；一次性快照内容不变，可长缓存抗刷
 	const cacheControl = isBoundSnapshot ? 'public, max-age=30' : 'public, max-age=86400';
-	return new Response(html, {
+	const response = new Response(html, {
 		headers: {
 			'Content-Type': 'text/html;charset=utf-8',
 			'Content-Security-Policy': "default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; font-src http: https: data:",
@@ -272,6 +280,11 @@ app.get('/m/:token', async c => {
 			'Cache-Control': cacheControl,
 		},
 	});
+	// 写入边缘缓存（不等待，避免阻塞响应）
+	try {
+		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+	} catch { /* cache put failed, serve directly */ }
+	return response;
 });
 app.all('/*', async c => c.text("Not Found", 404))
 

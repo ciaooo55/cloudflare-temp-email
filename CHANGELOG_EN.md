@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- perf: |Anti-abuse| Snapshot access now uses edge caching (Cache API): repeated visits to the same snapshot are served from edge cache without consuming Worker/KV quota; cache is auto-purged on new mail arrival or binding delete/replace, ensuring timely refresh and immediate invalidation of old links
 - perf: |Performance| Admin "global mailbox settings" API now reads 8 KV keys in parallel instead of sequentially — cold-start load drops from 15s to under 1s
 - fix: |Security| AI-extracted verification codes/links must actually appear in the email body, otherwise treated as hallucination and discarded with fallback to local regex (fixes AI returning 482913 when the mail contains 123456)
 - fix: |Security| Webhook SSRF hardening: manual redirect following (each hop re-validated, max 3 hops), 10s timeout, 30 req/min per-address rate limit, complete IPv6 private ranges plus decimal/hex IP obfuscation blocking, credentials in URL blocked
