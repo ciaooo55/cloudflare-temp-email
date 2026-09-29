@@ -11,12 +11,10 @@ import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUse
 import { commonParseMail } from "../common";
 import { mailBody } from "./mail_body";
 import { mailMessageParts } from "./mail_message";
-import { getPushAccounts, type TelegramPushAccount } from "./push_accounts";
 import {
     buildCompactMailMessage,
     createMailSnapshot,
     extractVerificationCodeWithSubject,
-    pushWeChatMail,
 } from "./mail_snapshot";
 import { UserFromGetMe } from "telegraf/types";
 import i18n from "../i18n";
@@ -422,29 +420,57 @@ const parseMail = async (
     }
 }
 
+const BARK_PUSH_URL = "https://bark.ciaooo55.us.ci/push";
+
+async function sendBarkPush(env: Bindings, mail: {
+    subject: string; sender: string; to: string; bodyText: string; html: string; text: string; snapshotUrl: string | null;
+}) {
+    try {
+        const keys = (env.BARK_DEVICE_KEYS || "").split(",").map(key => key.trim()).filter(Boolean);
+        if (!keys.length) return;
+        const codeInfo = extractVerificationCodeWithSubject(mail.subject, mail.bodyText, mail.html, mail.text);
+        const code = codeInfo.code;
+        const params = new URLSearchParams({
+            device_keys: keys.join(","),
+            title: code ? `🔑 ${code}` : "📩 新邮件",
+            subtitle: mail.sender || "未知",
+            body: `主题：${mail.subject || "(无主题)"}\n收件：${mail.to}${code && mail.snapshotUrl ? `\n${mail.snapshotUrl}` : ""}`,
+            level: "timeSensitive", group: "temp-mail", isArchive: "1",
+        });
+        if (code) {
+            params.set("action", "alert");
+            params.set("copy", code);
+        } else if (mail.snapshotUrl) {
+            params.set("url", mail.snapshotUrl);
+        }
+        await fetch(`${BARK_PUSH_URL}?${params}`);
+    } catch (error) {
+        console.error("bark push failed", error);
+    }
+}
+
 export async function sendMailToTelegram(
     c: Context<HonoCustomType>, address: string,
     parsedEmailContext: ParsedEmailContext,
     message_id: string | null
 ) {
-    if (!c.env.KV) {
+    if (!c.env.TELEGRAM_BOT_TOKEN || !c.env.KV) {
         return;
     }
-    const accounts = (await getPushAccounts(c)).filter((account): account is TelegramPushAccount => account.kind === "tg");
-    if (!accounts.length && !c.env.TELEGRAM_BOT_TOKEN) return;
     const userId = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
     const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
     const globalPush = settings?.enableGlobalMailPush && settings?.globalMailPushList;
-    if (!accounts.length && !userId && !globalPush) {
+    if (!userId && !globalPush) {
         return;
     }
     const mailId = await c.env.DB.prepare(
         `SELECT id FROM raw_mails where address = ? and message_id = ?`
     ).bind(address, message_id).first<string>("id");
+    const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
     let snapshotPromise: Promise<string | null> | null = null;
-    let wechatPushed = false;
+    let barkSent = false;
 
-    const buildAndSend = async (bot: Telegraf, botToken: string, targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
+    const buildAndSend = async (targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
         const createdAt = isGlobalPush
             ? new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
             : new Date().toUTCString();
@@ -481,14 +507,6 @@ export async function sendMailToTelegram(
                 entities: compact.entities,
                 ...Markup.inlineKeyboard([...buttons])
             });
-            if (!wechatPushed) {
-                wechatPushed = true;
-                try {
-                    await pushWeChatMail(c, info);
-                } catch (error) {
-                    console.error("wechat push failed", error);
-                }
-            }
         } else {
             const parts = mailMessageParts(fullMail);
             for (const [index, part] of parts.entries()) {
@@ -498,12 +516,24 @@ export async function sendMailToTelegram(
                 });
             }
         }
+        if (!barkSent) {
+            barkSent = true;
+            await sendBarkPush(c.env, {
+                subject: parsedEmailContext.parsedEmail?.subject || "",
+                sender: parsedEmailContext.parsedEmail?.sender || "",
+                to: address,
+                bodyText: body || "",
+                html: parsedEmailContext.parsedEmail?.html || "",
+                text: parsedEmailContext.parsedEmail?.text || "",
+                snapshotUrl,
+            });
+        }
         if (/https?:\/\/[^\s<>"']{3800}/i.test(fullMail)) {
             const form = new FormData();
             form.append("chat_id", targetUserId);
             form.append("document", new Blob([fullMail], { type: "text/plain;charset=utf-8" }), "完整邮件.txt");
             form.append("caption", "超长链接完整保存在原文文件中，可复制使用。");
-            const response = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+            const response = await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/sendDocument`, {
                 method: "POST", body: form
             });
             if (!response.ok) throw new Error(`Telegram original mail upload failed: ${response.status}`);
@@ -513,35 +543,19 @@ export async function sendMailToTelegram(
             const caption = isGlobalPush
                 ? `发件人：${parsedEmailContext.parsedEmail?.sender || ""}\n主题：${parsedEmailContext.parsedEmail?.subject || ""}`
                 : `From: ${parsedEmailContext.parsedEmail?.sender || ""}\nSubject: ${parsedEmailContext.parsedEmail?.subject || ""}`;
-            await sendTelegramAttachments(botToken, targetUserId, attachments, caption);
+            await sendTelegramAttachments(c.env.TELEGRAM_BOT_TOKEN, targetUserId, attachments, caption);
         }
     };
 
-    if (accounts.length) {
-        const msgs = i18n.getMessages(c.env.DEFAULT_LANG || "zh");
-        for (const account of accounts) {
-            const targets = account.targets.length ? account.targets : globalPush ? settings?.globalMailPushList || [] : userId ? [userId] : [];
-            if (!targets.length) continue;
-            try {
-                const bot = newTelegramBot(c, account.token);
-                for (const target of targets) await buildAndSend(bot, account.token, target, msgs);
-            } catch (error) {
-                console.error(`telegram push failed [${account.id}]`, error);
-            }
-        }
-        return;
-    }
-
-    const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
     if (globalPush) {
         const globalMsgs = i18n.getMessages(c.env.DEFAULT_LANG || 'zh');
         for (const pushId of settings.globalMailPushList) {
-            await buildAndSend(bot, c.env.TELEGRAM_BOT_TOKEN, pushId, globalMsgs, true);
+            await buildAndSend(pushId, globalMsgs, true);
         }
     }
 
     if (userId) {
         const userMsgs = await getTgMessages(c, undefined, userId);
-        await buildAndSend(bot, c.env.TELEGRAM_BOT_TOKEN, userId, userMsgs);
+        await buildAndSend(userId, userMsgs);
     }
 }

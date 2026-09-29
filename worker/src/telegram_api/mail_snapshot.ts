@@ -1,9 +1,7 @@
 import type { Context } from "hono";
 import type { TelegramSettings } from "./settings";
-import { getPushAccounts, type WeChatPushAccount } from "./push_accounts";
 
 const SNAPSHOT_TTL = 86400;
-const ILINK_API = "https://ilinkai.weixin.qq.com";
 
 export type VerificationInfo = { isVerification: boolean; code: string | null; verifyLink?: string | null };
 
@@ -142,57 +140,4 @@ export function buildCompactMailMessage(info: {
     entities.push({ type: "url", offset, length: info.snapshotUrl.length });
     text += "\n\n🐶🐶🐶🐶🐶🐶🐶🐶";
     return { text, entities };
-}
-
-export function buildWeChatMailText(info: { subject: string; address: string; sender: string; createdAt: string; codeInfo: VerificationInfo; snapshotUrl: string }): string {
-    const lines = ["📩 新邮件", "━━━━━━━━━━━━━━", `主题：${info.subject || "（无主题）"}`, `收件：${info.address}`, `发件：${info.sender || "未知"}`, `时间：${info.createdAt}`];
-    let text = lines.join("\n");
-    if (info.codeInfo.isVerification) {
-        text += info.codeInfo.code
-            ? `\n\n🔐 验证码\n${info.codeInfo.code}\n（长按复制）`
-            : info.codeInfo.verifyLink
-                ? `\n\n🔐 验证码\n🔗 验证链接：\n${info.codeInfo.verifyLink}`
-                : "\n\n🔐 验证码\n⚠️ 未能自动识别，请点击下方链接查看";
-    }
-    return `${text}\n\n🔗 查看完整邮件：\n${info.snapshotUrl}`;
-}
-
-export async function pushWeChatMail(c: Context<HonoCustomType>, info: Parameters<typeof buildWeChatMailText>[0]): Promise<void> {
-    const accounts = (await getPushAccounts(c)).filter((account): account is WeChatPushAccount => account.kind === "wx");
-    if (!accounts.length) {
-        const config = await c.env.KV?.get<{ botToken?: string; toUserId?: string; contextToken?: string }>("ilink:config", "json");
-        if (!config?.botToken || !config.toUserId || !config.contextToken) return;
-        accounts.push({ kind: "wx", id: "legacy", botToken: config.botToken, toUserId: config.toUserId, contextToken: config.contextToken });
-    }
-    const failures: string[] = [];
-    for (const account of accounts) {
-        try {
-            await sendWeChatMail(account, info);
-        } catch (error) {
-            failures.push(`${account.id}: ${(error as Error).message}`);
-        }
-    }
-    if (failures.length) throw new Error(failures.join(" | "));
-}
-
-async function sendWeChatMail(account: WeChatPushAccount, info: Parameters<typeof buildWeChatMailText>[0]): Promise<void> {
-    const bytes = new Uint8Array(4);
-    crypto.getRandomValues(bytes);
-    const uin = btoa(String((bytes[0] * 16777216 + bytes[1] * 65536 + bytes[2] * 256 + bytes[3]) >>> 0));
-    const response = await fetch(`${ILINK_API}/ilink/bot/sendmessage`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json", AuthorizationType: "ilink_bot_token",
-            Authorization: `Bearer ${account.botToken}`, "X-WECHAT-UIN": uin,
-            "iLink-App-Id": "bot", "iLink-App-ClientVersion": "131328"
-        },
-        body: JSON.stringify({ msg: {
-            from_user_id: "", to_user_id: account.toUserId, client_id: `cfmail-${Date.now()}`,
-            message_type: 2, message_state: 2, context_token: account.contextToken,
-            item_list: [{ type: 1, text_item: { text: buildWeChatMailText(info) } }]
-        }, base_info: { channel_version: "1.0.3" } })
-    });
-    if (!response.ok) throw new Error(`iLink HTTP ${response.status}`);
-    const result = await response.json<{ ret?: number; errmsg?: string }>();
-    if (result.ret !== 0) throw new Error(`iLink ret=${result.ret}: ${result.errmsg || "unknown error"}`);
 }
