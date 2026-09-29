@@ -298,9 +298,16 @@ export async function extractEmailInfo(
                 : await extractWithCloudflareAI(truncatedContent, env);
             const result = raw as ExtractResult;
             if (result && result.type !== 'none' && result.result) {
-                await saveExtractMetadata(env, message_id, result);
-                console.log(`AI extraction completed for ${message_id}: ${result.type}`);
-                return result;
+                // Validate: the extracted code/link must actually appear in the email content.
+                // LLMs can hallucinate (e.g. return 482913 when the mail contains 123456).
+                const normalizedContent = truncatedContent.replace(/[\s\-_]/g, '');
+                const normalizedResult = String(result.result).replace(/[\s\-_]/g, '');
+                if (normalizedResult && normalizedContent.includes(normalizedResult)) {
+                    await saveExtractMetadata(env, message_id, result);
+                    console.log(`AI extraction completed for ${message_id}: ${result.type}`);
+                    return result;
+                }
+                console.warn(`AI extraction hallucination detected for ${message_id}: "${result.result}" not found in email content, falling back to local rules`);
             }
             console.log(`AI extraction returned nothing usable for ${message_id}, falling back to local rules`);
         } catch (e) {
