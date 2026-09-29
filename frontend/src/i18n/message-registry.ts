@@ -2376,8 +2376,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "使用率按当前数据库大小与所选套餐的数据库容量上限计算。"
     },
     "storage_title": {
-      "en": "D1 Storage Capacity",
-      "zh": "D1 存储容量"
+      "en": "Database Storage Capacity",
+      "zh": "数据库存储容量"
     },
     "storage_usage": {
       "en": "Capacity Usage",
