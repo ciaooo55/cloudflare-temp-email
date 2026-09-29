@@ -3,16 +3,11 @@ import { Hono } from 'hono'
 import parsed_mail_api from './parsed_mail_api';
 import mails_crud from './mails_crud';
 import new_address from './new_address';
-import auto_reply from './auto_reply'
 import webhook_settings from './webhook_settings';
 import s3_attachment from './s3_attachment';
 import address_auth from './address_auth';
 
 export const api = new Hono<HonoCustomType>()
-
-// auto reply
-api.get('/api/auto_reply', auto_reply.getAutoReply)
-api.post('/api/auto_reply', auto_reply.saveAutoReply)
 
 // webhook
 api.get('/api/webhook/settings', webhook_settings.getWebhookSettings)

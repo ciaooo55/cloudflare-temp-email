@@ -9,15 +9,15 @@ export const CONSTANTS = {
     ADDRESS_BLOCK_LIST_KEY: 'address_block_list',
     SEND_BLOCK_LIST_KEY: 'send_block_list',
     AUTO_CLEANUP_KEY: 'auto_cleanup',
-    USER_SETTINGS_KEY: 'user_settings',
     ADDRESS_CREATION_SETTINGS_KEY: 'address_creation_settings',
-    OAUTH2_SETTINGS_KEY: 'oauth2_settings',
     VERIFIED_ADDRESS_LIST_KEY: 'verified_address_list',
     NO_LIMIT_SEND_ADDRESS_LIST_KEY: 'no_limit_send_address_list',
     EMAIL_RULE_SETTINGS_KEY: 'email_rule_settings',
-    ROLE_ADDRESS_CONFIG_KEY: 'role_address_config',
     IP_BLACKLIST_SETTINGS_KEY: 'ip_blacklist_settings',
     AI_EXTRACT_SETTINGS_KEY: 'ai_extract_settings',
+    TELEGRAM_BOTS_KEY: 'telegram_bots',
+    BARK_SETTINGS_KEY: 'bark_settings',
+    SNAPSHOT_SETTINGS_KEY: 'snapshot_settings',
 
     // KV
     TG_KV_PREFIX: "temp-mail-telegram",

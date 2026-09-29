@@ -6,11 +6,10 @@ import { addressJwtAuth } from './address_auth';
 import { api as commonApi } from './commom_api';
 import { api as openAuthApi } from './open_api/auth';
 import { api as mailsApi } from './mails_api'
-import { api as userApi } from './user_api';
 import { api as adminApi } from './admin_api';
 import { api as apiSendMail } from './mails_api/send_mail_api'
+import { snapshotBindKey, snapshotBindRevKey } from './telegram_api/mail_snapshot';
 import { api as telegramApi } from './telegram_api'
-import { api as redeemApi } from './redeem_api'
 
 import i18n from './i18n';
 import { ErrorCode } from './error_codes';
@@ -22,12 +21,10 @@ import { checkAccessControl } from './ip_blacklist';
 const API_PATHS = [
 	"/api/",
 	"/open_api/",
-	"/user_api/",
 	"/admin/",
 	"/telegram/",
 	"/external/",
 	"/m/",
-	"/redeem_api/",
 ];
 
 const app = new Hono<HonoCustomType>()
@@ -69,10 +66,6 @@ app.use('/*', async (c, next) => {
 		c.req.path.startsWith("/api/new_address")
 		|| c.req.path.startsWith("/api/send_mail")
 		|| c.req.path.startsWith("/external/api/send_mail")
-		|| (c.req.path.startsWith("/user_api/address/") && c.req.path.endsWith("/send_mail"))
-		|| c.req.path.startsWith("/user_api/register")
-		|| c.req.path.startsWith("/user_api/verify_code")
-		|| c.req.path.startsWith("/redeem_api/")
 	) {
 		const reqIp = c.req.raw.headers.get("cf-connecting-ip")
 		if (reqIp && c.env.RATE_LIMITER) {
@@ -179,53 +172,6 @@ app.use('/api/*', async (c, next) => {
 		return c.text(msgs.InvalidAddressCredentialMsg, 401)
 	}
 });
-// user_api auth
-app.use('/user_api/*', async (c, next) => {
-	if (
-		c.req.path.startsWith("/user_api/open_settings")
-		|| c.req.path.startsWith("/user_api/register")
-		|| c.req.path.startsWith("/user_api/login")
-		|| c.req.path.startsWith("/user_api/verify_code")
-		|| c.req.path.startsWith("/user_api/passkey/authenticate_")
-		|| c.req.path.startsWith("/user_api/oauth2")
-	) {
-		await next();
-		return;
-	}
-
-	const lang = c.req.raw.headers.get("x-lang") || c.env.DEFAULT_LANG;
-	const msgs = i18n.getMessages(lang);
-
-	try {
-		const token = c.req.raw.headers.get("x-user-token");
-		if (!token) return c.text(msgs.UserTokenExpiredMsg, 401)
-		const payload = await Jwt.verify(token, c.env.JWT_SECRET, "HS256");
-		// check expired
-		if (!payload.exp) return c.text(msgs.UserTokenExpiredMsg, 401);
-		// exp is in seconds
-		if (payload.exp < Math.floor(Date.now() / 1000)) {
-			return c.text(msgs.UserTokenExpiredMsg, 401)
-		}
-		c.set("userPayload", payload as UserPayload);
-	} catch (e) {
-		console.error(e);
-		return c.text(msgs.UserTokenExpiredMsg, 401)
-	}
-	if (
-		c.req.path.startsWith("/user_api/bind_address")
-		|| c.req.path.startsWith("/user_api/address/")
-	) {
-		const { user_id } = c.get("userPayload");
-		const response = await checkoutUserRolePayload(c, user_id);
-		if (response) return response;
-	}
-	if (c.req.path.startsWith('/user_api/bind_address')
-		&& c.req.method === 'POST'
-	) {
-		return addressJwtAuth(c, next);
-	}
-	await next();
-});
 // admin auth
 app.use('/admin/*', async (c, next) => {
 	const lang = c.req.raw.headers.get("x-lang") || c.env.DEFAULT_LANG;
@@ -250,28 +196,6 @@ app.use('/admin/*', async (c, next) => {
 		await next();
 		return;
 	}
-	// check if user is admin
-	const access_token = c.req.raw.headers.get("x-user-access-token");
-	if (c.env.ADMIN_USER_ROLE && access_token) {
-		try {
-			const payload = await Jwt.verify(access_token, c.env.JWT_SECRET, { alg: "HS256", exp: false });
-			// check expired
-			if (!payload.exp) return c.json({ code: ErrorCode.AUTH_ADMIN_CREDENTIAL_INVALID, message: msgs.UserAcceesTokenExpiredMsg }, 401);
-			// exp is in seconds
-			if (payload.exp < Math.floor(Date.now() / 1000)) {
-				if (getBooleanValue(c.env.DISABLE_ADMIN_PASSWORD_CHECK)) return await next();
-				return c.json({ code: ErrorCode.AUTH_USER_ACCESS_TOKEN_EXPIRED, message: msgs.UserAcceesTokenExpiredMsg }, 401);
-			}
-			if (payload.user_role !== c.env.ADMIN_USER_ROLE) {
-				return c.json({ code: ErrorCode.AUTH_ADMIN_CREDENTIAL_INVALID, message: msgs.UserRoleIsNotAdminMsg }, 401)
-			}
-			await next();
-			return;
-		} catch (e) {
-			console.error(e);
-		}
-	}
-
 	// disable admin api check
 	if (getBooleanValue(c.env.DISABLE_ADMIN_PASSWORD_CHECK)) {
 		await next();
@@ -285,11 +209,9 @@ app.use('/admin/*', async (c, next) => {
 app.route('/', commonApi)
 app.route('/', openAuthApi)
 app.route('/', mailsApi)
-app.route('/', userApi)
 app.route('/', adminApi)
 app.route('/', apiSendMail)
 app.route('/', telegramApi)
-app.route('/', redeemApi)
 
 const health_check = async (c: Context<HonoCustomType>) => {
 	const lang = c.req.raw.headers.get("x-lang") || c.env.DEFAULT_LANG;
@@ -311,6 +233,25 @@ app.get('/health_check', health_check)
 app.get('/m/:token', async c => {
 	const token = c.req.param('token');
 	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
+	// 快照-邮箱绑定：绑定过期后快照链接失效
+	if (c.env.KV) {
+		try {
+			const boundAddr = await c.env.KV.get(`snapshot-bindrev:${token}`);
+			if (boundAddr) {
+				const binding = await c.env.KV.get<{ expiresAt: number }>(`snapshot-bind:${boundAddr.toLowerCase()}`, "json");
+				if (!binding || binding.expiresAt <= Date.now()) {
+					await Promise.allSettled([
+						c.env.KV.delete(`snapshot-bindrev:${token}`),
+						c.env.KV.delete(`snapshot-bind:${boundAddr.toLowerCase()}`),
+						c.env.KV.delete(`mailhtml:${token}`),
+					]);
+					return c.text('该快照绑定已到期', 404);
+				}
+			}
+		} catch (error) {
+			console.error('snapshot binding check failed', error);
+		}
+	}
 	let html: string | null = null;
 	try {
 		html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`) : null;

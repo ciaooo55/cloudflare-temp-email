@@ -158,7 +158,6 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
                 { text: '配置 Telegram Bot', link: 'feature/telegram' },
                 { text: '配置 webhook', link: 'feature/webhook' },
                 { text: '配置 SMTP/IMAP 邮件客户端', link: 'feature/config-smtp-proxy' },
-                { text: 'Oauth2 第三方登录', link: 'feature/user-oauth2' },
             ]
         },
         {
@@ -170,7 +169,6 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
                 { text: '配置 S3 附件', link: 'feature/s3-attachment' },
                 { text: '配置 worker 使用 wasm 解析邮件', link: 'feature/mail_parser_wasm_worker' },
                 { text: '配置其他 worker 增强', link: 'feature/another-worker-enhanced' },
-                { text: '配置兑换码', link: 'feature/redeem-code' },
                 { text: '给网页增加 Google Ads', link: 'feature/google-ads.md' },
             ]
         },
@@ -190,7 +188,6 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
             collapsed: false,
             items: [
                 { text: 'Admin 控制台', link: 'feature/admin' },
-                { text: 'Admin 用户管理', link: 'feature/admin-user-management' },
             ]
         },
         { text: '参考', base: "/zh/", link: 'reference' }

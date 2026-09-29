@@ -54,13 +54,11 @@ Three auth layers applied via Hono middleware, each using different headers:
 | Path prefix | Header | Purpose |
 |-------------|--------|---------|
 | `/api/*` | `Authorization: Bearer <jwt>` | Address (mailbox) credential |
-| `/user_api/*` | `x-user-token` | User account JWT |
 | `/admin/*` | `x-admin-auth` | Admin password |
-| (any) | `x-user-access-token` | User role-based access token |
 | (any) | `x-custom-auth` | Optional global access password |
 | (any) | `x-lang` | Language preference (`en`/`zh`) |
 
-Public endpoints (no auth): `/open_api/*`, `/user_api/login`, `/user_api/register`, `/user_api/passkey/authenticate_*`, `/user_api/oauth2/*`.
+Public endpoints (no auth): `/open_api/*`. Multi-user system removed — admin-only now.
 
 ### Worker Email Flow (`worker/src/email/`)
 

@@ -12,7 +12,6 @@ This is a temporary email service that uses Cloudflare Workers to create a tempo
 - [x] Get Custom Name Email
 - [x] Support multiple languages
 - [x] Add access authorization, which can be used as a private site
-- [x] Add auto reply feature
 - [x] Add attachment viewing function
 - [x] use rust wasm to parse email
 - [x] support send email
@@ -116,8 +115,6 @@ ENABLE_USER_CREATE_EMAIL = true
 # DISABLE_ANONYMOUS_USER_CREATE_EMAIL = true
 # Allow users to delete messages
 ENABLE_USER_DELETE_EMAIL = true
-# Allow automatic replies to emails
-ENABLE_AUTO_REPLY = false
 # Allow webhook
 # ENABLE_WEBHOOK = true
 # Footer text

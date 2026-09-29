@@ -9,7 +9,7 @@ import {
     AdminPanelSettingsFilled, MonitorHeartFilled,
     KeyboardArrowDownOutlined, OpenInNewOutlined
 } from '@vicons/material'
-import { Envelope, GithubAlt, Language, User } from '@vicons/fa'
+import { GithubAlt, Language } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -23,8 +23,8 @@ const message = useMessage()
 const notification = useNotification()
 
 const {
-    toggleDark, isDark, isTelegram, showAdminPage,
-    showAuth, auth, loading, openSettings, preferredLocale, userSettings
+    toggleDark, isDark, showAdminPage,
+    showAuth, auth, loading, openSettings, preferredLocale
 } = useGlobalState()
 const route = useRoute()
 const router = useRouter()
@@ -32,9 +32,8 @@ const isMobile = useIsMobile()
 
 const showMobileMenu = ref(false)
 const menuValue = computed(() => {
-    if (route.path.includes("user")) return "user";
     if (route.path.includes("admin")) return "admin";
-    return "home";
+    return "admin";
 });
 
 const cfToken = ref('')
@@ -105,50 +104,10 @@ const changeLocale = async (lang) => {
 const version = import.meta.env.PACKAGE_VERSION ? `v${import.meta.env.PACKAGE_VERSION}` : "";
 const showGithubForCurrentUser = computed(() => {
     if (!openSettings.value.showGithub) return false;
-    if (openSettings.value.showGithubForUser) return true;
     return showAdminPage.value;
 });
 
 const menuOptions = computed(() => [
-    {
-        label: () => h(NButton,
-            {
-                text: true,
-                size: "small",
-                type: menuValue.value == "home" ? "primary" : "default",
-                style: "width: 100%",
-                onClick: async () => {
-                    await router.push(getRouterPathWithLang('/', locale.value));
-                    showMobileMenu.value = false;
-                }
-            },
-            {
-                default: () => t('mailbox'),
-                icon: () => h(NIcon, { component: Envelope })
-            }),
-        key: "home"
-    },
-    {
-        label: () => h(
-            NButton,
-            {
-                text: true,
-                size: "small",
-                type: menuValue.value == "user" ? "primary" : "default",
-                style: "width: 100%",
-                onClick: async () => {
-                    await router.push(getRouterPathWithLang("/user", locale.value));
-                    showMobileMenu.value = false;
-                }
-            },
-            {
-                default: () => t('userCenter'),
-                icon: () => h(NIcon, { component: User }),
-            }
-        ),
-        key: "user",
-        show: !isTelegram.value
-    },
     {
         label: () => h(
             NButton,
@@ -240,8 +199,6 @@ const logoClick = async () => {
 
 onMounted(async () => {
     await api.getOpenSettings(message, notification);
-    // make sure user_id is fetched
-    if (!userSettings.value.user_id) await api.getUserSettings(message);
 });
 </script>
 

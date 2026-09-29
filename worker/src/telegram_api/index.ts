@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Context, Hono } from 'hono'
 import { ServerResponse } from 'node:http'
 import { Writable } from 'node:stream'
 
@@ -6,30 +6,63 @@ import { newTelegramBot, initTelegramBotCommands, sendMailNotifications } from '
 import settings from './settings'
 import miniapp from './miniapp'
 import i18n from '../i18n'
+import { CONSTANTS } from '../constants'
+import { getJsonSetting } from '../utils'
+import type { TelegramBotEntry } from '../admin_api/notify_settings'
 
 export const api = new Hono<HonoCustomType>();
 export { sendMailNotifications }
 
+const hasTelegramBot = async (c: Context<HonoCustomType>) => {
+    if (c.env.TELEGRAM_BOT_TOKEN) return true;
+    try {
+        const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
+        return bots.some(b => b.enabled !== false && b.token);
+    } catch {
+        return false;
+    }
+};
+
 api.use("/telegram/*", async (c, next) => {
     const msgs = i18n.getMessagesbyContext(c);
-    if (!c.env.TELEGRAM_BOT_TOKEN) {
-        return c.text(msgs.TgBotTokenRequiredMsg, 400);
-    }
     if (!c.env.KV) {
         return c.text(msgs.KVNotAvailableMsg, 400);
+    }
+    if (!(await hasTelegramBot(c))) {
+        return c.text(msgs.TgBotTokenRequiredMsg, 400);
     }
     return await next();
 });
 
 api.use("/admin/telegram/*", async (c, next) => {
     const msgs = i18n.getMessagesbyContext(c);
-    if (!c.env.TELEGRAM_BOT_TOKEN) {
-        return c.text(msgs.TgBotTokenRequiredMsg, 400);
-    }
     if (!c.env.KV) {
         return c.text(msgs.KVNotAvailableMsg, 400);
     }
+    if (!(await hasTelegramBot(c))) {
+        return c.text(msgs.TgBotTokenRequiredMsg, 400);
+    }
     return await next();
+});
+
+api.post("/telegram/webhook/:botId", async (c) => {
+    const botId = c.req.param("botId");
+    const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
+    const bot = bots.find(b => b.id === botId);
+    if (!bot?.token) {
+        return c.text("bot not found", 404);
+    }
+    const tgBot = newTelegramBot(c, bot.token);
+    let body = null;
+    const res = new Writable();
+    Object.assign(res, {
+        headersSent: false,
+        setHeader: (name: string, value: string) => c.header(name, value),
+        end: (data: any) => body = data,
+    });
+    const reqJson = await c.req.json();
+    await tgBot.handleUpdate(reqJson, res as ServerResponse);
+    return c.body(body);
 });
 
 api.post("/telegram/webhook", async (c) => {

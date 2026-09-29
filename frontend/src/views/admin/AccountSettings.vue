@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, ref, h } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useScopedI18n } from '@/i18n/app'
-import { NButton, NPopconfirm, NInput, NSelect, NRadioGroup, NRadio } from 'naive-ui'
+import { NButton, NSelect, NRadioGroup, NRadio } from 'naive-ui'
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -17,8 +17,7 @@ const noLimitSendAddressList = ref([])
 const verifiedAddressList = ref([])
 const fromBlockList = ref([])
 const emailRuleSettings = ref({
-    blockReceiveUnknowAddressEmail: false,
-    emailForwardingList: []
+    blockReceiveUnknowAddressEmail: false
 })
 const ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE = {
     FOLLOW_ENV: 'follow_env',
@@ -58,156 +57,6 @@ const subdomainMatchModeOptions = computed(() => {
         }
     ]
 })
-
-const showEmailForwardingModal = ref(false)
-const emailForwardingList = ref([])
-
-
-const emailForwardingColumns = [
-    {
-        title: t('domain_list'),
-        key: 'domains',
-        render: (row, index) => {
-            return h(NSelect, {
-                value: Array.isArray(row.domains) ? row.domains : [],
-                onUpdateValue: (val) => {
-                    emailForwardingList.value[index].domains = val
-                },
-                options: openSettings.value?.domains || [],
-                multiple: true,
-                filterable: true,
-                tag: true,
-                placeholder: t('select_domain')
-            })
-        }
-    },
-    {
-        title: t('source_patterns'),
-        key: 'sourcePatterns',
-        render: (row, index) => {
-            return h('div', { style: 'display: flex; flex-direction: column; gap: 4px;' }, [
-                h(NSelect, {
-                    value: Array.isArray(row.sourcePatterns) ? row.sourcePatterns : [],
-                    onUpdateValue: (val) => {
-                        emailForwardingList.value[index].sourcePatterns = val
-                    },
-                    multiple: true,
-                    filterable: true,
-                    tag: true,
-                    placeholder: t('source_patterns_placeholder')
-                }, {
-                    empty: () => h('span', { style: 'color: #999; font-size: 12px;' }, t('manualInputPrompt'))
-                }),
-                h(NRadioGroup, {
-                    value: row.sourceMatchMode || 'any',
-                    onUpdateValue: (val) => {
-                        emailForwardingList.value[index].sourceMatchMode = val
-                    },
-                    size: 'small',
-                    style: 'margin-top: 4px;'
-                }, {
-                    default: () => [
-                        h(NRadio, { value: 'any' }, { default: () => t('match_any') }),
-                        h(NRadio, { value: 'all' }, { default: () => t('match_all') })
-                    ]
-                })
-            ])
-        }
-    },
-    {
-        title: t('forward_address'),
-        key: 'forward',
-        render: (row, index) => {
-            return h(NInput, {
-                value: row.forward,
-                onUpdateValue: (val) => {
-                    emailForwardingList.value[index].forward = val
-                },
-                placeholder: 'forward@example.com'
-            })
-        }
-    },
-    {
-        title: t('actions'),
-        key: 'actions',
-        render: (row, index) => {
-            return h('div', { style: 'display: flex; gap: 8px;' }, [
-                h(NPopconfirm, {
-                    onPositiveClick: () => {
-                        emailForwardingList.value = emailForwardingList.value.filter((_, i) => i !== index)
-                        message.success(t('delete_success'))
-                    }
-                }, {
-                    default: () => t('delete_rule_confirm'),
-                    trigger: () => h(NButton, {
-                        size: 'small',
-                        type: 'error'
-                    }, { default: () => t('delete_rule') })
-                })
-            ])
-        }
-    }
-]
-
-const openEmailForwardingModal = () => {
-    // 从 emailRuleSettings 转换出列表数据
-    emailForwardingList.value = emailRuleSettings.value.emailForwardingList ?
-        [...emailRuleSettings.value.emailForwardingList] : []
-    showEmailForwardingModal.value = true
-}
-
-const addNewEmailForwardingItem = () => {
-    emailForwardingList.value = [
-        ...emailForwardingList.value,
-        {
-            domains: [],
-            forward: '',
-            sourcePatterns: [],
-            sourceMatchMode: 'any'
-        }
-    ]
-}
-
-const MAX_REGEX_LENGTH = 200
-
-const validateForwardingRules = () => {
-    for (let i = 0; i < emailForwardingList.value.length; i++) {
-        const rule = emailForwardingList.value[i]
-
-        // 验证转发地址
-        if (!rule.forward || rule.forward.trim() === '') {
-            message.error(`${t('forward_address_required')} (${t('rule_index')} ${i + 1})`)
-            return false
-        }
-
-        // 验证正则表达式
-        if (rule.sourcePatterns && rule.sourcePatterns.length > 0) {
-            for (const pattern of rule.sourcePatterns) {
-                // 检查长度
-                if (pattern.length > MAX_REGEX_LENGTH) {
-                    message.error(`${t('regex_too_long')}: ${pattern.substring(0, 30)}...`)
-                    return false
-                }
-                // 检查正则有效性
-                try {
-                    new RegExp(pattern, 'i')
-                } catch (e) {
-                    message.error(`${t('regex_invalid')}: ${pattern}`)
-                    return false
-                }
-            }
-        }
-    }
-    return true
-}
-
-const saveEmailForwardingConfig = () => {
-    if (!validateForwardingRules()) {
-        return
-    }
-    emailRuleSettings.value.emailForwardingList = [...emailForwardingList.value]
-    showEmailForwardingModal.value = false
-}
 
 const getSubdomainMatchModeByStoredValue = (storedEnabled) => {
     if (storedEnabled === true) {
@@ -263,8 +112,7 @@ const fetchData = async ({ suppressErrorMessage = false } = {}) => {
         fromBlockList.value = res.fromBlockList || []
         noLimitSendAddressList.value = res.noLimitSendAddressList || []
         emailRuleSettings.value = {
-            blockReceiveUnknowAddressEmail: res.emailRuleSettings?.blockReceiveUnknowAddressEmail || false,
-            emailForwardingList: res.emailRuleSettings?.emailForwardingList || []
+            blockReceiveUnknowAddressEmail: res.emailRuleSettings?.blockReceiveUnknowAddressEmail || false
         }
         addressCreationSubdomainMatchStatus.value = {
             envConfigured: !!res.addressCreationSubdomainMatchStatus?.envConfigured,
@@ -454,30 +302,9 @@ onMounted(async () => {
                     </n-alert>
                 </n-flex>
             </n-form-item-row>
-            <n-form-item-row :label="t('email_forwarding_config')">
-                <n-button @click="openEmailForwardingModal">{{ t('config') }}</n-button>
-            </n-form-item-row>
         </n-card>
     </div>
 
-    <!-- 邮件转发配置弹窗 -->
-    <n-modal v-model:show="showEmailForwardingModal" preset="card" :title="t('email_forwarding_config')"
-        style="max-width: 1000px;">
-        <n-space vertical>
-            <n-alert :show-icon="false" :bordered="false" type="warning">
-                <span>{{ t('forwarding_rule_warning') }}</span>
-                <br />
-                <span>{{ t('source_patterns_tip') }}</span>
-            </n-alert>
-            <n-space justify="end">
-                <n-button @click="addNewEmailForwardingItem">{{ t('add') }}</n-button>
-            </n-space>
-            <n-data-table :columns="emailForwardingColumns" :data="emailForwardingList" :bordered="false" striped />
-            <n-space justify="end">
-                <n-button @click="saveEmailForwardingConfig" type="primary">{{ t('save') }}</n-button>
-            </n-space>
-        </n-space>
-    </n-modal>
 </template>
 
 <style scoped>

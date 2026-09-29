@@ -8,8 +8,22 @@
 
 ## v1.13.0(main)
 
+- remove: |精简| 移除多用户体系、改为管理员单账户：`/` 自动跳转 `/admin`，删除公开邮箱网页、用户中心、注册/登录、OAuth2 第三方登录、Passkey、用户角色、邮箱绑定、兑换码、地址口令网页登录（`/open_api/credential_login`）及全部 `/user_api/*`、`/redeem_api/*` 后端接口；管理员后台只保留管理员密码登录，可查看管理邮件/地址/附件并配置 TG、Bark、快照、AI、Webhook 等功能；移除 `ENABLE_REDEEM_CODE`、`REDEEM_CODE_URL`、`DISABLE_SHOW_GITHUB_FOR_USER`、`ENABLE_INDEX_ABOUT`、`ADMIN_USER_ROLE`、`USER_ROLES`、`USER_DEFAULT_ROLE` 环境变量及相关管理端展示；已有数据库中的旧多用户表（users、users_address、user_roles、user_passkeys、redeem_codes）不再使用，需手动清理；已删除的多用户专属 E2E 测试同步清理
+- test: |测试| 新增后端管理 API 集成测试（TG Bot 增删改查/启停/测试/webhook、Bark 多设备配置与测试、快照 TTL、固定快照绑定全流程、AI 设置与自定义接口测试），覆盖 Token/Key 脱敏、旧快照失效、网页配置优先环境变量；54 个单测全部通过
+- feat: |清理| 独立 dinshi 定时清理 worker 已合并进主 worker：`scheduled` 每 3 分钟删除 D1 `raw_mails` 中 10 分钟前的旧邮件（`wrangler.toml.template [triggers] crons = ["*/3 * * * *"]`），逻辑与原 dinshi 完全一致、不受自动清理设置影响；部署后可删除 dinshi worker（现已可通过网页配置执行间隔与保留时长）
+- feat: |定时任务| 所有定时删除/定时功能改为网页快捷配置：worker cron 改为每分钟触发（`crons = ["* * * * *"]`），各任务按管理端「维护」页「定时任务」标签里配置的间隔自行执行——raw_mails 清理（替代原独立 dinshi worker）可配启用/每 N 分钟执行/删除 M 分钟前数据（默认每 10 分钟执行、删除 10 分钟前的数据）、自动清理批次可配检查间隔（默认 60 分钟，含自定义 SQL），保存后立即生效无需重新部署；上次执行时间与删除条数展示在网页上，raw_mails 支持手动立即执行一次；新增 `GET /admin/scheduled_status`、`POST /admin/cleanup_raw_mails` 管理接口
+- remove: |精简| 移除邮件转发功能：删除 `worker/src/email/forward.ts` 及收信流程中的转发调用、前后端转发配置（`FORWARD_ADDRESS_LIST` / `SUBDOMAIN_FORWARD_ADDRESS_LIST` 环境变量、`emailForwardingList` 规则）；`EmailRuleSettings` 仅保留 `blockReceiveUnknowAddressEmail`
+- remove: |精简| 移除自动回复功能：删除 `worker/src/email/auto_reply.ts` 收信流程中的自动回复调用、`/api/auto_reply` 规则管理接口（`worker/src/mails_api/auto_reply.ts`）、`auto_reply_mails` 表及建表语句、`ENABLE_AUTO_REPLY` 环境变量、前后端自动回复配置入口；删除地址时不再级联清理自动回复数据，黑名单等其他收信逻辑不受影响
 ### Features
 
+- feat: |发信| 新增 `SEND_ROUTES` 统一配置：每个域名可独立配置发信通道链（Cloudflare `send_email` binding / Resend / SMTP 三通道保留），每个通道支持多个命名凭证（如 `RESEND_TOKEN_1/2`、`SMTP_1/2`、`TELEGRAM_BOT_TOKEN_2`、`BARK_DEVICE_KEYS_2`），按顺序尝试、成功即停、失败自动降级到下一个通道；未配置 `SEND_ROUTES` 时保持原有优先级逻辑不变
+- feat: |推送| TG 与 Bark 改为同级并发推送（`Promise.allSettled`，互不阻塞、一方失败不影响另一方），支持配置多个 TG bot token 与多组 Bark 设备 keys，可按域名分别指定推送目标；邮件快照仍只建一次两边共用
+- feat: |AI 识别| 新增 `AI_EXTRACT_MODE=custom`，通过 `AI_EXTRACT_API_URL` / `AI_EXTRACT_API_KEY` / `AI_EXTRACT_MODEL` 接任意 OpenAI 兼容接口；AI 能识别出结果时直接采用不再跑正则，AI 调用失败（网络错误、402/403/429 等）或返回不可用时自动兜底到本地正则
+- feat: |通知| 管理员网页可添加多个 TG Bot，支持启用/停用/删除、`getMe` 校验与测试消息、独立 webhook；网页 Bot 与环境变量 token 合并去重后一起推送
+- feat: |通知| 管理员网页可配置多个 Bark 设备（单独启停/删除）、自定义服务地址、单设备/全部设备测试；TG 与 Bark 同级并发推送、一方失败不影响另一方
+- feat: |快照| 普通邮件快照自动删除时长可在网页设置，默认 24 小时
+- feat: |快照| 固定快照绑定：为邮箱地址绑定固定快照 URL，新邮件覆盖旧内容、刷新看最新；网页可绑定/修改/设置有效期/提前失效，到期自动解绑；重新绑定时旧 URL 立即失效
+- feat: |AI 识别| 管理员网页可直接配置识别模式、自定义 API URL/Key/模型并测试接口；网页配置优先于环境变量，API Key 保存后不再回显
 - feat: |用户系统| 邮箱地址管理支持按地址关键字搜索已绑定邮箱，并保持分页结果准确（issue #1156）
 - feat: |AI 识别| 新增 `AI_EXTRACT_MODE`，可显式选择仅用本地规则（`local`）或优先用 Workers AI（`ai`）识别邮件；不填默认使用本地规则，邮件内容不会发送给 AI。**升级注意**：原先依赖 Workers AI 绑定自动启用 AI 识别的部署需设置 `AI_EXTRACT_MODE = "ai"`
 
@@ -17,6 +31,7 @@
 
 - fix: |收件| 黑名单同时检查 SMTP 信封发件人与邮件头 From 的全部邮箱地址，任意一个命中即拒收；独立解析地址，避免正文解析失败或多个发件地址导致漏拦截；地址解析异常时保留原有信封检查
 - fix: |AI 识别| `ai` 模式下地址未命中 AI 提取白名单时只跳过 Workers AI 调用，仍回退到本地规则提取验证码
+- fix: |快照| 固定快照占位 HTML 按绑定时长存活，不再被普通快照 TTL 截断；重新绑定同一地址时清理旧绑定、反向索引和旧快照，旧 URL 立即失效
 
 ### Improvements
 

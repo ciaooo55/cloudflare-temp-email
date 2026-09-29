@@ -3,7 +3,9 @@ import { Context } from 'hono';
 import { cleanup } from '../common';
 import { CONSTANTS } from '../constants';
 import { getJsonSetting, saveSetting } from '../utils';
-import { CleanupSettings, CustomSqlCleanup } from '../models';
+import { CleanupSettings, CustomSqlCleanup, ScheduledTaskRunInfo } from '../models';
+import { getTaskRunInfo, markTaskRun, SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP } from '../scheduled_tasks';
+import { cleanupStaleRawMails } from '../scheduled_raw_mails';
 import i18n from '../i18n';
 import { LocaleMessages } from '../i18n/type';
 
@@ -131,5 +133,27 @@ export default {
 
         await saveSetting(c, CONSTANTS.AUTO_CLEANUP_KEY, JSON.stringify(cleanupSetting));
         return c.json({ success: true })
-    }
+    },
+    // 定时任务上次执行状态（供管理端网页展示）
+    getScheduledStatus: async (c: Context<HonoCustomType>) => {
+        const [rawMails, autoCleanup]: Array<ScheduledTaskRunInfo | null> = await Promise.all([
+            getTaskRunInfo(c.env, SCHEDULED_TASK_RAW_MAILS),
+            getTaskRunInfo(c.env, SCHEDULED_TASK_AUTO_CLEANUP),
+        ]);
+        return c.json({ rawMails, autoCleanup });
+    },
+    // 手动立即执行一次 raw_mails 清理
+    cleanupRawMailsNow: async (c: Context<HonoCustomType>) => {
+        const msgs = i18n.getMessagesbyContext(c);
+        try {
+            const body: { minutes?: number } = await c.req.json().catch(() => ({}));
+            const minutes = Math.max(1, Math.floor(Number(body.minutes) || 10));
+            const deleted = await cleanupStaleRawMails(c.env, minutes);
+            await markTaskRun(c.env, SCHEDULED_TASK_RAW_MAILS, deleted);
+            return c.json({ success: true, deleted });
+        } catch (error) {
+            console.error(error);
+            return c.text(`${msgs.OperationFailedMsg}: ${(error as Error).message}`, 500)
+        }
+    },
 }

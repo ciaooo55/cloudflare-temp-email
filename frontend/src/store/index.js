@@ -25,8 +25,6 @@ export const useGlobalState = createGlobalState(
             disableCustomAddressName: false,
             enableUserDeleteEmail: false,
             enableMailReadStatus: false,
-            enableAutoReply: false,
-            enableIndexAbout: false,
             /** @type {string[]} */
             defaultDomains: [],
             /** @type {string[]} */
@@ -39,12 +37,9 @@ export const useGlobalState = createGlobalState(
             isS3Enabled: false,
             enableSendMail: false,
             showGithub: true,
-            showGithubForUser: true,
             disableAdminPasswordCheck: false,
             enableAddressPassword: false,
             enableAgentEmailInfo: false,
-            enableRedeemCode: false,
-            redeemCodeUrl: '',
             smtpImapProxyConfig: {
                 smtp: {
                     host: '',
@@ -64,13 +59,6 @@ export const useGlobalState = createGlobalState(
             fetched: false,
             send_balance: 0,
             address: '',
-            auto_reply: {
-                subject: '',
-                message: '',
-                enabled: false,
-                source_prefix: '',
-                name: '',
-            }
         });
         const sendMailModel = useSessionStorage('sendMailModel', {
             fromName: "",
@@ -95,58 +83,19 @@ export const useGlobalState = createGlobalState(
         const mailListPreviewLineClamp = useStorage('mailListPreviewLineClamp', 2);
         const useIframeShowMail = useStorage('useIframeShowMail', false);
         const preferShowTextMail = useStorage('preferShowTextMail', false);
-        const userJwt = useStorage('userJwt', '');
         const preferredLocale = useStorage('preferredLocale', '');
-        const userTab = useSessionStorage('userTab', 'address_management');
-        const indexTab = useSessionStorage('indexTab', 'mailbox');
         const globalTabplacement = useStorage('globalTabplacement', 'top');
         const useSideMargin = useStorage('useSideMargin', true);
         const useUTCDate = useStorage('useUTCDate', false);
         const autoLoadRemoteImages = useStorage('autoLoadRemoteImages', true);
         const autoRefresh = useStorage('autoRefresh', false);
         const configAutoRefreshInterval = useStorage("configAutoRefreshInterval", 60);
-        const userOpenSettings = ref({
-            fetched: false,
-            enable: false,
-            enableMailVerify: false,
-            /** @type {{ clientID: string, name: string, icon?: string }[]} */
-            oauth2ClientIDs: [],
-        });
-        const userSettings = ref({
-            /** @type {boolean} */
-            fetched: false,
-            /** @type {string} */
-            user_email: '',
-            /** @type {number} */
-            user_id: 0,
-            /** @type {boolean} */
-            is_admin: false,
-            /** @type {string | null} */
-            access_token: null,
-            /** @type {string | null} */
-            new_user_token: null,
-            /** @type {null | {domains: string[] | undefined | null, role: string, prefix: string | undefined | null}} */
-            user_role: null,
-        });
         const showAdminPage = computed(() =>
             !!adminAuth.value
-            || userSettings.value.is_admin
             || openSettings.value.disableAdminPasswordCheck
         );
         const telegramApp = ref(window.Telegram?.WebApp || {});
         const isTelegram = ref(!!window.Telegram?.WebApp?.initData);
-        const _oauth2StateSession = useSessionStorage('userOauth2SessionState', '');
-        const _oauth2StateFallback = useStorage('userOauth2SessionState_fb', '');
-        const userOauth2SessionState = computed({
-            get: () => _oauth2StateSession.value || _oauth2StateFallback.value,
-            set: (v) => { _oauth2StateSession.value = v; _oauth2StateFallback.value = v; }
-        });
-        const _oauth2ClientIDSession = useSessionStorage('userOauth2SessionClientID', '');
-        const _oauth2ClientIDFallback = useStorage('userOauth2SessionClientID_fb', '');
-        const userOauth2SessionClientID = computed({
-            get: () => _oauth2ClientIDSession.value || _oauth2ClientIDFallback.value,
-            set: (v) => { _oauth2ClientIDSession.value = v; _oauth2ClientIDFallback.value = v; }
-        });
         const browserFingerprint = ref('');
         return {
             isDark,
@@ -170,12 +119,7 @@ export const useGlobalState = createGlobalState(
             mailListPreviewLineClamp,
             useIframeShowMail,
             preferShowTextMail,
-            userJwt,
             preferredLocale,
-            userTab,
-            indexTab,
-            userOpenSettings,
-            userSettings,
             globalTabplacement,
             useSideMargin,
             useUTCDate,
@@ -185,8 +129,6 @@ export const useGlobalState = createGlobalState(
             telegramApp,
             isTelegram,
             showAdminPage,
-            userOauth2SessionState,
-            userOauth2SessionClientID,
             useSimpleIndex,
             addressPassword,
             browserFingerprint,

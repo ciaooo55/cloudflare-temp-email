@@ -2,13 +2,12 @@ import { Context } from "hono";
 
 import { getJsonSetting, normalizeAddressDomain } from "../utils";
 import { sendMailNotifications } from "../telegram_api";
-import { auto_reply } from "./auto_reply";
+import { refreshBoundSnapshot } from "../telegram_api/mail_snapshot";
 import { isBlocked } from "./black_list";
 import { triggerWebhook, triggerAnotherWorker, commonParseMail } from "../common";
 import { check_if_junk_mail } from "./check_junk";
 import { remove_attachment_if_need } from "./check_attachment";
 import { extractEmailInfo } from "./ai_extract";
-import { forwardEmail } from "./forward";
 import { EmailRuleSettings } from "../models";
 import { CONSTANTS } from "../constants";
 import { storeRawMail } from "./storage";
@@ -98,11 +97,17 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         return undefined;
     });
 
-    // forward email
-    await forwardEmail(message, env, recipient);
-
     // AI email content extraction
     const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);
+
+    // bound snapshot: overwrite the fixed snapshot url with the newest mail
+    try {
+        await refreshBoundSnapshot(
+            { env: env } as Context<HonoCustomType>,
+            toAddress, parsedEmailContext);
+    } catch (error) {
+        console.error("refresh bound snapshot error", error);
+    }
 
     // send mail notifications
     try {
@@ -137,9 +142,6 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     } catch (error) {
         console.error("trigger another worker error", error);
     }
-
-    // auto reply email
-    if (recipient === message.to) await auto_reply(message, env, toAddress);
 }
 
 export { email }

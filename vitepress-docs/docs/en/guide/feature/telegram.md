@@ -91,6 +91,51 @@ Set `ENABLE_TG_PUSH_ATTACHMENT = true` to enable sending email attachments via T
 - Multiple attachments are sent in batches via `sendMediaGroup`, up to 6 per batch
 - The first attachment includes the sender and subject as caption
 
+## Managing Multiple Telegram Bots in the Admin Console
+
+> [!NOTE]
+> This feature requires a KV binding
+
+The Admin console **Telegram** page lets you add multiple bots directly without touching environment variables:
+
+- Add: enter a bot token; saved bots can be enabled / disabled / deleted from the table
+- Test: validate the token via `getMe`, or send a test message to a specific chat id
+- Webhook: set an independent webhook (`/telegram/webhook/:botId`) for each web-added bot, separate from env-configured bots
+- Web-added bots are merged with environment variables (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_TOKEN_2`, etc.) and pushed together, with tokens deduplicated
+
+## Bark Push
+
+> [!NOTE]
+> This feature requires a KV binding
+
+Bark and Telegram are **peer concurrent pushes**: sent in parallel via `Promise.allSettled`, never blocking each other, **one failing does not affect the other**. The mail snapshot is still created once and shared by both.
+
+The Admin console **Bark** page lets you configure multiple Bark devices:
+
+- Each device has a key and can be enabled / disabled / deleted individually
+- The push server URL is configurable (default `https://api.day.app`), self-hosted bark-server supported
+- Test: send a test notification to a single device or to all devices
+- Environment variable `BARK_DEVICE_KEYS` (comma separated) still works; web settings and env config are merged and deduplicated
+
+## Mail Snapshots
+
+> [!NOTE]
+> This feature requires a KV binding
+
+### Auto-delete of regular snapshots
+
+Regular mail snapshots (`/m/:token`) created during pushes are deleted automatically after 24 hours by default. The auto-delete duration can be changed in the Admin console **Snapshot** page.
+
+### Pinned snapshot bindings
+
+You can bind a **fixed snapshot URL** to a mailbox address:
+
+- Once bound, new mail to that address **overwrites** the snapshot content while the URL stays the same; refresh to see the latest mail
+- Bind, update, set an expiration, or invalidate / destroy early from the web page
+- The link expires and the binding is removed automatically on expiry
+- Re-binding the same address invalidates the old snapshot URL immediately
+- Pinned snapshots live for the binding duration only and are not affected by the regular snapshot auto-delete duration
+
 ## Mini App
 
 Can be deployed via command line or UI interface

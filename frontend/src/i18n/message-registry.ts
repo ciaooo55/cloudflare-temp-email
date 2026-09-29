@@ -721,6 +721,14 @@ export const MESSAGE_REGISTRY = {
       "en": "Statistics",
       "zh": "统计"
     },
+    "bark": {
+      "en": "Bark Push",
+      "zh": "Bark 推送"
+    },
+    "snapshot": {
+      "en": "Snapshots",
+      "zh": "快照管理"
+    },
     "telegram": {
       "en": "Telegram Bot",
       "zh": "电报机器人"
@@ -1500,6 +1508,198 @@ export const MESSAGE_REGISTRY = {
       "zh": "请输入地址查询, 留空则查询所有"
     }
   },
+  "views.admin.Bark": {
+    "actions": {
+      "en": "Actions",
+      "zh": "操作"
+    },
+    "add": {
+      "en": "Add",
+      "zh": "添加"
+    },
+    "confirmDelete": {
+      "en": "Delete this device?",
+      "zh": "确认删除该设备？"
+    },
+    "delete": {
+      "en": "Delete",
+      "zh": "删除"
+    },
+    "deviceKeys": {
+      "en": "Device Keys",
+      "zh": "设备 Key"
+    },
+    "deviceName": {
+      "en": "Device Name",
+      "zh": "设备名称"
+    },
+    "enabled": {
+      "en": "Enabled",
+      "zh": "启用"
+    },
+    "keysKeepTip": {
+      "en": "Leave blank to keep existing keys",
+      "zh": "留空则保留原有 Key"
+    },
+    "keysPlaceholder": {
+      "en": "Bark device key, comma separated for multiple",
+      "zh": "Bark 设备 Key，多个用英文逗号分隔"
+    },
+    "namePlaceholder": {
+      "en": "Device name, e.g. my iPhone",
+      "zh": "设备名称，如 我的 iPhone"
+    },
+    "noDevices": {
+      "en": "No devices yet",
+      "zh": "还没有设备"
+    },
+    "pushUrl": {
+      "en": "Bark Push Server URL",
+      "zh": "Bark 推送服务端地址"
+    },
+    "pushUrlTip": {
+      "en": "Bark server /push endpoint",
+      "zh": "Bark 服务端的 /push 地址"
+    },
+    "save": {
+      "en": "Save",
+      "zh": "保存"
+    },
+    "successTip": {
+      "en": "Success",
+      "zh": "成功"
+    },
+    "test": {
+      "en": "Test",
+      "zh": "测试"
+    },
+    "testAll": {
+      "en": "Test All",
+      "zh": "测试全部"
+    },
+    "testFail": {
+      "en": "Test failed: ",
+      "zh": "测试失败："
+    },
+    "testOk": {
+      "en": "Test push sent, please check your device",
+      "zh": "测试推送已发送，请查看设备"
+    },
+    "tip": {
+      "en": "Devices receive pushes independently; one failing does not affect others.",
+      "zh": "各设备独立推送，一台失败不影响其他设备。"
+    },
+    "title": {
+      "en": "Bark Push Settings",
+      "zh": "Bark 推送设置"
+    }
+  },
+  "views.admin.Snapshot": {
+    "actions": {
+      "en": "Actions",
+      "zh": "操作"
+    },
+    "address": {
+      "en": "Email Address",
+      "zh": "邮箱地址"
+    },
+    "addressPlaceholder": {
+      "en": "address@example.com",
+      "zh": "address@example.com"
+    },
+    "bind": {
+      "en": "Bind",
+      "zh": "绑定"
+    },
+    "bindings": {
+      "en": "Address Bindings",
+      "zh": "邮箱绑定"
+    },
+    "bindingsTip": {
+      "en": "Bind an address to a fixed snapshot URL. Each new mail overwrites the previous content; the page always shows the latest mail. The URL stops working after expiry.",
+      "zh": "将邮箱绑定到固定的快照地址。每封新邮件都会覆盖之前的内容，页面始终显示最新邮件。到期后链接失效。"
+    },
+    "confirmInvalidate": {
+      "en": "Invalidate this binding now? The snapshot URL will stop working.",
+      "zh": "立即使该绑定失效？快照链接将无法访问。"
+    },
+    "copied": {
+      "en": "Copied",
+      "zh": "已复制"
+    },
+    "copy": {
+      "en": "Copy",
+      "zh": "复制"
+    },
+    "createdAt": {
+      "en": "Created",
+      "zh": "创建时间"
+    },
+    "days": {
+      "en": "days",
+      "zh": "天"
+    },
+    "durationPlaceholder": {
+      "en": "Hours",
+      "zh": "小时数"
+    },
+    "durationTip": {
+      "en": "Binding duration in hours. After expiry the old snapshot URL becomes invalid and the address is unbound. You can also invalidate it manually in advance.",
+      "zh": "绑定时长（小时）。到期后旧快照链接失效、邮箱自动解绑，也可以提前手动失效。"
+    },
+    "expired": {
+      "en": "expired",
+      "zh": "已过期"
+    },
+    "expiresAt": {
+      "en": "Expires At",
+      "zh": "到期时间"
+    },
+    "hours": {
+      "en": "hours",
+      "zh": "小时"
+    },
+    "invalidate": {
+      "en": "Invalidate",
+      "zh": "失效"
+    },
+    "noBindings": {
+      "en": "No bindings yet",
+      "zh": "还没有绑定"
+    },
+    "remainDays": {
+      "en": "{d} days left",
+      "zh": "剩余 {d} 天"
+    },
+    "remainHours": {
+      "en": "{h} hours left",
+      "zh": "剩余 {h} 小时"
+    },
+    "save": {
+      "en": "Save",
+      "zh": "保存"
+    },
+    "snapshotUrl": {
+      "en": "Snapshot URL",
+      "zh": "快照地址"
+    },
+    "successTip": {
+      "en": "Success",
+      "zh": "成功"
+    },
+    "title": {
+      "en": "Snapshot Settings",
+      "zh": "快照设置"
+    },
+    "ttlHours": {
+      "en": "Auto-delete after (hours)",
+      "zh": "自动删除时间（小时）"
+    },
+    "ttlTip": {
+      "en": "Snapshots are automatically deleted after this long. Default 24 hours.",
+      "zh": "快照超过此时长后自动删除，默认 24 小时。"
+    }
+  },
   "views.admin.AiExtractSettings": {
     "allowList": {
       "en": "Address Allowlist (Enter address and press Enter, wildcards supported)",
@@ -1536,7 +1736,91 @@ export const MESSAGE_REGISTRY = {
     "title": {
       "en": "AI Email Extraction Settings",
       "zh": "AI 邮件提取设置"
-    }
+    },
+    "allowListTitle": {
+      "en": "Address Allowlist",
+      "zh": "地址白名单"
+    },
+    "customAiTitle": {
+      "en": "Custom AI Endpoint",
+      "zh": "自定义 AI 接口"
+    },
+    "customApiKey": {
+      "en": "API Key",
+      "zh": "API Key"
+    },
+    "customApiKeyKept": {
+      "en": "Already set. Enter a new key to replace it.",
+      "zh": "已设置，输入新 Key 可替换"
+    },
+    "customApiKeyTip": {
+      "en": "API key for the custom endpoint (optional)",
+      "zh": "自定义接口的 API Key（可选）"
+    },
+    "customApiUrl": {
+      "en": "API URL",
+      "zh": "接口地址"
+    },
+    "customApiUrlTip": {
+      "en": "https://your-api/v1 (the /chat/completions path is appended automatically)",
+      "zh": "https://你的接口/v1（会自动拼接 /chat/completions）"
+    },
+    "customModel": {
+      "en": "Model",
+      "zh": "模型"
+    },
+    "customModelTip": {
+      "en": "Model name, e.g. gpt-4o-mini",
+      "zh": "模型名称，如 gpt-4o-mini"
+    },
+    "fallbackTip": {
+      "en": "If the custom AI fails (network error, 402/403/429/5xx, invalid response), the system automatically falls back to the built-in rule-based extraction.",
+      "zh": "自定义 AI 失败时（网络错误、402/403/429/5xx、返回无效），系统会自动兜底用内置规则识别。"
+    },
+    "mode": {
+      "en": "Extract Mode",
+      "zh": "识别模式"
+    },
+    "modeAi": {
+      "en": "Workers AI",
+      "zh": "Workers AI"
+    },
+    "modeCustom": {
+      "en": "Custom API",
+      "zh": "自定义接口"
+    },
+    "modeFollowEnv": {
+      "en": "Follow environment variable",
+      "zh": "跟随环境变量"
+    },
+    "modeLocal": {
+      "en": "Local rules only",
+      "zh": "仅本地规则"
+    },
+    "modeTip": {
+      "en": "Web setting takes precedence over the AI_EXTRACT_MODE env variable.",
+      "zh": "网页设置优先于 AI_EXTRACT_MODE 环境变量。"
+    },
+    "test": {
+      "en": "Test",
+      "zh": "测试"
+    },
+    "testFail": {
+      "en": "Test failed: ",
+      "zh": "测试失败："
+    },
+    "testOk": {
+      "en": "Call succeeded",
+      "zh": "调用成功"
+    },
+    "testSample": {
+      "en": "Sample Text",
+      "zh": "测试文本"
+    },
+    "testSampleTip": {
+      "en": "Leave blank to use the default verification-code sample",
+      "zh": "留空则使用默认的验证码示例文本"
+    },
   },
   "views.admin.SendMail": {
     "adminComposeTip": {
@@ -2279,6 +2563,14 @@ export const MESSAGE_REGISTRY = {
       "en": "Enable",
       "zh": "启用"
     },
+    "enabled": {
+      "en": "Enabled",
+      "zh": "已启用"
+    },
+    "disabled": {
+      "en": "Disabled",
+      "zh": "已停用"
+    },
     "enableGlobalMailPush": {
       "en": "Enable Global Mail Push(Manually input telegram Chat ID)",
       "zh": "启用全局邮件推送(手动输入邮箱管理员的 telegram Chat ID, 回车增加)"
@@ -2322,7 +2614,83 @@ export const MESSAGE_REGISTRY = {
     "telegramAllowList": {
       "en": "Telegram Allow List(Manually input telegram Chat ID)",
       "zh": "Telegram 白名单(手动输入 Chat ID, 回车增加)"
-    }
+    },
+    "actions": {
+      "en": "Actions",
+      "zh": "操作"
+    },
+    "add": {
+      "en": "Add",
+      "zh": "添加"
+    },
+    "botManagement": {
+      "en": "Telegram Bots",
+      "zh": "Telegram 机器人管理"
+    },
+    "botManagementTip": {
+      "en": "Add one or more bots here. Pushes are sent via all enabled bots independently. A bot configured via the TELEGRAM_BOT_TOKEN env variable still works.",
+      "zh": "在这里添加一个或多个机器人。推送会经由所有启用的机器人独立发送。环境变量 TELEGRAM_BOT_TOKEN 配置的机器人仍然有效。"
+    },
+    "botName": {
+      "en": "Name",
+      "zh": "名称"
+    },
+    "botToken": {
+      "en": "Token",
+      "zh": "Token"
+    },
+    "confirmDelete": {
+      "en": "Delete this bot?",
+      "zh": "确认删除该机器人？"
+    },
+    "delete": {
+      "en": "Delete",
+      "zh": "删除"
+    },
+    "namePlaceholder": {
+      "en": "Bot name, e.g. main bot",
+      "zh": "机器人名称，如 主机器人"
+    },
+    "noBots": {
+      "en": "No bots configured here. Pushes will use the TELEGRAM_BOT_TOKEN env variable if set.",
+      "zh": "这里还没有配置机器人。如设置了 TELEGRAM_BOT_TOKEN 环境变量，推送会走该机器人。"
+    },
+    "setWebhook": {
+      "en": "Set Webhook",
+      "zh": "设置 Webhook"
+    },
+    "test": {
+      "en": "Test",
+      "zh": "测试"
+    },
+    "testChatId": {
+      "en": "Chat ID",
+      "zh": "Chat ID"
+    },
+    "testChatIdTip": {
+      "en": "Your Telegram user/chat ID (get it from @userinfobot). Leave blank to only verify the token.",
+      "zh": "你的 Telegram 用户/对话 ID（可从 @userinfobot 获取）。留空则只验证 Token 有效性。"
+    },
+    "testFail": {
+      "en": "Test failed: ",
+      "zh": "测试失败："
+    },
+    "testMsgSent": {
+      "en": "test message sent",
+      "zh": "测试消息已发送"
+    },
+    "testOk": {
+      "en": "Token is valid",
+      "zh": "Token 有效"
+    },
+    "tokenPlaceholder": {
+      "en": "Bot token from @BotFather",
+      "zh": "从 @BotFather 获取的机器人 Token"
+    },
+    "webhookOk": {
+      "en": "Webhook set",
+      "zh": "Webhook 已设置"
+    },
   },
   "views.admin.CreateAccount": {
     "address": {
@@ -2745,6 +3113,14 @@ export const MESSAGE_REGISTRY = {
       "en": "Auto cleanup",
       "zh": "自动清理"
     },
+    "autoCleanupDesc": {
+      "en": "Every N minutes, go through the checked items in the Basic Cleanup tab (inbox, sendbox, addresses, etc.) and clean up what needs cleaning.",
+      "zh": "每隔一段时间，把「基础清理」里勾选的项目（收件箱、发件箱、邮箱地址等）检查一遍，该删的删掉。"
+    },
+    "autoCleanupIntervalLabel": {
+      "en": "Auto cleanup: check every N minutes",
+      "zh": "自动清理：每 N 分钟检查一次"
+    },
     "basicCleanup": {
       "en": "Basic Cleanup",
       "zh": "基础清理"
@@ -2758,8 +3134,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "清理成功"
     },
     "cronTip": {
-      "en": "Enable cron cleanup, need to configure [crons] in worker, please refer to the document, setting 0 days means clear all",
-      "zh": "启用定时清理, 需在 worker 配置 [crons] 参数, 请参考文档, 配置为 0 天表示全部清空"
+      "en": "Scheduled cleanup runs automatically in the background; each task follows the schedule set in the Scheduled Tasks tab. Setting 0 days means clear all.",
+      "zh": "定时清理会在后台自动运行，各任务按「定时任务」标签页里设定的时间执行；天数填 0 表示全部清空。"
     },
     "customSqlCleanup": {
       "en": "Custom SQL Cleanup",
@@ -2781,6 +3157,10 @@ export const MESSAGE_REGISTRY = {
       "en": "Cleanup the inactive address before n days",
       "zh": "清理 n 天前的未活跃地址"
     },
+    "lastRun": {
+      "en": "Last run",
+      "zh": "上次执行"
+    },
     "mailBoxLabel": {
       "en": "Cleanup the inbox before n days",
       "zh": "清理 n 天前的收件箱"
@@ -2789,33 +3169,69 @@ export const MESSAGE_REGISTRY = {
       "en": "Cleanup the unknow mail before n days",
       "zh": "清理 n 天前的无收件人邮件"
     },
+    "neverRun": {
+      "en": "Never",
+      "zh": "从未执行"
+    },
     "save": {
       "en": "Save",
       "zh": "保存"
+    },
+    "rawMailsDeleted": {
+      "en": "deleted",
+      "zh": "已删除"
+    },
+    "rawMailsDesc": {
+      "en": "Every N minutes, delete mails received more than M minutes ago. These are the mails you see in the web mailbox - temporary mails are only kept for a short time anyway.",
+      "zh": "每隔一段时间，把 N 分钟前收到的邮件删掉。删的是网页邮箱里能看到的那些邮件，临时邮箱的邮件本来就只保留很短时间。"
     },
     "saveSuccess": {
       "en": "Save success",
       "zh": "保存成功"
     },
+    "rawMailsEnableLabel": {
+      "en": "Auto delete old mails",
+      "zh": "定时删除旧邮件"
+    },
     "sendBoxLabel": {
       "en": "Cleanup the sendbox before n days",
       "zh": "清理 n 天前的发件箱"
+    },
+    "rawMailsIntervalLabel": {
+      "en": "Run every N minutes",
+      "zh": "每 N 分钟执行一次"
     },
     "sqlName": {
       "en": "Name",
       "zh": "名称"
     },
+    "rawMailsOlderThanLabel": {
+      "en": "Delete mails received more than N minutes ago",
+      "zh": "删除 N 分钟前收到的邮件"
+    },
     "sqlNamePlaceholder": {
       "en": "e.g. Clean old logs",
       "zh": "例如: 清理旧日志"
+    },
+    "rows": {
+      "en": "rows",
+      "zh": "条"
     },
     "sqlPlaceholder": {
       "en": "e.g. DELETE FROM raw_mails WHERE source GLOB '*{'@'}example.com' AND created_at < datetime('now', '-3 day')",
       "zh": "例如: DELETE FROM raw_mails WHERE source GLOB '*{'@'}example.com' AND created_at < datetime('now', '-3 day')"
     },
+    "scheduleTab": {
+      "en": "Scheduled Tasks",
+      "zh": "定时任务"
+    },
     "sqlStatement": {
       "en": "SQL Statement (DELETE only)",
       "zh": "SQL 语句 (仅限 DELETE)"
+    },
+    "scheduledTip": {
+      "en": "Each task below runs automatically on its own schedule. Changes take effect right after saving, no redeploy needed.",
+      "zh": "下面每个任务都会按自己设定的时间自动执行，保存后立即生效，不用重新部署。"
     },
     "tip": {
       "en": "Please input the days",

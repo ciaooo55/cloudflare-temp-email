@@ -32,17 +32,4 @@ test.describe('Admin Address Query (#956)', () => {
     expect(body.count).toBe(0);
   });
 
-  test('long query also works for /admin/users', async ({ request }) => {
-    const longQuery = 'no-such-user-' + 'x'.repeat(40) + `@${TEST_DOMAIN}`;
-    expect(new TextEncoder().encode(`%${longQuery}%`).length).toBeGreaterThan(50);
-
-    const res = await request.get(`${WORKER_URL}/admin/users`, {
-      params: { limit: '20', offset: '0', query: longQuery },
-    });
-    expect(res.status()).toBe(200);
-    const body = await res.json();
-    expect(Array.isArray(body.results)).toBe(true);
-    expect(body.results.length).toBe(0);
-    expect(body.count).toBe(0);
-  });
 });

@@ -7,14 +7,13 @@ import { getFingerprint } from '../utils/fingerprint'
 import { safeBearerHeader, safeHeaderValue } from '../utils/headers'
 import { sanitizeHtml } from '../utils/sanitize-html'
 import { APP_CONFIG } from '../config'
-import { createUserAccessTokenInterceptor } from './user-access-token-interceptor'
 import { ErrorCode } from './error-codes'
 
 const API_BASE = APP_CONFIG.API_BASE || "";
 const {
     loading, auth, jwt, settings, openSettings,
-    userOpenSettings, userSettings, announcement,
-    showAuth, adminAuth, showAdminAuth, userJwt
+    announcement,
+    showAuth, adminAuth, showAdminAuth
 } = useGlobalState();
 
 const instance = axios.create({
@@ -23,14 +22,6 @@ const instance = axios.create({
     validateStatus: (status) => status >= 200 && status <= 500
 });
 
-const responseInterceptors = [createUserAccessTokenInterceptor(instance)];
-
-const interceptResponse = async (path, response) => {
-    for (const { matches, handle } of responseInterceptors) {
-        if (matches(path, response)) return await handle(response);
-    }
-    return response;
-};
 
 const apiFetch = async (path, options = {}) => {
     const showLoading = options.showLoading !== false;
@@ -47,10 +38,6 @@ const apiFetch = async (path, options = {}) => {
             'x-fingerprint': fingerprint,
             'Content-Type': 'application/json',
         };
-        const userTokenHeader = safeHeaderValue(options.userJwt || userJwt.value);
-        if (userTokenHeader) headers['x-user-token'] = userTokenHeader;
-        const userAccessHeader = safeHeaderValue(userSettings.value.access_token);
-        if (userAccessHeader) headers['x-user-access-token'] = userAccessHeader;
         const customAuthHeader = safeHeaderValue(auth.value);
         if (customAuthHeader) headers['x-custom-auth'] = customAuthHeader;
         const adminAuthHeader = safeHeaderValue(adminAuth.value);
@@ -58,12 +45,11 @@ const apiFetch = async (path, options = {}) => {
         const authorizationHeader = safeBearerHeader(jwt.value);
         if (authorizationHeader) headers['Authorization'] = authorizationHeader;
 
-        const initialResponse = await instance.request(path, {
+        const response = await instance.request(path, {
             method: options.method || 'GET',
             data: options.body || null,
             headers,
         });
-        const response = await interceptResponse(path, initialResponse);
         if (ErrorCode.isAdminAuthError(response)) {
             showAdminAuth.value = true;
         }
@@ -114,17 +100,12 @@ const getOpenSettings = async (message, notification) => {
             disableCustomAddressName: res["disableCustomAddressName"] || false,
             enableUserDeleteEmail: res["enableUserDeleteEmail"] || false,
             enableMailReadStatus: res["enableMailReadStatus"] === true,
-            enableAutoReply: res["enableAutoReply"] || false,
-            enableIndexAbout: res["enableIndexAbout"] || false,
             copyright: res["copyright"] || openSettings.value.copyright,
             cfTurnstileSiteKey: res["cfTurnstileSiteKey"] || "",
             enableWebhook: res["enableWebhook"] || false,
             isS3Enabled: res["isS3Enabled"] || false,
-            showGithubForUser: res["showGithubForUser"] ?? openSettings.value.showGithubForUser,
             enableAddressPassword: res["enableAddressPassword"] || false,
             enableAgentEmailInfo: res["enableAgentEmailInfo"] || false,
-            enableRedeemCode: res["enableRedeemCode"] || false,
-            redeemCodeUrl: res["redeemCodeUrl"] || "",
             smtpImapProxyConfig: res["smtpImapProxyConfig"] || openSettings.value.smtpImapProxyConfig,
             statusUrl: res["statusUrl"] || "",
             enableGlobalTurnstileCheck: res["enableGlobalTurnstileCheck"] || false,
@@ -161,7 +142,6 @@ const getSettings = async () => {
         const res = await apiFetch("/api/settings");;
         settings.value = {
             address: res["address"],
-            auto_reply: res["auto_reply"],
             send_balance: res["send_balance"],
         };
     } finally {
@@ -169,42 +149,6 @@ const getSettings = async () => {
     }
 }
 
-
-const getUserOpenSettings = async (message) => {
-    try {
-        const res = await api.fetch(`/user_api/open_settings`);
-        Object.assign(userOpenSettings.value, res);
-    } catch (error) {
-        message.error(error.message || "fetch settings failed");
-    } finally {
-        userOpenSettings.value.fetched = true;
-    }
-}
-
-const getUserSettings = async (message) => {
-    try {
-        if (!userJwt.value) return;
-        const res = await api.fetch("/user_api/settings")
-        Object.assign(userSettings.value, res)
-        // auto refresh user jwt
-        if (userSettings.value.new_user_token) {
-            try {
-                await api.fetch("/user_api/settings", {
-                    userJwt: userSettings.value.new_user_token,
-                })
-                userJwt.value = userSettings.value.new_user_token;
-                console.log("User JWT updated successfully");
-            }
-            catch (error) {
-                console.error("Failed to update user JWT", error);
-            }
-        }
-    } catch (error) {
-        message?.error(error.message || "error");
-    } finally {
-        userSettings.value.fetched = true;
-    }
-}
 
 const adminShowAddressCredential = async (id) => {
     try {
@@ -225,24 +169,10 @@ const adminDeleteAddress = async (id) => {
     }
 }
 
-const bindUserAddress = async () => {
-    if (!userJwt.value) return;
-    try {
-        await apiFetch(`/user_api/bind_address`, {
-            method: 'POST',
-        });
-    } catch (error) {
-        throw error;
-    }
-}
-
 export const api = {
     fetch: apiFetch,
     getSettings,
     getOpenSettings,
-    getUserOpenSettings,
-    getUserSettings,
     adminShowAddressCredential,
     adminDeleteAddress,
-    bindUserAddress,
 }

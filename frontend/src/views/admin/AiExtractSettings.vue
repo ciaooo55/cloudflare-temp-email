@@ -12,12 +12,52 @@ const { t } = useScopedI18n('views.admin.AiExtractSettings')
 type AiExtractSettings = {
     enableAllowList: boolean
     allowList: string[]
+    mode: string
+    customApiUrl: string
+    customApiKey: string
+    customModel: string
+    hasCustomApiKey: boolean
 }
 
 const settings = ref<AiExtractSettings>({
     enableAllowList: false,
-    allowList: []
+    allowList: [],
+    mode: '',
+    customApiUrl: '',
+    customApiKey: '',
+    customModel: '',
+    hasCustomApiKey: false,
 })
+
+const modeOptions = [
+    { value: '' },
+    { value: 'local' },
+    { value: 'ai' },
+    { value: 'custom' },
+]
+
+const sampleText = ref('')
+const testResult = ref('')
+const testing = ref(false)
+
+const testCustomAi = async () => {
+    testResult.value = '';
+    testing.value = true;
+    try {
+        const res = await api.fetch(`/admin/ai_extract/test`, {
+            method: 'POST',
+            body: JSON.stringify({ sampleText: sampleText.value }),
+        })
+        testResult.value = res.ok
+            ? `${t('testOk')} [${res.model}]\n${JSON.stringify(res.result, null, 2)}`
+            : `${t('testFail')}${res.error || ''}`;
+        if (res.ok) message.success(t('successTip'));
+    } catch (error) {
+        testResult.value = `${t('testFail')}${(error as Error).message || ''}`;
+    } finally {
+        testing.value = false;
+    }
+}
 
 const fetchData = async () => {
     try {
@@ -54,6 +94,38 @@ onMounted(async () => {
                 </n-button>
             </n-flex>
 
+            <n-divider>{{ t('customAiTitle') }}</n-divider>
+            <n-form-item-row :label="t('mode')">
+                <n-select v-model:value="settings.mode" :options="modeOptions.map(o => ({
+                    label: t(o.value === '' ? 'modeFollowEnv' : o.value === 'local' ? 'modeLocal' : o.value === 'ai' ? 'modeAi' : 'modeCustom'),
+                    value: o.value
+                }))" style="width: 100%;" />
+                <template #feedback>
+                    <n-text depth="3" style="font-size: 12px;">{{ t('modeTip') }}</n-text>
+                </template>
+            </n-form-item-row>
+            <n-form-item-row :label="t('customApiUrl')">
+                <n-input v-model:value="settings.customApiUrl" :placeholder="t('customApiUrlTip')" />
+            </n-form-item-row>
+            <n-form-item-row :label="t('customApiKey')">
+                <n-input v-model:value="settings.customApiKey" type="password" show-password-on="click"
+                    :placeholder="settings.hasCustomApiKey ? t('customApiKeyKept') : t('customApiKeyTip')" />
+            </n-form-item-row>
+            <n-form-item-row :label="t('customModel')">
+                <n-input v-model:value="settings.customModel" :placeholder="t('customModelTip')" />
+            </n-form-item-row>
+            <n-form-item-row :label="t('testSample')">
+                <n-input v-model:value="sampleText" type="textarea" :placeholder="t('testSampleTip')"
+                    :autosize="{ minRows: 2, maxRows: 4 }" />
+            </n-form-item-row>
+            <n-flex justify="end" style="margin-bottom: 12px;">
+                <n-button @click="testCustomAi" :loading="testing" secondary>{{ t('test') }}</n-button>
+            </n-flex>
+            <n-text v-if="testResult" depth="3"
+                style="font-size: 12px; white-space: pre-wrap; display: block; margin-bottom: 12px;">{{ testResult }}</n-text>
+            <n-text depth="3" style="font-size: 12px; display: block; margin-bottom: 12px;">{{ t('fallbackTip') }}</n-text>
+
+            <n-divider>{{ t('allowListTitle') }}</n-divider>
             <n-form-item-row :label="t('enableAllowList')">
                 <n-switch v-model:value="settings.enableAllowList" :round="false" />
             </n-form-item-row>

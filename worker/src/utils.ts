@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import { UserSettings, RoleAddressConfig } from "./models";
 import { CONSTANTS } from "./constants";
 
 export const getJsonObjectValue = <T = any>(
@@ -251,32 +250,6 @@ export const getRandomSubdomainDomains = (c: Context<HonoCustomType>): string[] 
     return normalizeDomains(getStringArray(c.env.RANDOM_SUBDOMAIN_DOMAINS));
 }
 
-export const getUserRoles = (c: Context<HonoCustomType>): UserRole[] => {
-    if (!c.env.USER_ROLES) {
-        return [];
-    }
-    const normalizeRoles = (roles: UserRole[]): UserRole[] => {
-        return roles.map((role) => ({
-            ...role,
-            domains: Array.isArray(role.domains)
-                ? normalizeDomains(role.domains)
-                : typeof role.domains === "string"
-                    ? normalizeDomains([role.domains])
-                    : role.domains,
-        }));
-    };
-    // check if USER_ROLES is an array, if not use json.parse
-    if (!Array.isArray(c.env.USER_ROLES)) {
-        try {
-            return normalizeRoles(JSON.parse(c.env.USER_ROLES));
-        } catch (e) {
-            console.error("Failed to parse USER_ROLES", e);
-            return [];
-        }
-    }
-    return normalizeRoles(c.env.USER_ROLES);
-}
-
 export const getAnotherWorkerList = (c: Context<HonoCustomType>): AnotherWorker[] => {
     if (!c.env.ANOTHER_WORKER_LIST) {
         return [];
@@ -383,58 +356,12 @@ export const checkCfTurnstile = async (
     }
 }
 
-export const checkUserPassword = (password: string) => {
-    if (!password || password.length < 1 || password.length > 100) {
-        throw new Error("Invalid password")
-    }
-    return true;
-}
-
 export const hashPassword = async (password: string): Promise<string> => {
     // use crypto to hash password
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
     const hashArray = Array.from(new Uint8Array(digest));
     return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
-
-export const getMaxAddressCount = async (
-    c: Context<HonoCustomType>,
-    userRole: string | null | undefined,
-    settings: UserSettings
-): Promise<number> => {
-    if (!userRole) return settings.maxAddressCount;
-    const roleConfigs = await getJsonSetting<RoleAddressConfig>(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY);
-    if (!roleConfigs) return settings.maxAddressCount;
-    const roleMaxCount = roleConfigs[userRole]?.maxAddressCount;
-    if (typeof roleMaxCount !== 'number') return settings.maxAddressCount;
-    if (roleMaxCount < 0) return settings.maxAddressCount;
-    return roleMaxCount;
-};
-
-/**
- * 检查用户是否已达到地址数量限制
- * @param c - Hono Context
- * @param user_id - 用户 ID
- * @param userRole - 用户角色
- * @returns true 表示已超限，false 表示未超限
- */
-export const isAddressCountLimitReached = async (
-    c: Context<HonoCustomType>,
-    user_id: number | string,
-    userRole: string | null | undefined
-): Promise<boolean> => {
-    const value = await getJsonSetting(c, CONSTANTS.USER_SETTINGS_KEY);
-    const settings = new UserSettings(value);
-    const maxAddressCount = await getMaxAddressCount(c, userRole, settings);
-
-    if (maxAddressCount <= 0) return false;
-
-    const { count } = await c.env.DB.prepare(
-        `SELECT COUNT(*) as count FROM users_address where user_id = ?`
-    ).bind(user_id).first<{ count: number }>() || { count: 0 };
-
-    return count >= maxAddressCount;
-};
 
 export default {
     getJsonObjectValue,
@@ -455,7 +382,6 @@ export default {
     getDefaultDomains,
     getDomains,
     getRandomSubdomainDomains,
-    getUserRoles,
     getAnotherWorkerList,
     getPasswords,
     getAdminPasswords,
@@ -463,7 +389,6 @@ export default {
     getEnvStringList,
     isGlobalTurnstileEnabled,
     checkCfTurnstile,
-    checkUserPassword,
     getJsonSetting,
     getJsonValue: getJsonObjectValue,
     getStringList: getStringArray

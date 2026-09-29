@@ -1,17 +1,8 @@
 # Create New Email Address API
 
-::: warning Note: Address JWT vs User JWT
-This page describes **Address JWT**, which is different from **User JWT**:
-
-- **Address JWT**: Returned when creating a mailbox via `/api/new_address` or `/admin/new_address`
-  - Use `Authorization: Bearer <jwt>` header
-  - Access `/api/*` endpoints (view mails, delete mails, etc.)
-
-- **User JWT**: Obtained via `/user_api/login` or `/user_api/register`
-  - Use `x-user-token: <jwt>` header
-  - Access `/user_api/*` endpoints (user account management)
-
-**Do not confuse these two JWT types!**
+::: tip Authentication
+This page describes the **Address JWT**: returned when creating a mailbox via `/api/new_address` or `/admin/new_address`.
+Use the `Authorization: Bearer <jwt>` header to access `/api/*` endpoints (view mails, delete mails, etc.).
 :::
 
 ## Create Email Address via Admin API

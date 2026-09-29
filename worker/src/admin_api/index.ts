@@ -1,24 +1,21 @@
-import { Context, Hono } from 'hono'
+import { Hono } from 'hono'
 
-import { getUserRoles } from '../utils'
 import address_api from './address_api'
 import address_sender_api from './address_sender_api'
 import sendbox_api from './sendbox_api'
 import statistics_api from './statistics_api'
 import account_settings_api from './account_settings_api'
 import cleanup_api from './cleanup_api'
-import admin_user_api from './admin_user_api'
 import webhook_settings from './webhook_settings'
 import mail_webhook_settings from './mail_webhook_settings'
-import oauth2_settings from './oauth2_settings'
 import worker_config from './worker_config'
 import admin_mail_api from './admin_mail_api'
 import { sendMailbyAdmin, sendMailByBindingAdmin } from './send_mail'
 import db_api from './db_api'
 import ip_blacklist_settings from './ip_blacklist_settings'
 import ai_extract_settings from './ai_extract_settings'
+import notify_settings from './notify_settings'
 import config_api from './config_api'
-import redeem_code_api from '../redeem_api/admin_redeem_code_api'
 
 export const api = new Hono<HonoCustomType>()
 
@@ -57,24 +54,8 @@ api.post('/admin/account_settings', account_settings_api.save)
 api.post('/admin/cleanup', cleanup_api.cleanup)
 api.get('/admin/auto_cleanup', cleanup_api.getCleanup)
 api.post('/admin/auto_cleanup', cleanup_api.saveCleanup)
-
-// user settings
-api.get('/admin/user_settings', admin_user_api.getSetting)
-api.post('/admin/user_settings', admin_user_api.saveSetting)
-api.get('/admin/users', admin_user_api.getUsers)
-api.delete('/admin/users/:user_id', admin_user_api.deleteUser)
-api.post('/admin/users', admin_user_api.createUser)
-api.post('/admin/users/:user_id/reset_password', admin_user_api.resetPassword)
-api.get('/admin/user_roles', async (c: Context<HonoCustomType>) => c.json(getUserRoles(c)))
-api.post('/admin/user_roles', admin_user_api.updateUserRoles)
-api.get('/admin/role_address_config', admin_user_api.getRoleAddressConfig)
-api.post('/admin/role_address_config', admin_user_api.saveRoleAddressConfig)
-api.get('/admin/users/bind_address/:user_id', admin_user_api.getBindedAddresses)
-api.post('/admin/users/bind_address', admin_user_api.bindAddress)
-
-// user oauth2 settings
-api.get('/admin/user_oauth2_settings', oauth2_settings.getUserOauth2Settings)
-api.post('/admin/user_oauth2_settings', oauth2_settings.saveUserOauth2Settings)
+api.get('/admin/scheduled_status', cleanup_api.getScheduledStatus)
+api.post('/admin/cleanup_raw_mails', cleanup_api.cleanupRawMailsNow)
 
 // webhook settings
 api.get('/admin/webhook/settings', webhook_settings.getWebhookSettings)
@@ -101,15 +82,6 @@ api.post('admin/db_migration', db_api.migrate)
 api.get('/admin/config/:key', config_api.get)
 api.post('/admin/config', config_api.save)
 
-// redemption codes
-api.use('/admin/redeem_codes', redeem_code_api.requireRedeemCodeEnabled)
-api.use('/admin/redeem_codes/*', redeem_code_api.requireRedeemCodeEnabled)
-api.get('/admin/redeem_codes', redeem_code_api.listRedeemCodes)
-api.get('/admin/redeem_codes/export', redeem_code_api.exportRedeemCodes)
-api.post('/admin/redeem_codes/batch', redeem_code_api.createRedeemCodes)
-api.put('/admin/redeem_codes/:id', redeem_code_api.updateRedeemCode)
-api.delete('/admin/redeem_codes/:id', redeem_code_api.deleteRedeemCode)
-
 // IP blacklist settings
 api.get('/admin/ip_blacklist/settings', ip_blacklist_settings.getIpBlacklistSettings)
 api.post('/admin/ip_blacklist/settings', ip_blacklist_settings.saveIpBlacklistSettings)
@@ -117,3 +89,26 @@ api.post('/admin/ip_blacklist/settings', ip_blacklist_settings.saveIpBlacklistSe
 // AI extract settings
 api.get('/admin/ai_extract/settings', ai_extract_settings.getAiExtractSettings)
 api.post('/admin/ai_extract/settings', ai_extract_settings.saveAiExtractSettings)
+
+// AI extract custom endpoint test
+api.post('/admin/ai_extract/test', ai_extract_settings.testCustomAiEndpoint)
+
+// notify settings: telegram bots
+api.get('/admin/notify/telegram_bots', notify_settings.listTelegramBots)
+api.post('/admin/notify/telegram_bots', notify_settings.createTelegramBot)
+api.put('/admin/notify/telegram_bots/:id', notify_settings.updateTelegramBot)
+api.delete('/admin/notify/telegram_bots/:id', notify_settings.deleteTelegramBot)
+api.post('/admin/notify/telegram_bots/:id/test', notify_settings.testTelegramBot)
+api.post('/admin/notify/telegram_bots/:id/webhook', notify_settings.setTelegramBotWebhook)
+
+// notify settings: bark
+api.get('/admin/notify/bark', notify_settings.getBark)
+api.post('/admin/notify/bark', notify_settings.saveBark)
+api.post('/admin/notify/bark/test', notify_settings.testBark)
+
+// notify settings: snapshot ttl + address bindings
+api.get('/admin/notify/snapshot', notify_settings.getSnapshot)
+api.post('/admin/notify/snapshot', notify_settings.saveSnapshot)
+api.get('/admin/notify/snapshot_bindings', notify_settings.listSnapshotBindings)
+api.post('/admin/notify/snapshot_bindings', notify_settings.createSnapshotBinding)
+api.delete('/admin/notify/snapshot_bindings/:address', notify_settings.invalidateSnapshotBinding)

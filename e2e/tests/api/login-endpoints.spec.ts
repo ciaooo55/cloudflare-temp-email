@@ -59,45 +59,6 @@ test.describe('Turnstile Login Endpoints (ENABLE_GLOBAL_TURNSTILE_CHECK disabled
     });
   });
 
-  test.describe('/open_api/credential_login', () => {
-    test('valid JWT credential succeeds', async ({ request }) => {
-      const { jwt, address } = await createTestAddress(request, 'cred-login');
-      try {
-        const res = await request.post(`${WORKER_URL}/open_api/credential_login`, {
-          data: {
-            credential: jwt,
-            cf_token: ''
-          }
-        });
-        expect(res.ok()).toBe(true);
-        const body = await res.json();
-        expect(body.success).toBe(true);
-      } finally {
-        await deleteAddress(request, jwt);
-      }
-    });
-
-    test('invalid JWT returns 401', async ({ request }) => {
-      const res = await request.post(`${WORKER_URL}/open_api/credential_login`, {
-        data: {
-          credential: 'invalid.jwt.token',
-          cf_token: ''
-        }
-      });
-      expect(res.status()).toBe(401);
-    });
-
-    test('empty credential returns 401', async ({ request }) => {
-      const res = await request.post(`${WORKER_URL}/open_api/credential_login`, {
-        data: {
-          credential: '',
-          cf_token: ''
-        }
-      });
-      expect(res.status()).toBe(401);
-    });
-  });
-
   test.describe('/api/address_login with cf_token', () => {
     test('address login with empty cf_token works when turnstile disabled', async ({ request }) => {
       const { jwt, address } = await createTestAddress(request, 'addr-cf');

@@ -43,12 +43,6 @@ if (showAd.value) {
 }
 
 onMounted(async () => {
-  try {
-    await api.getUserSettings();
-  } catch (error) {
-    console.error(error);
-  }
-
   const token = APP_CONFIG.CF_WEB_ANALY_TOKEN;
 
   const exist = document.querySelector('script[src="https://static.cloudflareinsights.com/beacon.min.js"]') !== null

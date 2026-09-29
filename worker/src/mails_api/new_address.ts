@@ -1,7 +1,7 @@
 import { Context } from 'hono'
 
 import i18n from '../i18n';
-import { getBooleanValue, getJsonSetting, checkCfTurnstile, isAddressCountLimitReached } from '../utils';
+import { getBooleanValue, getJsonSetting, checkCfTurnstile } from '../utils';
 import { newAddress, getAddressPrefix, generateRandomName } from '../common'
 import { CONSTANTS } from '../constants'
 
@@ -16,14 +16,6 @@ const createNewAddress = async (c: Context<HonoCustomType>) => {
     }
     if (!getBooleanValue(c.env.ENABLE_USER_CREATE_EMAIL)) {
         return c.text(msgs.NewAddressDisabledMsg, 403)
-    }
-
-    // 如果启用了禁止匿名创建，且用户已登录，检查地址数量限制
-    if (getBooleanValue(c.env.DISABLE_ANONYMOUS_USER_CREATE_EMAIL) && userPayload) {
-        const userRole = c.get("userRolePayload");
-        if (await isAddressCountLimitReached(c, userPayload.user_id, userRole)) {
-            return c.text(msgs.MaxAddressCountReachedMsg, 400)
-        }
     }
 
     // eslint-disable-next-line prefer-const

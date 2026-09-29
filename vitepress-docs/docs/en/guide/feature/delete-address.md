@@ -20,7 +20,7 @@ Example response:
 
 ## User Delete Address API
 
-Delete mailbox by address JWT. The request needs address token permission and deletes related data (received mails, sent items, auto reply data, sender bindings, user bindings, telegram bind records).
+Delete mailbox by address JWT. The request needs address token permission and deletes related data (received mails, sent items, sender bindings, user bindings, telegram bind records).
 
 ```bash
 DELETE /api/delete_address

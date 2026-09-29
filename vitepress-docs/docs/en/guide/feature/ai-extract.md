@@ -28,18 +28,22 @@ Extraction results are automatically saved to the `metadata` field in the databa
 
 | Variable Name              | Type      | Description                                                                                                                      | Example                          |
 | -------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| `ENABLE_AI_EMAIL_EXTRACT`  | Text/JSON | Whether to enable email recognition (master switch, required by both modes)                                                        | `true`                           |
-| `AI_EXTRACT_MODE`          | Text      | Recognition mode: `local` uses built-in rules only, `ai` prefers Workers AI. Defaults to `local` when unset; any other value logs an error and skips recognition | `local` |
-| `AI_EXTRACT_MODEL`         | Text      | `ai` mode only. AI model name, choose from [models supporting JSON mode](https://developers.cloudflare.com/workers-ai/features/json-mode/#supported-models) | `@cf/meta/llama-3.1-8b-instruct-fast` |
+| `ENABLE_AI_EMAIL_EXTRACT`  | Text/JSON | Whether to enable email recognition (master switch, required by all three modes)                                                        | `true`                           |
+| `AI_EXTRACT_MODE`          | Text      | Recognition mode: `local` uses built-in rules only, `ai` prefers Workers AI, `custom` uses a custom OpenAI-compatible endpoint. Defaults to `local` when unset | `local` |
+| `AI_EXTRACT_MODEL`         | Text      | `ai` / `custom` modes. Model name: a JSON-mode-capable Workers AI model for `ai`, the model name sent to your endpoint for `custom` | `@cf/meta/llama-3.1-8b-instruct-fast` |
+| `AI_EXTRACT_API_URL`       | Text      | `custom` mode only. Base URL of your OpenAI-compatible endpoint (without `/chat/completions`) | `https://ll.example.com/v1` |
+| `AI_EXTRACT_API_KEY`       | Text      | `custom` mode only. API key (secret) for your endpoint, sent as Bearer; omit for open endpoints | `sk-...` |
 
 > [!WARNING] Upgrading from older versions
 > Older versions automatically used AI recognition whenever a Workers AI binding was configured. Now, when `AI_EXTRACT_MODE` is unset, local rules are used by default. To keep using AI recognition, explicitly set `AI_EXTRACT_MODE = "ai"`.
+>
+> `ai` / `custom` modes now fall back automatically on failure: when the AI call fails (network error, HTTP 402/403/429, etc.) or returns nothing usable, local rules take over instead of skipping the mail.
 
-The two modes behave as follows:
+The three modes behave as follows:
 
 - `local` mode never calls AI, even if a Workers AI binding is configured
-- `ai` mode logs an error and skips recognition for that mail when the Workers AI binding is missing or the model call fails; it does not switch to local rules
-- In `ai` mode, an address allowlist miss skips only the Workers AI call; local rules still run to try extracting verification codes
+- `ai` / `custom` modes use the AI result directly when it extracts something usable and skip local rules; on AI failure or unusable results they automatically fall back to local rules
+- In `ai` / `custom` modes, an address allowlist miss skips only the AI call; local rules still run to try extracting verification codes
 
 ## Local Rule Mode (local)
 
@@ -79,14 +83,35 @@ Or add in Cloudflare Dashboard Worker settings:
 - **Variable name**: `AI`
 - **Type**: Workers AI
 
+## Custom Endpoint Mode (custom)
+
+With `AI_EXTRACT_MODE = "custom"`, mail content is POSTed to your own OpenAI-compatible endpoint:
+
+```toml
+ENABLE_AI_EMAIL_EXTRACT = "true"
+AI_EXTRACT_MODE = "custom"
+AI_EXTRACT_API_URL = "https://ll.example.com/v1"
+AI_EXTRACT_MODEL = "your-model-name"
+```
+
+```bash
+# keep the API key in secrets, not in the config file
+wrangler secret put AI_EXTRACT_API_KEY
+```
+
+- Request: `POST {AI_EXTRACT_API_URL}/chat/completions`, OpenAI `chat/completions` compatible, with `response_format: { type: "json_object" }` and a 30s timeout
+- On parse failure, non-2xx HTTP (e.g. 402/403/429) or unusable content (`type: none` / empty result), extraction automatically falls back to local rules
+- The allowlist works the same as in `ai` mode: off-allowlist addresses skip the endpoint and use local rules directly
+- You can also configure mode, API URL, API key and model directly in the Admin console **AI Extract Settings** page and test the endpoint there; web settings take precedence over environment variables; the saved API key is never echoed back, entering a new value replaces it
+
 ## Address Allowlist (Optional)
 
-To control costs and resource usage, you can configure an address allowlist in the Admin console's **AI Extract Settings** page. The allowlist controls only Workers AI calls, not local rule mode; in `ai` mode, addresses outside the allowlist still use local rules to try extracting verification codes.
+To control costs and resource usage, you can configure an address allowlist in the Admin console's **AI Extract Settings** page. The allowlist controls only AI calls (Workers AI or a custom endpoint), not local rule mode; in `ai` / `custom` modes, addresses outside the allowlist still use local rules to try extracting verification codes.
 
 ### Configuration
 
-- **Allowlist Disabled**: Workers AI extraction can process all email addresses
-- **Allowlist Enabled**: Workers AI is called only for addresses in the allowlist; addresses outside it skip Workers AI and fall back to local verification-code extraction
+- **Allowlist Disabled**: AI extraction can process all email addresses
+- **Allowlist Enabled**: AI is called only for addresses in the allowlist; addresses outside it skip the AI call and fall back to local verification-code extraction
 
 ### Allowlist Format
 

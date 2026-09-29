@@ -19,7 +19,6 @@ async function expectRejected(request: APIRequestContext, jwt: string) {
     ['GET', '/api/parsed_mails?limit=20&offset=0'],
     ['GET', '/api/parsed_mail/1'],
     ['GET', '/api/sendbox?limit=20&offset=0'],
-    ['GET', '/api/auto_reply'],
     ['POST', '/api/webhook/settings'],
     ['POST', '/api/attachment/get_url'],
     ['POST', '/api/address_change_password'],
@@ -39,23 +38,13 @@ async function expectRejected(request: APIRequestContext, jwt: string) {
     });
     expect(response.status(), `${method} ${path}`).toBe(401);
   }
-  const login = await request.post(`${WORKER_URL}/open_api/credential_login`, {
-    data: { credential: jwt },
-  });
-  expect(login.status()).toBe(401);
   const send = await request.post(`${WORKER_URL}/external/api/send_mail`, {
     headers: { 'x-lang': 'en' },
     data: { token: jwt },
   });
   expect(send.status()).toBe(400);
   expect(await send.text()).toBe('Failed to send mail Invalid address credential');
-  const bind = await request.post(`${WORKER_URL}/user_api/bind_address`, {
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      'x-user-token': signToken({ user_id: 1, exp: Math.floor(Date.now() / 1000) + 60 }),
-    },
-  });
-  expect(bind.status()).toBe(401);
+
 }
 
 test('deleted credentials cannot access or delete a recreated mailbox', async ({ request }) => {
@@ -96,10 +85,6 @@ test('valid numeric/string IDs work; missing, invalid and mismatched IDs are rej
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(settings.ok()).toBe(true);
-      const login = await request.post(`${WORKER_URL}/open_api/credential_login`, {
-        data: { credential: token },
-      });
-      expect(login.ok()).toBe(true);
     }
     for (const payload of [
       { address: mailbox.address },
@@ -113,10 +98,6 @@ test('valid numeric/string IDs work; missing, invalid and mismatched IDs are rej
         headers: { Authorization: `Bearer ${jwt}` },
       });
       expect(response.status(), JSON.stringify(payload)).toBe(401);
-      const login = await request.post(`${WORKER_URL}/open_api/credential_login`, {
-        data: { credential: jwt },
-      });
-      expect(login.status(), JSON.stringify(payload)).toBe(401);
     }
   } finally {
     await deleteAddress(request, mailbox.jwt);

@@ -1,9 +1,3 @@
-type UserRole = {
-    domains: string[] | undefined | null,
-    role: string,
-    prefix: string | undefined | null
-}
-
 type SmtpImapProxyConfig = {
     smtp?: {
         host?: string
@@ -46,9 +40,6 @@ type Bindings = {
     DISABLE_CUSTOM_ADDRESS_NAME: string | boolean | undefined
     DISABLE_ADDRESS_UPDATED_AT: string | boolean | undefined
     CREATE_ADDRESS_DEFAULT_DOMAIN_FIRST: string | boolean | undefined
-    ADMIN_USER_ROLE: string | undefined
-    USER_DEFAULT_ROLE: string | UserRole | undefined
-    USER_ROLES: string | UserRole[] | undefined
     DOMAIN_LABELS: string | string[] | undefined
     PASSWORDS: string | string[] | undefined
     ADMIN_PASSWORDS: string | string[] | undefined
@@ -56,17 +47,13 @@ type Bindings = {
     DISABLE_ADMIN_PASSWORD_CHECK: string | boolean | undefined
     JWT_SECRET: string
     BLACK_LIST: string | undefined
-    ENABLE_AUTO_REPLY: string | boolean | undefined
     ENABLE_WEBHOOK: string | boolean | undefined
     ENABLE_USER_CREATE_EMAIL: string | boolean | undefined
     DISABLE_ANONYMOUS_USER_CREATE_EMAIL: string | boolean | undefined
     ENABLE_USER_DELETE_EMAIL: string | boolean | undefined
     ENABLE_ADDRESS_PASSWORD: string | boolean | undefined
     ENABLE_AGENT_EMAIL_INFO: string | boolean | undefined
-    ENABLE_REDEEM_CODE: string | boolean | undefined
-    REDEEM_CODE_URL: string | undefined
     SMTP_IMAP_PROXY_CONFIG: string | SmtpImapProxyConfig | undefined
-    ENABLE_INDEX_ABOUT: string | boolean | undefined
     DEFAULT_SEND_BALANCE: number | string | undefined
     NO_LIMIT_SEND_ROLE: string | undefined | null
     ADMIN_CONTACT: string | undefined
@@ -74,8 +61,6 @@ type Bindings = {
     STATUS_URL: string | undefined
     SNAPSHOT_BASE_URL: string | undefined
     DISABLE_SHOW_GITHUB: string | boolean | undefined
-    DISABLE_SHOW_GITHUB_FOR_USER: string | boolean | undefined
-    FORWARD_ADDRESS_LIST: string | string[] | undefined
 
     ENABLE_CHECK_JUNK_MAIL: string | boolean | undefined
     JUNK_MAIL_CHECK_LIST: string | string[] | undefined
@@ -83,8 +68,6 @@ type Bindings = {
 
     ENABLE_ANOTHER_WORKER: string | boolean | undefined
     ANOTHER_WORKER_LIST: string | AnotherWorker[] | undefined
-
-    SUBDOMAIN_FORWARD_ADDRESS_LIST: string | SubdomainForwardAddressList[] | undefined
 
     REMOVE_ALL_ATTACHMENT: string | boolean | undefined
     REMOVE_EXCEED_SIZE_ATTACHMENT: string | boolean | undefined
@@ -108,9 +91,24 @@ type Bindings = {
     SMTP_CONFIG: string | object | undefined
     SEND_MAIL_DOMAINS: string | string[] | undefined
 
+    // unified per-domain send & push routes (see worker/src/send_config.ts)
+    // JSON string or object; maps domains to ordered send channel chains
+    // and push targets. Secrets are referenced by NAME, never inline.
+    SEND_ROUTES: string | object | undefined
+    // named resend api keys referenced by SEND_ROUTES, e.g. RESEND_TOKEN_1
+    // (covered by the RESEND_TOKEN_${string} index signature above)
+    // named smtp configs (worker-mailer options JSON), e.g. SMTP_1
+    [key: `SMTP_${string}`]: string | object | undefined
+    // named cf send_email bindings, e.g. SEND_MAIL_2
+    [key: `SEND_MAIL_${string}`]: SendEmail | undefined
+
     // telegram config
     TELEGRAM_BOT_TOKEN: string
+    // named extra bot tokens for multi-bot push, e.g. TELEGRAM_BOT_TOKEN_2
+    [key: `TELEGRAM_BOT_TOKEN_${string}`]: string | undefined
     BARK_DEVICE_KEYS: string | undefined
+    // named extra bark device key sets, e.g. BARK_DEVICE_KEYS_2
+    [key: `BARK_DEVICE_KEYS_${string}`]: string | undefined
     TG_MAX_ADDRESS: number | undefined
     TG_BOT_INFO: string | object | undefined
     TG_ALLOW_USER_LANG: string | boolean | undefined
@@ -124,6 +122,9 @@ type Bindings = {
     ENABLE_AI_EMAIL_EXTRACT: string | boolean | undefined
     AI_EXTRACT_MODE: string | undefined
     AI_EXTRACT_MODEL: string | undefined
+    // custom OpenAI-compatible AI endpoint (AI_EXTRACT_MODE=custom)
+    AI_EXTRACT_API_URL: string | undefined
+    AI_EXTRACT_API_KEY: string | undefined
 
     // gzip compression for raw_mails
     ENABLE_MAIL_GZIP: string | boolean | undefined
@@ -185,12 +186,4 @@ type ParsedEmailContext = {
         headers?: Record<string, string>[],
         attachments?: ParsedEmailAttachment[],
     } | undefined
-}
-
-type SubdomainForwardAddressList = {
-    domains: string[] | undefined | null,
-    forward: string,
-    // 来源地址正则匹配 (可选，兼容原配置)
-    sourcePatterns?: string[] | undefined | null,  // 来源地址正则表达式列表
-    sourceMatchMode?: 'any' | 'all' | undefined,   // 匹配模式: any-任一匹配, all-全部匹配
 }

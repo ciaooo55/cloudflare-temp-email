@@ -5,12 +5,14 @@ import { Resend } from 'resend';
 import { WorkerMailer, WorkerMailerOptions } from 'worker-mailer';
 
 import i18n from '../i18n';
+import { LocaleMessages } from "../i18n/type";
 import { CONSTANTS } from '../constants'
 import { getJsonSetting, getDomains, getBooleanValue, getJsonObjectValue, getDomainMapValue, getMailDomain, includesDomain } from '../utils';
 import { GeoData } from '../models'
 import { handleListQuery, isSendMailBindingEnabled, updateAddressUpdatedAt } from '../common'
 import { getSendBalanceState, requestSendMailAccess } from './send_balance';
 import { ensureSendMailLimit, increaseSendMailLimitCount } from './send_mail_limit_utils';
+import { getDomainRoute, resolveSendChannels, ResolvedSendChannel } from '../send_config';
 
 
 export const api = new Hono<HonoCustomType>()
@@ -60,13 +62,15 @@ export const sendMailByBinding = async (
     reqJson: {
         from_name: string, to_mail: string, to_name: string,
         subject: string, content: string, is_html: boolean
-    }
+    },
+    binding?: SendEmail
 ): Promise<void> => {
     const {
         from_name, to_mail, to_name,
         subject, content, is_html
     } = reqJson;
-    await c.env.SEND_MAIL.send({
+    const sendMailBinding = binding || c.env.SEND_MAIL;
+    await sendMailBinding.send({
         from: from_name ? { email: address, name: from_name } : address,
         to: to_name ? [`${to_name} <${to_mail}>`] : [to_mail],
         subject,
@@ -79,12 +83,9 @@ const sendMailByResend = async (
     reqJson: {
         from_name: string, to_mail: string, to_name: string,
         subject: string, content: string, is_html: boolean
-    }
+    },
+    token: string
 ): Promise<void> => {
-    const mailDomain = getMailDomain(address);
-    const token = c.env[
-        `RESEND_TOKEN_${mailDomain.replace(/\./g, "_").toUpperCase()}`
-    ] || c.env.RESEND_TOKEN;
     const resend = new Resend(token);
     const { data, error } = await resend.emails.send({
         from: reqJson.from_name ? `${reqJson.from_name} <${address}>` : address,
@@ -126,6 +127,51 @@ const sendMailBySmtp = async (
             html: reqJson.is_html ? reqJson.content : undefined
         }
     )
+}
+
+/**
+ * Per-domain routing (SEND_ROUTES): an ordered channel chain per domain.
+ * Channels are tried in order, first success wins; a failing channel falls
+ * through to the next one. Returns true when a route handled the send,
+ * false when no route is configured (caller falls back to legacy priority).
+ */
+const sendMailByRoute = async (
+    c: Context<HonoCustomType>, address: string,
+    reqJson: {
+        from_name: string, to_mail: string, to_name: string,
+        subject: string, content: string, is_html: boolean
+    },
+    mailDomain: string, msgs: LocaleMessages
+): Promise<boolean> => {
+    const route = getDomainRoute(c.env, mailDomain);
+    if (!route?.send?.length) {
+        return false;
+    }
+    const channels = resolveSendChannels(c.env, route);
+    if (!channels.length) {
+        throw new Error(`${msgs.EnableResendOrSmtpOrSendMailMsg} (${mailDomain})`);
+    }
+    let lastError: unknown = null;
+    for (const ch of channels) {
+        try {
+            if (ch.kind === 'resend') {
+                await sendMailByResend(c, address, reqJson, ch.token);
+            } else if (ch.kind === 'smtp') {
+                await sendMailBySmtp(c, address, reqJson, ch.options);
+            } else {
+                const binding = (c.env as unknown as Record<string, unknown>)[ch.bindingName] as SendEmail;
+                await sendMailByBinding(c, address, reqJson, binding);
+            }
+            console.log(`Send mail via ${ch.label} for domain ${mailDomain}`);
+            return true;
+        } catch (e) {
+            lastError = e;
+            console.warn(`Send mail via ${ch.label} failed, trying next channel:`, e);
+        }
+    }
+    throw lastError instanceof Error
+        ? lastError
+        : new Error(`All send channels failed (${mailDomain})`);
 }
 
 export const sendMail = async (
@@ -177,13 +223,6 @@ export const sendMail = async (
     await ensureSendMailLimit(c);
 
     // send to verified address list, do not update balance
-    const resendEnabled = c.env.RESEND_TOKEN || c.env[
-        `RESEND_TOKEN_${mailDomain.replace(/\./g, "_").toUpperCase()}`
-    ];
-    // send by smtp
-    const smtpConfigMap = getJsonObjectValue<Record<string, WorkerMailerOptions>>(c.env.SMTP_CONFIG);
-    const smtpConfig = getDomainMapValue(smtpConfigMap, mailDomain);
-    // send by verified address list
     let sendByVerifiedAddressList = false;
     if (c.env.SEND_MAIL) {
         const verifiedAddressList = await getJsonSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY) || [];
@@ -192,24 +231,38 @@ export const sendMail = async (
             sendByVerifiedAddressList = true;
         }
     }
-    const sendMailBindingEnabled = isSendMailBindingEnabled(c, mailDomain);
 
     // send mail workflow
     if (sendByVerifiedAddressList) {
         // do not update balance
     }
-    // send by resend
-    else if (resendEnabled) {
-        await sendMailByResend(c, address, reqJson);
-    }
-    else if (smtpConfig) {
-        await sendMailBySmtp(c, address, reqJson, smtpConfig);
-    }
-    else if (sendMailBindingEnabled) {
-        await sendMailByBinding(c, address, reqJson);
+    // send by per-domain route (SEND_ROUTES); falls back to legacy priority below
+    else if (await sendMailByRoute(c, address, reqJson, mailDomain, msgs)) {
+        // handled by route
     }
     else {
-        throw new Error(`${msgs.EnableResendOrSmtpOrSendMailMsg} (${mailDomain})`);
+        // legacy priority: resend -> smtp -> cf binding
+        const resendEnabled = c.env.RESEND_TOKEN || c.env[
+            `RESEND_TOKEN_${mailDomain.replace(/\./g, "_").toUpperCase()}`
+        ];
+        const smtpConfigMap = getJsonObjectValue<Record<string, WorkerMailerOptions>>(c.env.SMTP_CONFIG);
+        const smtpConfig = getDomainMapValue(smtpConfigMap, mailDomain);
+        const sendMailBindingEnabled = isSendMailBindingEnabled(c, mailDomain);
+        // send by resend
+        if (resendEnabled) {
+            await sendMailByResend(c, address, reqJson, c.env[
+                `RESEND_TOKEN_${mailDomain.replace(/\./g, "_").toUpperCase()}`
+            ] || c.env.RESEND_TOKEN as string);
+        }
+        else if (smtpConfig) {
+            await sendMailBySmtp(c, address, reqJson, smtpConfig);
+        }
+        else if (sendMailBindingEnabled) {
+            await sendMailByBinding(c, address, reqJson);
+        }
+        else {
+            throw new Error(`${msgs.EnableResendOrSmtpOrSendMailMsg} (${mailDomain})`);
+        }
     }
     await increaseSendMailLimitCount(c);
 

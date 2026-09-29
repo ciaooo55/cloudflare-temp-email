@@ -7,7 +7,45 @@
 Workers Paid 每月含 3,000 封，超出部分 $0.35 / 1000 封。
 :::
 
-## 发信通道优先级
+## 统一多域名配置 `SEND_ROUTES`（推荐）
+
+当域名多、通道多时，可以用一个 `SEND_ROUTES` JSON 统一为每个域名配置发信通道链和推送目标。通道按数组顺序依次尝试，**前一个失败自动降级到下一个**：
+
+```toml
+SEND_ROUTES = """
+{
+  "domains": {
+    "a.com": {
+      "send": [
+        {"provider": "resend", "key": "RESEND_TOKEN_1"},
+        {"provider": "resend", "key": "RESEND_TOKEN_2"},
+        {"provider": "cf"}
+      ],
+      "push": {
+        "telegram": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_TOKEN_2"],
+        "bark": ["BARK_DEVICE_KEYS"]
+      }
+    },
+    "b.com": {
+      "send": [
+        {"provider": "smtp", "config": "SMTP_1"},
+        {"provider": "cf", "binding": "SEND_MAIL_1"}
+      ],
+      "push": {"bark": ["BARK_DEVICE_KEYS_2"]}
+    },
+    "*": { "send": [{"provider": "resend", "key": "RESEND_TOKEN_1"}] }
+  }
+}
+"""
+```
+
+- `send` 的通道类型：`resend`（用 `key` 指定 secret 名，默认为 `RESEND_TOKEN`）、`smtp`（用 `config` 指定 secret 名，默认为 `SMTP_CONFIG`）、`cf`（用 `binding` 指定环境绑定名，默认为 `SEND_MAIL`，发信走该域名的 Email Routing）
+- `key` / `config` 填的是**变量名**而不是密钥本身：如 `RESEND_TOKEN_1` 需在 secret 里单独配置，`SMTP_1` 需是一个完整的 SMTP 配置 JSON；缺失的通道会被跳过
+- `*` 为默认路由：域名没有精确匹配项时使用
+- `push.telegram` / `push.bark` 分别指定该域名推送用的 TG bot token 变量名列表和 Bark 设备组变量名列表；不配则回退到默认的 `TELEGRAM_BOT_TOKEN` / `BARK_DEVICE_KEYS`（逗号分隔多设备）
+- 不配置 `SEND_ROUTES` 时，发信完全走下方的旧优先级逻辑
+
+## 发信通道优先级（`SEND_ROUTES` 未配置时）
 
 每次 `/api/send_mail` 请求按如下顺序匹配通道，**命中即发送**：
 
@@ -20,7 +58,7 @@ Workers Paid 每月含 3,000 封，超出部分 $0.35 / 1000 封。
 | — | 以上均未命中 | 抛错 | — |
 
 > [!NOTE]
-> binding 发信失败会直接报错。
+> 配置了 `SEND_ROUTES` 时，通道失败会自动尝试该域名的下一个通道，所有通道都失败才报错；未配置 `SEND_ROUTES` 时 binding 发信失败会直接报错。
 
 ## 使用 Cloudflare `send_email` binding（推荐）
 

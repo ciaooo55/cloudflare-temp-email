@@ -158,7 +158,6 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
                 { text: 'Configure Telegram Bot', link: 'feature/telegram' },
                 { text: 'Configure Webhook', link: 'feature/webhook' },
                 { text: 'Configure SMTP/IMAP Mail Client', link: 'feature/config-smtp-proxy' },
-                { text: 'OAuth2 Third-party Login', link: 'feature/user-oauth2' },
             ]
         },
         {
@@ -170,7 +169,6 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
                 { text: 'Configure S3 Attachments', link: 'feature/s3-attachment' },
                 { text: 'Configure WASM Email Parser', link: 'feature/mail_parser_wasm_worker' },
                 { text: 'Enhance with Other Workers', link: 'feature/another-worker-enhanced' },
-                { text: 'Configure Redemption Codes', link: 'feature/redeem-code' },
                 { text: 'Add Google Ads', link: 'feature/google-ads.md' },
             ]
         },
@@ -190,7 +188,6 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
             collapsed: false,
             items: [
                 { text: 'Admin Console', link: 'feature/admin' },
-                { text: 'Admin User Management', link: 'feature/admin-user-management' },
             ]
         },
         { text: 'Reference', base: "/en/", link: 'reference' }

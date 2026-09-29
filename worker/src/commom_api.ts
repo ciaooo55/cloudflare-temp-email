@@ -41,8 +41,6 @@ api.get('/open_api/settings', async (c) => {
         "disableCustomAddressName": utils.getBooleanValue(c.env.DISABLE_CUSTOM_ADDRESS_NAME),
         "enableUserDeleteEmail": utils.getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL),
         "enableMailReadStatus": utils.getBooleanValue(c.env.ENABLE_MAIL_READ_STATUS),
-        "enableAutoReply": utils.getBooleanValue(c.env.ENABLE_AUTO_REPLY),
-        "enableIndexAbout": utils.getBooleanValue(c.env.ENABLE_INDEX_ABOUT),
         "copyright": c.env.COPYRIGHT,
         "cfTurnstileSiteKey": c.env.CF_TURNSTILE_SITE_KEY,
         "enableWebhook": utils.getBooleanValue(c.env.ENABLE_WEBHOOK),
@@ -50,12 +48,9 @@ api.get('/open_api/settings', async (c) => {
         "enableSendMail": isAnySendMailEnabled(c),
         "version": CONSTANTS.VERSION,
         "showGithub": !utils.getBooleanValue(c.env.DISABLE_SHOW_GITHUB),
-        "showGithubForUser": !utils.getBooleanValue(c.env.DISABLE_SHOW_GITHUB_FOR_USER),
         "disableAdminPasswordCheck": utils.getBooleanValue(c.env.DISABLE_ADMIN_PASSWORD_CHECK),
         "enableAddressPassword": utils.getBooleanValue(c.env.ENABLE_ADDRESS_PASSWORD),
         "enableAgentEmailInfo": utils.getBooleanValue(c.env.ENABLE_AGENT_EMAIL_INFO),
-        "enableRedeemCode": utils.getBooleanValue(c.env.ENABLE_REDEEM_CODE),
-        "redeemCodeUrl": utils.getStringValue(c.env.REDEEM_CODE_URL),
         "smtpImapProxyConfig": {
             "smtp": {
                 "host": utils.getStringValue(smtpProxyConfig.host),

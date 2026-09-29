@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { Jwt } from 'hono/utils/jwt'
 import { WorkerMailerOptions } from 'worker-mailer';
 
-import { getBooleanValue, getDomains, getStringArray, getStringValue, getIntValue, getUserRoles, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword, getJsonObjectValue, getRandomSubdomainDomains, getDomainMapValue, isDomainOrSubdomain, normalizeDomains, trimLower } from './utils';
+import { getBooleanValue, getDomains, getStringArray, getStringValue, getIntValue, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword, getJsonObjectValue, getRandomSubdomainDomains, getDomainMapValue, isDomainOrSubdomain, normalizeDomains, trimLower } from './utils';
 import { unbindTelegramByAddress } from './telegram_api/common';
 import { CONSTANTS } from './constants';
 import { AddressCreationSettings, AdminWebhookSettings, ExtractResult, WebhookMail, WebhookSettings } from './models';
@@ -264,29 +264,6 @@ export function updateAddressUpdatedAt(
     })());
 }
 
-export function updateUserAddressesUpdatedAt(
-    c: Context<HonoCustomType>,
-    userId: number | string | undefined | null
-): void {
-    if (!userId) {
-        return;
-    }
-    // Apply the same activity tracking switch to bulk updates.
-    if (getBooleanValue(c.env.DISABLE_ADDRESS_UPDATED_AT)) return;
-    c.executionCtx.waitUntil((async () => {
-        try {
-            await c.env.DB.prepare(
-                `UPDATE address SET updated_at = datetime('now')`
-                + ` WHERE id IN (SELECT address_id FROM users_address WHERE user_id = ?)`
-                + ` AND (updated_at IS NULL OR updated_at < datetime('now', '-1 day'))`
-            ).bind(userId).run();
-        } catch (e) {
-            const errorName = e instanceof Error ? e.name : "UnknownError";
-            console.warn("[updateUserAddressesUpdatedAt] failed:", errorName);
-        }
-    })());
-}
-
 export const generateRandomPassword = (): string => {
     const charset = "abcdefghijklmnopqrstuvwxyz0123456789";
     let password = "";
@@ -529,12 +506,6 @@ export const cleanup = async (
                 + `ORDER BY created_at, id LIMIT ${cleanupBatchSize})`
             )
             break;
-        case "unboundAddress":
-            await batchDeleteAddressWithData(
-                c,
-                `id NOT IN (SELECT address_id FROM users_address) AND created_at < datetime('now', '-${cleanDays} day')`
-            )
-            break;
         case "mails":
             await c.env.DB.prepare(`
                 DELETE FROM raw_mails WHERE id IN (
@@ -587,16 +558,8 @@ const batchDeleteAddressWithData = async (
         `SELECT name FROM address WHERE ${addressQueryCondition})`
     ).run();
     await c.env.DB.prepare(
-        `DELETE FROM auto_reply_mails WHERE address IN ( ` +
-        `SELECT name FROM address WHERE ${addressQueryCondition})`
-    ).run();
-    await c.env.DB.prepare(
         `DELETE FROM address_sender WHERE address IN ( ` +
         `SELECT name FROM address WHERE ${addressQueryCondition})`
-    ).run();
-    await c.env.DB.prepare(
-        `DELETE FROM users_address WHERE address_id IN ( ` +
-        `SELECT id FROM address WHERE ${addressQueryCondition})`
     ).run();
     // delete address
     await c.env.DB.prepare(`
@@ -644,16 +607,10 @@ export const deleteAddressWithData = async (
     const { success: sendboxSuccess } = await c.env.DB.prepare(
         `DELETE FROM sendbox WHERE address = ? `
     ).bind(address).run();
-    const { success: addressSuccess } = await c.env.DB.prepare(
-        `DELETE FROM users_address WHERE address_id = ? `
-    ).bind(address_id).run();
-    const { success: autoReplySuccess } = await c.env.DB.prepare(
-        `DELETE FROM auto_reply_mails WHERE address = ? `
-    ).bind(address).run();
     const { success } = await c.env.DB.prepare(
         `DELETE FROM address WHERE name = ? `
     ).bind(address).run();
-    if (!success || !mailSuccess || !sendboxSuccess || !addressSuccess || !sendAccess || !autoReplySuccess) {
+    if (!success || !mailSuccess || !sendboxSuccess || !sendAccess) {
         throw new Error(msgs.OperationFailedMsg)
     }
     return true;
@@ -801,37 +758,11 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
     return undefined;
 }
 
-export const commonGetUserRole = async (
-    c: Context<HonoCustomType>, user_id: number
-): Promise<UserRole | undefined | null> => {
-    const user_roles = getUserRoles(c);
-    const role_text = await c.env.DB.prepare(
-        `SELECT role_text FROM user_roles where user_id = ?`
-    ).bind(user_id).first<string | undefined | null>("role_text");
-    return role_text ? user_roles.find((r) => r.role === role_text) : null;
-}
-
 export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<string | undefined> => {
-    const user = c.get("userPayload");
-    if (!user) {
-        return trimLower(c.env.PREFIX);
-    }
-    const user_role = await commonGetUserRole(c, user.user_id);
-    if (typeof user_role?.prefix === "string") {
-        return trimLower(user_role.prefix);
-    }
     return trimLower(c.env.PREFIX);
 }
 
 export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<string[]> => {
-    const user = c.get("userPayload");
-    if (!user) {
-        return getDefaultDomains(c);
-    }
-    const user_role = await commonGetUserRole(c, user.user_id);
-    if (user_role?.domains && user_role.domains.length > 0) {
-        return normalizeDomains(user_role.domains);
-    }
     return getDefaultDomains(c);
 }
 

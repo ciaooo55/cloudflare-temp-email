@@ -19,12 +19,16 @@ const cleanupModel = ref({
     cleanAddressDays: 30,
     enableInactiveAddressAutoCleanup: false,
     cleanInactiveAddressDays: 30,
-    enableUnboundAddressAutoCleanup: false,
-    cleanUnboundAddressDays: 30,
     enableEmptyAddressAutoCleanup: false,
     cleanEmptyAddressDays: 30,
+    // 定时任务调度（网页可配）
+    enableRawMailsAutoCleanup: true,
+    cleanRawMailsMinutes: 10,
+    rawMailsIntervalMinutes: 10,
+    autoCleanupIntervalMinutes: 60,
     customSqlCleanupList: []
 })
+const scheduledStatus = ref({ rawMails: null, autoCleanup: null })
 
 const { t } = useScopedI18n('views.admin.Maintenance')
 
@@ -56,6 +60,34 @@ const removeCustomSql = (index) => {
     cleanupModel.value.customSqlCleanupList.splice(index, 1);
 }
 
+const fetchScheduledStatus = async () => {
+    try {
+        const res = await api.fetch('/admin/scheduled_status');
+        if (res) scheduledStatus.value = res;
+    } catch (error) {
+        // 状态查询失败不影响配置页
+    }
+}
+
+const formatLastRun = (info) => {
+    if (!info || !info.at) return t('neverRun');
+    const d = new Date(info.at).toLocaleString();
+    return info.affected != null ? `${d} (${t('rawMailsDeleted')} ${info.affected} ${t('rows')})` : d;
+}
+
+const cleanupRawMailsNow = async () => {
+    try {
+        const res = await api.fetch('/admin/cleanup_raw_mails', {
+            method: 'POST',
+            body: JSON.stringify({ minutes: cleanupModel.value.cleanRawMailsMinutes })
+        });
+        message.success(`${t('cleanupSuccess')} (${t('rawMailsDeleted')} ${res?.deleted ?? 0} ${t('rows')})`);
+        await fetchScheduledStatus();
+    } catch (error) {
+        message.error(error.message || "error");
+    }
+}
+
 const fetchData = async () => {
     try {
         const res = await api.fetch('/admin/auto_cleanup');
@@ -63,9 +95,22 @@ const fetchData = async () => {
         if (!cleanupModel.value.customSqlCleanupList) {
             cleanupModel.value.customSqlCleanupList = [];
         }
+        // 兼容旧配置：缺失的新字段补默认值
+        const defaults = {
+            enableRawMailsAutoCleanup: true,
+            cleanRawMailsMinutes: 10,
+            rawMailsIntervalMinutes: 10,
+            autoCleanupIntervalMinutes: 60,
+        };
+        for (const [k, v] of Object.entries(defaults)) {
+            if (cleanupModel.value[k] === undefined || cleanupModel.value[k] === null) {
+                cleanupModel.value[k] = v;
+            }
+        }
     } catch (error) {
         message.error(error.message || "error");
     }
+    await fetchScheduledStatus();
 }
 
 const save = async () => {
@@ -98,6 +143,42 @@ onMounted(async () => {
                 </n-button>
             </n-flex>
             <n-tabs type="segment" style="margin-top: 16px;">
+                <n-tab-pane name="scheduled" :tab="t('scheduleTab')">
+                    <n-alert :show-icon="false" :bordered="false" type="info" style="margin-bottom: 16px;">
+                        <span>{{ t('scheduledTip') }}</span>
+                    </n-alert>
+                    <n-form :model="cleanupModel">
+                        <n-form-item-row :label="t('rawMailsEnableLabel')">
+                            <n-checkbox v-model:checked="cleanupModel.enableRawMailsAutoCleanup">
+                                {{ t('autoCleanup') }}
+                            </n-checkbox>
+                        </n-form-item-row>
+                        <div class="task-desc">{{ t('rawMailsDesc') }}</div>
+                        <n-form-item-row :label="t('rawMailsIntervalLabel')">
+                            <n-input-number v-model:value="cleanupModel.rawMailsIntervalMinutes" :min="1" :placeholder="t('tip')" />
+                        </n-form-item-row>
+                        <n-form-item-row :label="t('rawMailsOlderThanLabel')">
+                            <n-input-number v-model:value="cleanupModel.cleanRawMailsMinutes" :min="1" :placeholder="t('tip')" />
+                            <n-button @click="cleanupRawMailsNow">
+                                <template #icon>
+                                    <n-icon :component="CleaningServicesFilled" />
+                                </template>
+                                {{ t('cleanupNow') }}
+                            </n-button>
+                        </n-form-item-row>
+                        <n-form-item-row :label="t('lastRun')">
+                            <span>{{ formatLastRun(scheduledStatus.rawMails) }}</span>
+                        </n-form-item-row>
+                        <n-divider />
+                        <n-form-item-row :label="t('autoCleanupIntervalLabel')">
+                            <n-input-number v-model:value="cleanupModel.autoCleanupIntervalMinutes" :min="1" :placeholder="t('tip')" />
+                        </n-form-item-row>
+                        <div class="task-desc">{{ t('autoCleanupDesc') }}</div>
+                        <n-form-item-row :label="t('lastRun')">
+                            <span>{{ formatLastRun(scheduledStatus.autoCleanup) }}</span>
+                        </n-form-item-row>
+                    </n-form>
+                </n-tab-pane>
                 <n-tab-pane name="basic" :tab="t('basicCleanup')">
                     <n-form :model="cleanupModel">
                         <n-form-item-row :label="t('mailBoxLabel')">
@@ -154,18 +235,6 @@ onMounted(async () => {
                             </n-checkbox>
                             <n-input-number v-model:value="cleanupModel.cleanInactiveAddressDays" :placeholder="t('tip')" />
                             <n-button @click="cleanup('inactiveAddress', cleanupModel.cleanInactiveAddressDays)">
-                                <template #icon>
-                                    <n-icon :component="CleaningServicesFilled" />
-                                </template>
-                                {{ t('cleanupNow') }}
-                            </n-button>
-                        </n-form-item-row>
-                        <n-form-item-row :label="t('unboundAddressLabel')">
-                            <n-checkbox v-model:checked="cleanupModel.enableUnboundAddressAutoCleanup">
-                                {{ t('autoCleanup') }}
-                            </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanUnboundAddressDays" :placeholder="t('tip')" />
-                            <n-button @click="cleanup('unboundAddress', cleanupModel.cleanUnboundAddressDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
                                 </template>
@@ -245,5 +314,13 @@ onMounted(async () => {
 
 .sql-input {
     text-align: left;
+}
+
+.task-desc {
+    text-align: left;
+    color: #909399;
+    font-size: 13px;
+    line-height: 1.7;
+    margin: -4px 0 14px 0;
 }
 </style>

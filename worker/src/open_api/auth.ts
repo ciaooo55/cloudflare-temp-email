@@ -43,25 +43,4 @@ api.post('/open_api/admin_login', async (c) => {
     return c.json({ success: true })
 })
 
-api.post('/open_api/credential_login', async (c) => {
-    const { credential, cf_token } = await c.req.json();
-    const msgs = i18n.getMessagesbyContext(c);
-    if (utils.isGlobalTurnstileEnabled(c)) {
-        try {
-            await checkCfTurnstile(c, cf_token);
-        } catch (error) {
-            return c.text(msgs.TurnstileCheckFailedMsg, 400)
-        }
-    }
-    if (!credential) {
-        return c.text(msgs.InvalidAddressCredentialMsg, 401)
-    }
-    try {
-        await verifyAddressToken(c, credential);
-    } catch (error) {
-        return c.text(msgs.InvalidAddressCredentialMsg, 401)
-    }
-    return c.json({ success: true })
-})
-
 export { api }

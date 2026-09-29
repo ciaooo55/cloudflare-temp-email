@@ -30,7 +30,7 @@
 | 问题            | 解决方案                                 |
 | --------------- | ---------------------------------------- |
 | `Network Error` | 先使用无痕模式或者清空浏览器缓存、DNS 缓存；再打开浏览器 DevTools 的 Network 面板确认失败请求的实际 URL、状态码和响应内容 |
-| Pages 部署后页面报 `map` 错误，或 `/admin/users`、`/admin/new_address` 等接口返回 `405 Method Not Allowed` | 通常是前端后端地址配置错误。请检查 `VITE_API_BASE`、UI 页面生成 zip 时填写的地址或 `FRONTEND_ENV`：前后端分离直连 Worker 时，应填写后端 Worker API 根地址，并且以 `https://` 开头、末尾不要带 `/`；如果使用 `PAGE_TOML` 通过 Page Functions 反代后端，则可保持 `VITE_API_BASE` 为空走同域请求。详见 [Pages 前端部署](/zh/guide/ui/pages) |
+| Pages 部署后页面报 `map` 错误，或 `/admin/address`、`/admin/new_address` 等接口返回 `405 Method Not Allowed` | 通常是前端后端地址配置错误。请检查 `VITE_API_BASE`、UI 页面生成 zip 时填写的地址或 `FRONTEND_ENV`：前后端分离直连 Worker 时，应填写后端 Worker API 根地址，并且以 `https://` 开头、末尾不要带 `/`；如果使用 `PAGE_TOML` 通过 Page Functions 反代后端，则可保持 `VITE_API_BASE` 为空走同域请求。详见 [Pages 前端部署](/zh/guide/ui/pages) |
 | 刷新页面或直接访问 `/admin`、`/user` 返回 404 | 本项目是单页应用（SPA），通过 UI 部署 Pages 时需要在高级选项中将「未找到处理」设置为 `Single-page application (SPA)`。详见 [Pages 前端部署](/zh/guide/ui/pages) |
 | 管理员登录后报 `Network Error`，请求为 `/open_api/admin_login` | 检查前端生成 zip 时填写的后端 API 根地址是否就是 Worker 域名，不要填 Pages 域名、不要带 `/admin` 或 `/api`、不要带结尾 `/`。同时确认请求响应不是 Cloudflare 安全挑战页 |
 

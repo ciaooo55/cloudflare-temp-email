@@ -7,7 +7,45 @@ Use Cloudflare `send_email` binding as the default send channel. Bind `SEND_MAIL
 Workers Paid includes 3,000 messages/month, then $0.35 per 1,000 messages.
 :::
 
-## Send Channel Priority
+## Unified Multi-Domain Config `SEND_ROUTES` (Recommended)
+
+When you have many domains and channels, one `SEND_ROUTES` JSON configures per-domain send channel chains and push targets. Channels are tried in array order, **falling back to the next one on failure**:
+
+```toml
+SEND_ROUTES = """
+{
+  "domains": {
+    "a.com": {
+      "send": [
+        {"provider": "resend", "key": "RESEND_TOKEN_1"},
+        {"provider": "resend", "key": "RESEND_TOKEN_2"},
+        {"provider": "cf"}
+      ],
+      "push": {
+        "telegram": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_TOKEN_2"],
+        "bark": ["BARK_DEVICE_KEYS"]
+      }
+    },
+    "b.com": {
+      "send": [
+        {"provider": "smtp", "config": "SMTP_1"},
+        {"provider": "cf", "binding": "SEND_MAIL_1"}
+      ],
+      "push": {"bark": ["BARK_DEVICE_KEYS_2"]}
+    },
+    "*": { "send": [{"provider": "resend", "key": "RESEND_TOKEN_1"}] }
+  }
+}
+"""
+```
+
+- Channel types in `send`: `resend` (`key` names the secret, defaults to `RESEND_TOKEN`), `smtp` (`config` names the secret, defaults to `SMTP_CONFIG`), `cf` (`binding` names the env binding, defaults to `SEND_MAIL`, sent via that domain's Email Routing)
+- `key` / `config` hold **variable names**, not secrets: e.g. `RESEND_TOKEN_1` must be configured as a separate secret, `SMTP_1` must be a complete SMTP config JSON; channels whose credentials are missing are skipped
+- `*` is the default route used when no domain matches exactly
+- `push.telegram` / `push.bark` name the per-domain Telegram bot token variable list and Bark device group variable list; when absent they fall back to the default `TELEGRAM_BOT_TOKEN` / `BARK_DEVICE_KEYS` (comma-separated for multiple devices)
+- Without `SEND_ROUTES`, sending uses the legacy priority logic below unchanged
+
+## Send Channel Priority (without `SEND_ROUTES`)
 
 Each `/api/send_mail` request matches channels in order; **the first hit sends**:
 

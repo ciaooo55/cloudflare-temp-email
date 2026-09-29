@@ -20,8 +20,6 @@ export default {
             "MIN_ADDRESS_LEN": utils.getIntValue(c.env.MIN_ADDRESS_LEN, 1),
             "MAX_ADDRESS_LEN": utils.getIntValue(c.env.MAX_ADDRESS_LEN, 30),
 
-            "FORWARD_ADDRESS_LIST": utils.getStringArray(c.env.FORWARD_ADDRESS_LIST),
-            "SUBDOMAIN_FORWARD_ADDRESS_LIST": utils.getJsonObjectValue<SubdomainForwardAddressList[]>(c.env.SUBDOMAIN_FORWARD_ADDRESS_LIST),
             "DEFAULT_DOMAINS": utils.getDefaultDomains(c),
             "DOMAINS": utils.getDomains(c),
             "ENABLE_CREATE_ADDRESS_SUBDOMAIN_MATCH": utils.getBooleanValue(c.env.ENABLE_CREATE_ADDRESS_SUBDOMAIN_MATCH),
@@ -31,9 +29,6 @@ export default {
 
             "HAS_JWT_SECRET": !!utils.getStringValue(c.env.JWT_SECRET),
 
-            "ADMIN_USER_ROLE": utils.getStringValue(c.env.ADMIN_USER_ROLE),
-            "USER_DEFAULT_ROLE": utils.getStringValue(c.env.USER_DEFAULT_ROLE),
-            "USER_ROLES": utils.getUserRoles(c),
             "NO_LIMIT_SEND_ROLE": utils.getSplitStringListValue(c.env.NO_LIMIT_SEND_ROLE),
 
             "ADMIN_CONTACT": c.env.ADMIN_CONTACT,
@@ -41,15 +36,11 @@ export default {
             "DISABLE_ANONYMOUS_USER_CREATE_EMAIL": utils.getBooleanValue(c.env.DISABLE_ANONYMOUS_USER_CREATE_EMAIL),
             "ENABLE_USER_DELETE_EMAIL": utils.getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL),
             "ENABLE_MAIL_READ_STATUS": utils.getBooleanValue(c.env.ENABLE_MAIL_READ_STATUS),
-            "ENABLE_REDEEM_CODE": utils.getBooleanValue(c.env.ENABLE_REDEEM_CODE),
-            "REDEEM_CODE_URL": utils.getStringValue(c.env.REDEEM_CODE_URL),
-            "ENABLE_AUTO_REPLY": utils.getBooleanValue(c.env.ENABLE_AUTO_REPLY),
             "COPYRIGHT": c.env.COPYRIGHT,
             "ENABLE_WEBHOOK": utils.getBooleanValue(c.env.ENABLE_WEBHOOK),
             "S3_ENABLED": isS3Enabled(c),
             "VERSION": CONSTANTS.VERSION,
             "DISABLE_SHOW_GITHUB": utils.getBooleanValue(c.env.DISABLE_SHOW_GITHUB),
-            "DISABLE_SHOW_GITHUB_FOR_USER": utils.getBooleanValue(c.env.DISABLE_SHOW_GITHUB_FOR_USER),
             "DISABLE_ADMIN_PASSWORD_CHECK": utils.getBooleanValue(c.env.DISABLE_ADMIN_PASSWORD_CHECK),
             "ENABLE_CHECK_JUNK_MAIL": utils.getBooleanValue(c.env.ENABLE_CHECK_JUNK_MAIL),
             "JUNK_MAIL_CHECK_LIST": utils.getStringArray(c.env.JUNK_MAIL_CHECK_LIST),

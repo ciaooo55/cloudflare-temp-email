@@ -109,6 +109,6 @@
 11. If you want to use the scheduled task to clean emails in the admin page, you need to add a scheduled task in `Settings` -> `Trigger Events` -> `Cron Triggers`.
 
     > [!NOTE]
-    > Select `cron` expression, enter `0 0 * * *` (this expression means run daily at midnight), click `Add` to add. Please adjust this expression according to your needs.
+    > Select `cron` expression, enter `* * * * *` (trigger every minute), click `Add` to add. After the worker wakes up each minute, every scheduled task runs on its own interval configured in the admin "Maintenance" page "Scheduled Tasks" tab (auto delete old mails defaults to every 10 minutes deleting data older than 10 minutes; the auto cleanup batch defaults to checking once an hour). Changes take effect right after saving, no redeploy needed.
     >
     > Enabling auto cleanup in the admin page is not enough by itself. You must add a Cron Trigger so the Worker's `scheduled` event actually runs. When D1 reaches its size limit, writes fail with `D1_ERROR: Exceeded maximum DB size`, new mails cannot be stored, and the symptom is "mail suddenly stops arriving; deleting a few mails makes it work again".

@@ -58,12 +58,26 @@ export type CleanupSettings = {
     cleanAddressDays: number;
     enableInactiveAddressAutoCleanup: boolean | undefined;
     cleanInactiveAddressDays: number;
-    enableUnboundAddressAutoCleanup: boolean | undefined;
-    cleanUnboundAddressDays: number;
     enableEmptyAddressAutoCleanup: boolean | undefined;
     cleanEmptyAddressDays: number;
     customSqlCleanupList: CustomSqlCleanup[] | undefined;
+    // 定时任务调度（网页可配）：raw_mails 定时清理（替代原独立 dinshi worker）
+    enableRawMailsAutoCleanup: boolean | undefined;
+    // 删除多少分钟前的 raw_mails，默认 10（与原 dinshi 一致）
+    cleanRawMailsMinutes: number | undefined;
+    // raw_mails 清理每多少分钟执行一次，默认 3（与原 dinshi 一致）
+    rawMailsIntervalMinutes: number | undefined;
+    // 自动清理整批任务每多少分钟检查执行一次，默认 60
+    autoCleanupIntervalMinutes: number | undefined;
 }
+
+// 定时任务上次执行记录（存 KV）
+export type ScheduledTaskRunInfo = {
+    // 上次执行时间戳（毫秒）
+    at: number;
+    // 上次执行删除/影响行数（未知时为 undefined）
+    affected?: number;
+};
 
 export class GeoData {
 
@@ -93,34 +107,6 @@ export class GeoData {
         this.longitude = longitude;
         this.regionCode = regionCode;
         this.asOrganization = asOrganization;
-    }
-}
-
-export class UserSettings {
-
-    enable: boolean | undefined;
-    enableMailVerify: boolean | undefined;
-    verifyMailSender: string | undefined;
-    enableMailAllowList: boolean | undefined;
-    mailAllowList: string[] | undefined;
-    maxAddressCount: number;
-    enableEmailCheckRegex: boolean | undefined;
-    emailCheckRegex: string | undefined;
-
-    constructor(data: UserSettings | undefined | null) {
-        const {
-            enable, enableMailVerify, verifyMailSender,
-            enableMailAllowList, mailAllowList, maxAddressCount,
-            enableEmailCheckRegex, emailCheckRegex
-        } = data || {};
-        this.enable = enable;
-        this.enableMailVerify = enableMailVerify;
-        this.verifyMailSender = verifyMailSender;
-        this.enableMailAllowList = enableMailAllowList;
-        this.mailAllowList = mailAllowList;
-        this.maxAddressCount = (typeof maxAddressCount === "number" && maxAddressCount >= 0) ? maxAddressCount : 5;
-        this.enableEmailCheckRegex = enableEmailCheckRegex;
-        this.emailCheckRegex = emailCheckRegex;
     }
 }
 
@@ -189,7 +175,6 @@ export type UserOauth2Settings = {
 
 export type EmailRuleSettings = {
     blockReceiveUnknowAddressEmail: boolean;
-    emailForwardingList: SubdomainForwardAddressList[]
 }
 
 export type SendMailLimitConfig = {
@@ -198,13 +183,6 @@ export type SendMailLimitConfig = {
     dailyLimit: number | null;
     monthlyLimit: number | null;
 }
-
-export type RoleConfig = {
-    maxAddressCount?: number;
-    // future configs can be added here
-}
-
-export type RoleAddressConfig = Record<string, RoleConfig>;
 
 export type RawMailRow = {
     id: number;

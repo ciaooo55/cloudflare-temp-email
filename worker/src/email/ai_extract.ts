@@ -7,6 +7,13 @@
  */
 
 import { commonParseMail } from "../common";
+import {
+    AI_EXTRACT_PROMPT,
+    callCustomAiExtract as callCustomAiEndpoint,
+    resolveCustomAiConfig as resolveCustomAiEndpointConfig,
+    type CustomAiConfig,
+    type CustomAiWebSettings,
+} from "./custom_ai";
 import { extractCode, joinSubjectAndBody } from "./extract_code";
 import { ExtractMode, resolveExtractMode } from "./extract_mode";
 import { getBooleanValue, getJsonSetting } from "../utils";
@@ -16,78 +23,6 @@ import type { AiExtractSettings } from "../admin_api/ai_extract_settings";
 import type { ExtractResult } from "../models";
 
 // AI Prompt for email analysis
-const PROMPT = `
-You are an expert email analyzer. Your task is to first UNDERSTAND the email content, then EXTRACT the most relevant information based on priority.
-
-# Step 1: UNDERSTAND the Email
-Read the entire email carefully and determine its:
-- Overall purpose (verification, marketing, notification, etc.)
-- Key context and situation
-- What the sender wants the recipient to do
-- Any security-sensitive content
-
-# Step 2: EXTRACT Based on Priority
-After understanding, extract the most important item according to this priority order:
-
-**Priority 1: auth_code (Authentication Code)**
-- Numeric or alphanumeric codes used for login verification
-- Keywords: verification code, OTP, security code, confirmation code, auth code, 验证码, 校验码
-- Extract ONLY the code itself (remove spaces, hyphens, etc.)
-- Example: "123456" from "Your verification code is 123-456"
-
-**Priority 2: auth_link (Authentication Link)**
-- Links used for login, email verification, account activation, or password reset
-- Keywords: verify, confirm, activate, login, signin, signup, reset, 验证, 激活, 登录
-- Must be a real, complete URL (http:// or https://)
-- Never fabricate or infer links that don't exist in the content
-- Example: "https://example.com/verify?token=abc123"
-
-**Priority 3: service_link (Service Link)**
-- Links related to specific services or actions
-- Keywords: commit, pull request, issue, repository, deployment, GitHub, GitLab, code review
-- Real URLs for technical or service-related notifications
-- Example: GitHub commit link, deployment notification link
-
-**Priority 4: subscription_link (Subscription Management Link)**
-- Links for managing email subscriptions, typically unsubscribe
-- Keywords: unsubscribe, opt-out, manage preferences, 退订, 取消订阅
-- Usually found at the bottom of marketing emails
-- Real URLs for subscription control
-
-**Priority 5: other_link (Other Valuable Link)**
-- Any other link that might be useful or important
-- Only extract if no higher-priority items exist
-- Must be a real, complete URL from the content
-
-**Priority 6: none**
-- No relevant codes, links, or valuable content found
-- Email appears to be plain text or irrelevant
-
-# Special Case: Markdown Link Format
-If the extracted content is in markdown link format [text](url):
-
-- Extract the text inside the brackets as result_text
-- When brackets are empty, analyze the email context and language
-- Generate a concise, meaningful description (2-5 words) for result_text
-- Match the email's language (Chinese → Chinese description, English → English)
-
-# Critical Rules
-1. **Understand First**: Always analyze the email's purpose before extracting
-2. **Single Selection**: Choose ONLY ONE type based on the highest priority match
-3. **Real Data Only**: Never invent, guess, or fabricate content
-4. **Complete URLs**: Links must be full, valid URLs as they appear in the email
-5. **No Domain Modification**: Never modify, rewrite, or substitute URL domains. If the exact URL domain is uncertain, return none
-6. **Clean Extraction**: Return only the raw extracted content, no extra text
-
-# Output Format (JSON only)
-{
-  "type": "auth_code|auth_link|service_link|subscription_link|other_link|none",
-  "result": "the extracted code/link OR empty string",
-  "result_text": "the display text from markdown-format links."
-}
-
-IMPORTANT: Return ONLY the JSON, no explanations or additional text.
-`;
 
 /**
  * Extract important information from email content using Cloudflare Workers AI
@@ -105,7 +40,7 @@ async function extractWithCloudflareAI(
 
     const result = await env.AI.run(modelName as keyof AiModels, {
         messages: [
-            { role: 'system', content: PROMPT },
+            { role: 'system', content: AI_EXTRACT_PROMPT },
             { role: 'user', content },
         ],
         response_format: {
@@ -139,6 +74,34 @@ async function extractWithCloudflareAI(
 
     throw new Error('Unexpected response format from Cloudflare AI');
 }
+
+/**
+ * Parse JSON defensively: some endpoints wrap the JSON in prose or code fences.
+ */
+function parseJsonLenient(text: string): {
+    type?: string; result?: string; result_text?: string
+} | null {
+    try {
+        return JSON.parse(text);
+    } catch {
+        // fall through
+    }
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+        try {
+            return JSON.parse(match[0]);
+        } catch {
+            // fall through
+        }
+    }
+    return null;
+}
+export {
+    callCustomAiEndpoint as callCustomAiExtract,
+    resolveCustomAiEndpointConfig as resolveCustomAiConfig,
+    type CustomAiConfig,
+    type CustomAiWebSettings,
+};
 
 /**
  * Persist an extraction result to the raw_mails metadata column.
@@ -244,10 +207,19 @@ function isAddressInAiAllowlist(settings: AiExtractSettings | null | undefined, 
 /**
  * Main extraction function
  * Checks if extraction is enabled, processes the email content, and saves to database.
+ * The web admin setting takes precedence over `AI_EXTRACT_MODE`; an explicitly
+ * configured web mode also acts as the enable switch (otherwise the
+ * `ENABLE_AI_EMAIL_EXTRACT` master switch applies).
  * `AI_EXTRACT_MODE` selects the preferred extractor:
  * - `local` (default): built-in rules, verification codes only, content never sent to AI
  * - `ai`: Cloudflare Workers AI, verification codes and links; if the address is not
  *   in the AI allowlist, only the AI call is skipped and local code extraction still runs
+ * - `custom`: OpenAI-compatible endpoint (`AI_EXTRACT_API_URL` / `AI_EXTRACT_API_KEY` /
+ *   `AI_EXTRACT_MODEL`); same allowlist rule as `ai`
+ *
+ * For `ai` and `custom`: the AI result wins when it extracts something usable;
+ * when the AI call fails (network error, HTTP 402/403/429/5xx, invalid response)
+ * or returns nothing usable, extraction automatically falls back to local rules.
  *
  * @param parsedEmailContext - The parsed email context
  * @param env - Cloudflare Workers environment bindings
@@ -262,20 +234,20 @@ export async function extractEmailInfo(
     address: string
 ): Promise<ExtractResult | null> {
     try {
-        // Check if extraction is enabled via environment variable
-        if (!getBooleanValue(env.ENABLE_AI_EMAIL_EXTRACT)) {
-            return null;
-        }
-
-        const mode = resolveExtractMode(env.AI_EXTRACT_MODE);
-        if (!mode) {
-            console.error(`Email extraction skipped: unsupported AI_EXTRACT_MODE "${env.AI_EXTRACT_MODE}", expected "local" or "ai"`);
-            return null;
-        }
         const aiSettings = await getJsonSetting<AiExtractSettings>(
             { env: env } as Context<HonoCustomType>,
             CONSTANTS.AI_EXTRACT_SETTINGS_KEY
         );
+        const webMode = typeof aiSettings?.mode === "string" ? (aiSettings.mode || "").trim() : "";
+        // 网页显式设置了识别模式即视为开启；未设置（跟随环境变量）时由总开关决定
+        if (!webMode && !getBooleanValue(env.ENABLE_AI_EMAIL_EXTRACT)) {
+            return null;
+        }
+        const mode = resolveExtractMode(webMode || env.AI_EXTRACT_MODE);
+        if (!mode) {
+            console.error(`Email extraction skipped: unsupported AI_EXTRACT_MODE "${webMode || env.AI_EXTRACT_MODE}", expected "local", "ai" or "custom"`);
+            return null;
+        }
         const isAiAllowed = isAddressInAiAllowlist(aiSettings, address);
 
         // Parse email to get content (shared by both modes)
@@ -300,13 +272,13 @@ export async function extractEmailInfo(
         }
 
         if (!isAiAllowed) {
-            console.log(`Workers AI extraction skipped for ${address}: not in AI allowlist; trying local code extraction`);
+            console.log(`AI extraction skipped for ${address}: not in AI allowlist; trying local code extraction`);
             return await runLocalExtract();
         }
 
-        if (!env.AI) {
-            console.error('Email extraction skipped: AI_EXTRACT_MODE is "ai" but the Workers AI binding "AI" is not configured');
-            return null;
+        if (mode === ExtractMode.Ai && !env.AI) {
+            console.warn('AI_EXTRACT_MODE is "ai" but the Workers AI binding "AI" is not configured; falling back to local rules');
+            return await runLocalExtract();
         }
 
         if (!emailContent) {
@@ -318,14 +290,23 @@ export async function extractEmailInfo(
             ? emailContent.substring(0, 4000) + '...[truncated]'
             : emailContent;
 
-        const result = await extractWithCloudflareAI(truncatedContent, env);
-
-        // If extraction found something useful, save it to database
-        if (result.type !== 'none' && result.result) {
-            await saveExtractMetadata(env, message_id, result);
-            console.log(`AI extraction completed for ${message_id}: ${result.type}`);
+        // AI 优先：AI 能识别出结果就用 AI 的，不再跑正则；
+        // AI 失败（网络错误、402/403/429 等 API 不可用）或返回不可用 → 兜底跑本地正则
+        try {
+            const raw = mode === ExtractMode.Custom
+                ? await callCustomAiEndpoint(truncatedContent, resolveCustomAiEndpointConfig(env, aiSettings), AI_EXTRACT_PROMPT)
+                : await extractWithCloudflareAI(truncatedContent, env);
+            const result = raw as ExtractResult;
+            if (result && result.type !== 'none' && result.result) {
+                await saveExtractMetadata(env, message_id, result);
+                console.log(`AI extraction completed for ${message_id}: ${result.type}`);
+                return result;
+            }
+            console.log(`AI extraction returned nothing usable for ${message_id}, falling back to local rules`);
+        } catch (e) {
+            console.warn(`AI extraction failed for ${message_id}, falling back to local rules:`, e);
         }
-        return result;
+        return await runLocalExtract();
     } catch (e) {
         console.error('AI email extraction error:', e);
         return null;

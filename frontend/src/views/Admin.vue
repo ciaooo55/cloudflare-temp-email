@@ -14,10 +14,6 @@ import SendBox from './admin/SendBox.vue';
 import Account from './admin/Account.vue';
 import CreateAccount from './admin/CreateAccount.vue';
 import AccountSettings from './admin/AccountSettings.vue';
-import UserManagement from './admin/UserManagement.vue';
-import UserSettings from './admin/UserSettings.vue';
-import UserOauth2Settings from './admin/UserOauth2Settings.vue';
-import RoleAddressConfig from './admin/RoleAddressConfig.vue';
 import Mails from './admin/Mails.vue';
 import MailsUnknow from './admin/MailsUnknow.vue';
 import About from './common/About.vue';
@@ -25,16 +21,17 @@ import Maintenance from './admin/Maintenance.vue';
 import DatabaseManager from './admin/DatabaseManager.vue';
 import Appearance from './common/Appearance.vue';
 import Telegram from './admin/Telegram.vue';
+import Bark from './admin/Bark.vue';
+import Snapshot from './admin/Snapshot.vue';
 import Webhook from './admin/Webhook.vue';
 import MailWebhook from './admin/MailWebhook.vue';
 import WorkerConfig from './admin/WorkerConfig.vue';
 import IpBlacklistSettings from './admin/IpBlacklistSettings.vue';
 import AiExtractSettings from './admin/AiExtractSettings.vue';
-import RedeemCodes from './admin/RedeemCodes.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
-  globalTabplacement, showAdminPage, userSettings,
+  globalTabplacement, showAdminPage,
   openSettings
 } = useGlobalState()
 const message = useMessage()
@@ -90,8 +87,6 @@ const isAdminPasswordLogin = computed(() => !!adminAuth.value)
 const currentLoginMethod = computed(() => {
   if (adminAuth.value) {
     return t('loginViaPassword');
-  } else if (userSettings.value.is_admin) {
-    return t('loginViaUserAdmin');
   } else if (openSettings.value.disableAdminPasswordCheck) {
     return t('loginViaDisabledCheck');
   }
@@ -101,13 +96,11 @@ const currentLoginMethod = computed(() => {
 onMounted(async () => {
   // make sure openSettings is fetched for turnstile check
   if (!openSettings.value.fetched) await api.getOpenSettings(message);
-  // make sure user_id is fetched
-  if (!userSettings.value.user_id) await api.getUserSettings(message);
 })
 </script>
 
 <template>
-  <div v-if="openSettings.fetched && userSettings.fetched">
+  <div v-if="openSettings.fetched">
     <n-modal v-model:show="showAdminPasswordModal" :closable="false" :closeOnEsc="false" :maskClosable="false"
       preset="dialog" :title="t('accessHeader')">
       <p>{{ t('accessTip') }}</p>
@@ -127,9 +120,6 @@ onMounted(async () => {
           </n-tab-pane>
           <n-tab-pane name="account_settings" :tab="t('mailbox_settings')">
             <AccountSettings />
-          </n-tab-pane>
-          <n-tab-pane name="user_settings" :tab="t('user_settings')">
-            <UserSettings />
           </n-tab-pane>
           <n-tab-pane name="workerconfig" :tab="t('workerconfig')">
             <WorkerConfig />
@@ -161,22 +151,6 @@ onMounted(async () => {
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
-      <n-tab-pane name="user" :tab="t('user')">
-        <n-tabs key="user-tabs" type="bar" justify-content="center" animated>
-          <n-tab-pane name="user_management" :tab="t('user_management')">
-            <UserManagement />
-          </n-tab-pane>
-          <n-tab-pane name="user_settings" :tab="t('user_settings')">
-            <UserSettings />
-          </n-tab-pane>
-          <n-tab-pane name="userOauth2Settings" :tab="t('userOauth2Settings')">
-            <UserOauth2Settings />
-          </n-tab-pane>
-          <n-tab-pane name="roleAddressConfig" :tab="t('roleAddressConfig')">
-            <RoleAddressConfig />
-          </n-tab-pane>
-        </n-tabs>
-      </n-tab-pane>
       <n-tab-pane name="mails" :tab="t('mails')">
         <n-tabs key="mails-tabs" type="bar" justify-content="center" animated>
           <n-tab-pane name="mails" :tab="t('mails')">
@@ -199,11 +173,14 @@ onMounted(async () => {
       <n-tab-pane name="telegram" :tab="t('telegram')">
         <Telegram />
       </n-tab-pane>
+      <n-tab-pane name="bark" :tab="t('bark')">
+        <Bark />
+      </n-tab-pane>
+      <n-tab-pane name="snapshot" :tab="t('snapshot')">
+        <Snapshot />
+      </n-tab-pane>
       <n-tab-pane name="statistics" :tab="t('statistics')">
         <Statistics />
-      </n-tab-pane>
-      <n-tab-pane v-if="openSettings.enableRedeemCode" name="redeemCodes" :tab="t('redeemCodes')">
-        <RedeemCodes />
       </n-tab-pane>
       <n-tab-pane name="maintenance" :tab="t('maintenance')">
         <n-tabs key="maintenance-tabs" type="bar" justify-content="center" animated>

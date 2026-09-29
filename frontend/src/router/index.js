@@ -1,7 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Index from '../views/Index.vue'
-import User from '../views/User.vue'
-import UserOauth2Callback from '../views/user/UserOauth2Callback.vue'
 import i18n from '../i18n'
 import { useGlobalState } from '../store'
 import {
@@ -20,22 +17,7 @@ const router = createRouter({
         {
             path: '/',
             alias: '/:lang/',
-            component: Index
-        },
-        {
-            path: '/user',
-            alias: '/:lang/user',
-            component: User
-        },
-        {
-            path: '/redeem',
-            alias: '/:lang/redeem',
-            component: () => import('../views/Redeem.vue')
-        },
-        {
-            path: '/user/oauth2/callback',
-            alias: '/:lang/user/oauth2/callback',
-            component: UserOauth2Callback
+            redirect: '/admin'
         },
         {
             path: '/admin',
