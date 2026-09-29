@@ -623,8 +623,8 @@ export async function sendMailNotifications(
         const fullMail = body === undefined ? mail : header + body + footer;
         // 若外层已有快照链接（绑定的固定链接），直接复用，不再新建
         snapshotPromise ??= snapshotUrl ? Promise.resolve(snapshotUrl) : createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
-        const snapshotUrl = await snapshotPromise;
-        if (snapshotUrl) {
+        const newSnapshotUrl = await snapshotPromise;
+        if (newSnapshotUrl) {
             const info = {
                 chinese: isGlobalPush,
                 subject: parsedEmailContext.parsedEmail?.subject || "",
@@ -637,7 +637,7 @@ export async function sendMailNotifications(
                     parsedEmailContext.parsedEmail?.html || "",
                     parsedEmailContext.parsedEmail?.text || ""
                 ),
-                snapshotUrl,
+                snapshotUrl: newSnapshotUrl,
             };
             const compact = buildCompactMailMessage(info);
             await bot.telegram.sendMessage(targetUserId, compact.text, {

@@ -169,17 +169,16 @@ const batchBind = async () => {
     }
 }
 
-// 更换链接：删除旧绑定，创建新绑定
+// 更换链接：直接重新创建绑定，后端会自动让旧链接失效（原子操作）
 const replaceBinding = async (b: Binding) => {
     if (!confirm('确定要更换链接吗？旧链接将立即失效。')) return;
     try {
-        await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' });
         const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
             method: 'POST',
             body: JSON.stringify({ address: b.address, durationHours: newDuration.value }),
         });
         if (res.binding) {
-            message.success(t('successTip'));
+            message.success('链接已更换，旧链接已失效');
             await fetchAll();
         } else {
             message.error(res.error || "error");
