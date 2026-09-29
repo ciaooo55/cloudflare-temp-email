@@ -68,7 +68,10 @@ api.post("/telegram/webhook/:botId", async (c) => {
         setHeader: (name: string, value: string) => c.header(name, value),
         end: (data: any) => body = data,
     });
-    const reqJson = await c.req.json();
+    const reqJson = await c.req.json().catch(() => null);
+    if (!reqJson) {
+        return c.text("invalid json", 400);
+    }
     await tgBot.handleUpdate(reqJson, res as ServerResponse);
     return c.body(body);
 });
@@ -91,7 +94,10 @@ api.post("/telegram/webhook", async (c) => {
         setHeader: (name: string, value: string) => c.header(name, value),
         end: (data: any) => body = data,
     });
-    const reqJson = await c.req.json();
+    const reqJson = await c.req.json().catch(() => null);
+    if (!reqJson) {
+        return c.text("invalid json", 400);
+    }
     await bot.handleUpdate(reqJson, res as ServerResponse);
     return c.body(body);
 });

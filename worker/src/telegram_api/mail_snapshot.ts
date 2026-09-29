@@ -86,14 +86,34 @@ function escapeHtml(value: string): string {
     return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Worker 环境没有 DOM，做正则消毒。快照链接 token 不可猜，但仍需纵深防御。
+function sanitizeSnapshotHtml(html: string): string {
+    let content = html;
+    // 1. 删除完整危险块（含内容）
+    content = content.replace(/<(script|style|iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "");
+    // 2. 删除残留的危险开始标签（未闭合/自闭合）；svg/math 是常见 XSS 向量
+    //    meta 一并处理，防止 meta refresh 钓鱼跳转（CSP 拦不住 meta refresh）
+    content = content.replace(/<(script|style|iframe|object|embed|form|svg|math|meta|link|base)\b[^>]*>?/gi, "");
+    // 3. 删除事件属性，兼容 <svg/onload=...> 这类斜杠分隔写法
+    content = content.replace(/[\s\/]on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+    // 4. 中和 javascript:/vbscript:/data:text/html（含数字实体混淆）
+    const deobfuscate = (s: string) => s
+        .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+        .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    content = content.replace(/[\s\/](href|src)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, (m, attr, val) => {
+        const quote = (val[0] === '"' || val[0] === "'") ? val[0] : "";
+        const inner = quote ? val.slice(1, -1) : val;
+        const norm = deobfuscate(inner).replace(/[\s\x00-\x1f]+/g, "").toLowerCase();
+        if (norm.startsWith("javascript:") || norm.startsWith("vbscript:") || norm.startsWith("data:text/html")) {
+            return ` ${attr}="#"`;
+        }
+        return m;
+    });
+    return content;
+}
+
 export function buildSnapshotHtml(html: string, text: string, subject: string): string {
-    let content = String(html || "")
-        .replace(/<(script|style|iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
-        // Security: strip <meta> tags to prevent meta refresh phishing redirects
-        // (CSP does not block meta refresh, and the snapshot URL is a trusted domain)
-        .replace(/<meta\b[^>]*>/gi, "")
-        .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-        .replace(/\s(?:href|src)\s*=\s*(?:"\s*(?:javascript|vbscript):[^"]*"|'\s*(?:javascript|vbscript):[^']*'|\s*(?:javascript|vbscript):[^\s>]+)/gi, " href=\"#\"");
+    let content = sanitizeSnapshotHtml(String(html || ""));
     if (!content) {
         content = `<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit;margin:0">${escapeHtml(String(text || ""))}</pre>`;
     }
