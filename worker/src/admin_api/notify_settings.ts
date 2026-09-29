@@ -61,10 +61,10 @@ async function listTelegramBots(c: Context<HonoCustomType>): Promise<Response> {
         id: b.id, name: b.name, enabled: b.enabled,
         createdAt: b.createdAt, maskedToken: maskTelegramToken(b.token || ""),
     }));
-    // 若 KV 里没有配置，但环境变量里有，则显示环境变量的（脱敏）
+    // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏）
     if (!result.length && c.env.TELEGRAM_BOT_TOKEN) {
         result.push({
-            id: "env", name: "环境变量配置", enabled: true,
+            id: "env", name: "系统默认推送", enabled: true,
             createdAt: Date.now(), maskedToken: maskTelegramToken(c.env.TELEGRAM_BOT_TOKEN),
         });
     }
@@ -113,7 +113,16 @@ async function deleteTelegramBot(c: Context<HonoCustomType>): Promise<Response> 
 
 async function findBot(c: Context<HonoCustomType>, id: string): Promise<TelegramBotEntry | null> {
     const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
-    return bots.find(b => b.id === id) || null;
+    const found = bots.find(b => b.id === id);
+    if (found) return found;
+    // 系统默认配置（环境变量）
+    if (id === "env" && c.env.TELEGRAM_BOT_TOKEN) {
+        return {
+            id: "env", name: "系统默认推送", enabled: true,
+            token: c.env.TELEGRAM_BOT_TOKEN, createdAt: Date.now(),
+        };
+    }
+    return null;
 }
 
 async function testTelegramBot(c: Context<HonoCustomType>): Promise<Response> {
@@ -176,10 +185,10 @@ async function getBark(c: Context<HonoCustomType>): Promise<Response> {
     const devices = (settings?.devices || []).map(d => ({
         id: d.id, name: d.name, enabled: d.enabled, maskedKeys: maskBarkKeys(d.keys || ""),
     }));
-    // 若 KV 里没有配置，但环境变量里有，则显示环境变量的（脱敏）
+    // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏）
     if (!devices.length && c.env.BARK_DEVICE_KEYS) {
         devices.push({
-            id: "env", name: "环境变量配置", enabled: true,
+            id: "env", name: "系统默认推送", enabled: true,
             maskedKeys: maskBarkKeys(c.env.BARK_DEVICE_KEYS),
         });
     }
@@ -209,6 +218,13 @@ async function testBark(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await getJsonSetting<BarkSettings>(c, CONSTANTS.BARK_SETTINGS_KEY);
     const pushUrl = settings?.pushUrl?.trim() || DEFAULT_BARK_PUSH_URL;
     let devices = (settings?.devices || []).filter(d => d.enabled && d.keys);
+    // 系统默认配置（环境变量）
+    if (c.env.BARK_DEVICE_KEYS) {
+        devices.push({
+            id: "env", name: "系统默认推送", enabled: true,
+            keys: c.env.BARK_DEVICE_KEYS,
+        });
+    }
     if (deviceId) {
         const one = devices.find(d => d.id === deviceId);
         if (!one) return c.json({ ok: false, error: "device not found" }, 404);
@@ -275,7 +291,7 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
     // 地址必须存在
     if (c.env.DB) {
-        const exists = await c.env.DB.prepare(`SELECT id FROM address WHERE address = ?`).bind(addr).first("id").catch(() => null);
+        const exists = await c.env.DB.prepare(`SELECT id FROM address WHERE name = ?`).bind(addr).first("id").catch(() => null);
         if (!exists) return c.json({ error: "该邮箱地址不存在，请先创建" }, 400);
     }
     const binding = await createSnapshotBindingRecord(c, addr, hours, origin);

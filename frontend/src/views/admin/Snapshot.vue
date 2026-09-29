@@ -16,31 +16,22 @@ type Binding = {
     createdAt: number;
 }
 
-// 用户的 23 个域名（11账号8个 / 55账号12个 / 163账号3个）
+const ttlHours = ref(24)
+const bindings = ref<Binding[]>([])
+const newAddress = ref('')
+const newDuration = ref(168)
+const batchInput = ref('')
+const batchBinding = ref(false)
+
+// 允许的域名列表
 const ALLOWED_DOMAINS = [
-    // 11账号
     'bbb99.us.ci', 'ca555.de5.net', 'ciaoo.de5.net', 'free555.de5.net',
     'free55.de5.net', 'free5.us.ci', 'kkk88.ccwu.cc', 'yyy22.de5.net',
-    // 55账号
     '1111122222.dpdns.org', 'ciaooo11.ccwu.cc', 'ciaooo22.ccwu.cc', 'ciaooo33.us.ci',
     'ciaooo55.ccwu.cc', 'ciaooo55.de5.net', 'ciaooo55.dpdns.org', 'ciaooo55.us.ci',
     'ciaooo66.ccwu.cc', 'ciaooo77.us.ci', 'ciaooo88.ccwu.cc', 'looo.cloud',
-    // 163账号
-    'ciaooo66.dpdns.org', 'ciaooo77.dpdns.org', 'ciaooo77.us.ci',
+    'ciaooo66.dpdns.org', 'ciaooo77.dpdns.org',
 ];
-
-const ttlHours = ref(24)
-const bindings = ref<Binding[]>([])
-const batchInput = ref('')
-const batchDuration = ref(168)
-const batchBinding = ref(false)
-
-type ValidateResult = {
-    address: string;
-    valid: boolean;
-    reason: string;
-};
-const validateResults = ref<ValidateResult[]>([])
 
 const fetchAll = async () => {
     try {
@@ -73,77 +64,27 @@ const remainText = (ts: number) => {
     return t('remainDays', { d: Math.floor(h / 24) })
 }
 
-// 邮箱格式校验
-const isValidEmailFormat = (email: string): boolean => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
-
-// 检测每行邮箱：格式 + 域名是否在列表中 + 是否已绑定
-const validateBatch = () => {
-    const lines = batchInput.value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
-    const boundSet = new Set(bindings.value.map(b => b.address.toLowerCase()));
-    const seen = new Set<string>();
-    validateResults.value = lines.map(address => {
-        if (seen.has(address)) {
-            return { address, valid: false, reason: '重复' };
-        }
-        seen.add(address);
-        if (!isValidEmailFormat(address)) {
-            return { address, valid: false, reason: t('invalidFormat') };
-        }
-        const domain = address.split('@')[1];
-        if (!ALLOWED_DOMAINS.includes(domain)) {
-            return { address, valid: false, reason: t('invalidDomain') };
-        }
-        if (boundSet.has(address)) {
-            return { address, valid: false, reason: t('alreadyBound') };
-        }
-        return { address, valid: true, reason: '' };
-    });
-};
-
-const validAddresses = computed(() => validateResults.value.filter(r => r.valid).map(r => r.address));
-const invalidResults = computed(() => validateResults.value.filter(r => !r.valid));
-
-// 批量绑定
-const batchBind = async () => {
-    validateBatch();
-    if (!validAddresses.value.length) {
-        message.warning('没有有效的邮箱地址');
+const addBinding = async () => {
+    if (!newAddress.value.trim()) {
+        message.warning(t('addressPlaceholder'));
         return;
     }
-    batchBinding.value = true;
-    let success = 0, failed = 0;
-    const failedList: string[] = [];
-    // 并行绑定，每批 5 个
-    const addrs = validAddresses.value;
-    for (let i = 0; i < addrs.length; i += 5) {
-        const chunk = addrs.slice(i, i + 5);
-        const results = await Promise.allSettled(chunk.map(addr =>
-            api.fetch(`/admin/notify/snapshot_bindings`, {
-                method: 'POST',
-                body: JSON.stringify({ address: addr, durationHours: batchDuration.value }),
-            })
-        ));
-        results.forEach((r, idx) => {
-            if (r.status === 'fulfilled' && (r.value?.binding || r.value?.success)) {
-                success++;
-            } else {
-                failed++;
-                failedList.push(chunk[idx]);
-            }
-        });
+    try {
+        const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
+            method: 'POST',
+            body: JSON.stringify({ address: newAddress.value, durationHours: newDuration.value }),
+        })
+        if (res.binding) {
+            message.success(t('successTip'))
+            newAddress.value = '';
+            await fetchAll();
+        } else {
+            message.error(res.error || "error");
+        }
+    } catch (error) {
+        message.error((error as Error).message || "error");
     }
-    batchBinding.value = false;
-    await fetchAll();
-    validateResults.value = [];
-    batchInput.value = '';
-    if (failed > 0) {
-        message.warning(`绑定完成：成功 ${success} 个，失败 ${failed} 个（${failedList.slice(0, 3).join(', ')}${failedList.length > 3 ? '...' : ''}）`);
-    } else {
-        message.success(`批量绑定成功：${success} 个`);
-    }
-};
+}
 
 const invalidate = async (b: Binding) => {
     if (!confirm(t('confirmInvalidate'))) return;
@@ -154,27 +95,7 @@ const invalidate = async (b: Binding) => {
     } catch (error) {
         message.error((error as Error).message || "error");
     }
-};
-
-// 更换链接：先删除再重新绑定
-const replaceLink = async (b: Binding) => {
-    if (!confirm(t('confirmReplace'))) return;
-    try {
-        await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' });
-        const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
-            method: 'POST',
-            body: JSON.stringify({ address: b.address, durationHours: batchDuration.value }),
-        });
-        if (res.binding || res.success) {
-            message.success(t('successTip'));
-            await fetchAll();
-        } else {
-            message.error(res.error || "error");
-        }
-    } catch (error) {
-        message.error((error as Error).message || "error");
-    }
-};
+}
 
 const copyUrl = async (url: string) => {
     try {
@@ -183,7 +104,79 @@ const copyUrl = async (url: string) => {
     } catch {
         message.warning(url)
     }
-};
+}
+
+// 批量绑定：每行一个邮箱
+const batchBind = async () => {
+    const lines = batchInput.value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!lines.length) {
+        message.warning('请先输入邮箱地址，每行一个');
+        return;
+    }
+    // 去重
+    const unique = [...new Set(lines)];
+    // 简单验证格式和域名
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    const boundSet = new Set(bindings.value.map(b => b.address.toLowerCase()));
+    for (const addr of unique) {
+        if (!emailRe.test(addr)) {
+            invalid.push(`${addr} (格式错误)`);
+        } else if (!ALLOWED_DOMAINS.includes(addr.split('@')[1])) {
+            invalid.push(`${addr} (域名不在列表中)`);
+        } else if (boundSet.has(addr)) {
+            invalid.push(`${addr} (已绑定)`);
+        } else {
+            valid.push(addr);
+        }
+    }
+    if (invalid.length) {
+        message.warning('以下地址跳过：\n' + invalid.join('\n'));
+    }
+    if (!valid.length) return;
+    batchBinding.value = true;
+    let success = 0;
+    let failed = 0;
+    for (const addr of valid) {
+        try {
+            const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
+                method: 'POST',
+                body: JSON.stringify({ address: addr, durationHours: newDuration.value }),
+            });
+            if (res.binding) success++;
+            else failed++;
+        } catch {
+            failed++;
+        }
+    }
+    batchBinding.value = false;
+    message.success(`批量绑定完成：成功 ${success} 个，失败 ${failed} 个`);
+    if (success > 0) {
+        batchInput.value = '';
+        await fetchAll();
+    }
+}
+
+// 更换链接：删除旧绑定，创建新绑定
+const replaceBinding = async (b: Binding) => {
+    if (!confirm('确定要更换链接吗？旧链接将立即失效。')) return;
+    try {
+        await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' });
+        const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
+            method: 'POST',
+            body: JSON.stringify({ address: b.address, durationHours: newDuration.value }),
+        });
+        if (res.binding) {
+            message.success(t('successTip'));
+            await fetchAll();
+        } else {
+            message.error(res.error || "error");
+        }
+    } catch (error) {
+        message.error((error as Error).message || "error");
+    }
+}
 
 const quickDurations = computed(() => [
     { label: `24 ${t('hours')}`, value: 24 },
@@ -233,7 +226,7 @@ onMounted(fetchAll)
                         <td>
                             <n-flex vertical>
                                 <n-button size="small" @click="copyUrl(b.url)">{{ t('copy') }}</n-button>
-                                <n-button size="small" @click="replaceLink(b)">{{ t('replaceLink') }}</n-button>
+                                <n-button size="small" @click="replaceBinding(b)">更换链接</n-button>
                                 <n-button size="small" type="error" ghost @click="invalidate(b)">{{ t('invalidate') }}</n-button>
                             </n-flex>
                         </td>
@@ -243,24 +236,24 @@ onMounted(fetchAll)
                     </tr>
                 </tbody>
             </n-table>
-
-            <n-divider>{{ t('batchTitle') }}</n-divider>
-            <n-input v-model:value="batchInput" type="textarea" :placeholder="t('batchPlaceholder')"
-                :autosize="{ minRows: 4, maxRows: 10 }" style="margin-bottom: 8px;" />
-            <n-flex align="center" style="margin-bottom: 8px;">
-                <n-select v-model:value="batchDuration" :options="quickDurations" style="width: 160px;" />
-                <n-button @click="validateBatch">{{ t('validate') }}</n-button>
-                <n-button type="primary" :loading="batchBinding" @click="batchBind">{{ t('batchBind') }}</n-button>
-                <n-text depth="3" style="font-size: 12px;">{{ t('durationTip') }}</n-text>
+            <n-flex style="margin-top: 12px;" align="center">
+                <n-input v-model:value="newAddress" :placeholder="t('addressPlaceholder')" style="width: 260px;" />
+                <n-select v-model:value="newDuration" :options="quickDurations" style="width: 160px;" />
+                <n-input-number v-model:value="newDuration" :min="1" :max="8760" :placeholder="t('durationPlaceholder')"
+                    style="width: 140px;" />
+                <n-button type="primary" @click="addBinding">{{ t('bind') }}</n-button>
             </n-flex>
-            <div v-if="validateResults.length" style="margin-top: 8px;">
-                <n-text style="font-size: 12px;" type="success">{{ t('validCount', { n: validAddresses.length }) }}</n-text>
-                <div v-if="invalidResults.length" style="margin-top: 4px;">
-                    <div v-for="r in invalidResults" :key="r.address" style="font-size: 12px; color: #d03050;">
-                        {{ r.address }} — {{ r.reason }}
-                    </div>
-                </div>
-            </div>
+            <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
+
+            <n-divider>批量绑定</n-divider>
+            <n-text depth="3" style="font-size: 12px;">每行输入一个邮箱地址，系统会自动检查格式、域名和是否已绑定。</n-text>
+            <n-input v-model:value="batchInput" type="textarea" :rows="5"
+                placeholder="例如：&#10;test1@ciaooo55.us.ci&#10;test2@ciaooo55.us.ci"
+                style="margin-top: 8px; font-family: monospace;" />
+            <n-flex style="margin-top: 8px;" align="center">
+                <n-button type="primary" :loading="batchBinding" @click="batchBind">批量绑定</n-button>
+                <n-button @click="batchInput = ''">清空</n-button>
+            </n-flex>
         </n-card>
     </div>
 </template>
