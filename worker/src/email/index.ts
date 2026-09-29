@@ -100,6 +100,16 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     // AI email content extraction
     const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);
 
+    // Parse email content BEFORE notifications (snapshot/TG/Bark need parsedEmail)
+    try {
+        const parsed = await commonParseMail(parsedEmailContext);
+        if (parsed) {
+            parsedEmailContext.parsedEmail = parsed;
+        }
+    } catch (error) {
+        console.error("parse email for notifications error", error);
+    }
+
     // bound snapshot: overwrite the fixed snapshot url with the newest mail
     try {
         await refreshBoundSnapshot(

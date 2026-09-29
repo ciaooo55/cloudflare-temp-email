@@ -496,7 +496,7 @@ async function sendBarkPush(env: Bindings, mail: {
         const code = codeInfo.code;
         const params = new URLSearchParams({
             device_keys: keys.join(","),
-            title: code ? `🔑 ${code}` : "📧 新邮件",
+            title: code ? `🔑 ${code}` : "📩 新邮件",
             subtitle: mail.sender || "未知",
             body: `主题：${mail.subject || "(无主题)"}\n收件：${mail.to}${code && mail.snapshotUrl ? `\n${mail.snapshotUrl}` : ""}`,
             level: "timeSensitive", group: "temp-mail", isArchive: "1",
