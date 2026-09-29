@@ -766,9 +766,43 @@ export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<strin
     return getDefaultDomains(c);
 }
 
+// Security: validate webhook URLs to prevent SSRF.
+// Only allows http/https to public addresses; blocks private/loopback/link-local IPs.
+export function isValidWebhookUrl(url: string): boolean {
+    if (!url || typeof url !== "string") return false;
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    // block localhost variants
+    if (host === "localhost" || host === "localhost.localdomain") return false;
+    // block IP literals in private/loopback/link-local ranges
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+        const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+        if (a === 127 || a === 0) return false;                    // loopback / unspecified
+        if (a === 10) return false;                               // 10.0.0.0/8
+        if (a === 172 && b >= 16 && b <= 31) return false;         // 172.16.0.0/12
+        if (a === 192 && b === 168) return false;                  // 192.168.0.0/16
+        if (a === 169 && b === 254) return false;                  // 169.254.0.0/16 (cloud metadata)
+    }
+    // block IPv6 loopback / unspecified / unique-local / link-local
+    if (host === "::1" || host === "::") return false;
+    if (/^\[(fe80|fc00|fd00)/i.test(host) || /^(fe80|fc00|fd00)/i.test(host)) return false;
+    return true;
+}
+
 export async function sendWebhook(
     settings: WebhookSettings, formatMap: WebhookMail
 ): Promise<{ success: boolean, message?: string }> {
+    // Defense in depth: re-validate URL at send time
+    if (!isValidWebhookUrl(settings.url)) {
+        return { success: false, message: "invalid webhook url" };
+    }
     // send webhook
     const body = formatWebhookBody(settings.body, formatMap);
     const response = await fetch(settings.url, {

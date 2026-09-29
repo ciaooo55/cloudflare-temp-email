@@ -83,7 +83,15 @@ const addBinding = async () => {
         if (res.binding) {
             message.success(t('successTip'))
             newAddress.value = '';
-            await fetchAll();
+            // Optimistic update: KV.list is eventually consistent, so add the new
+            // binding directly instead of waiting for fetchAll to see it
+            const b = res.binding;
+            const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
+            if (idx >= 0) {
+                bindings.value[idx] = b;
+            } else {
+                bindings.value.unshift(b);
+            }
         } else {
             message.error(res.error || "error");
         }
@@ -97,7 +105,11 @@ const invalidate = async (b: Binding) => {
     try {
         await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' })
         message.success(t('successTip'))
-        await fetchAll();
+        // Optimistic update: remove from list immediately (KV.list is eventually consistent)
+        const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
+        if (idx >= 0) {
+            bindings.value.splice(idx, 1);
+        }
     } catch (error) {
         message.error((error as Error).message || "error");
     }
@@ -144,6 +156,7 @@ const batchBind = async () => {
     batchBinding.value = true;
     let success = 0;
     const failedList: string[] = [];
+    const newBindings: Binding[] = [];
     for (const addr of valid) {
         try {
             const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
@@ -152,6 +165,7 @@ const batchBind = async () => {
             });
             if (res.binding) {
                 success++;
+                newBindings.push(res.binding);
             } else {
                 failedList.push(`${addr} (${res.error || '未知错误'})`);
             }
@@ -171,7 +185,15 @@ const batchBind = async () => {
     }
     if (success > 0) {
         batchInput.value = '';
-        await fetchAll();
+        // Optimistic update: KV.list is eventually consistent, add new bindings directly
+        for (const b of newBindings) {
+            const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
+            if (idx >= 0) {
+                bindings.value[idx] = b;
+            } else {
+                bindings.value.unshift(b);
+            }
+        }
     }
 }
 
@@ -185,7 +207,13 @@ const replaceBinding = async (b: Binding) => {
         });
         if (res.binding) {
             message.success('链接已更换，旧链接已失效');
-            await fetchAll();
+            // Optimistic update: replace the binding in place
+            const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
+            if (idx >= 0) {
+                bindings.value[idx] = res.binding;
+            } else {
+                bindings.value.unshift(res.binding);
+            }
         } else {
             message.error(res.error || "error");
         }

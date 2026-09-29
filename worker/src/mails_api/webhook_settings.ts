@@ -1,7 +1,7 @@
 import { Context } from "hono";
 import { CONSTANTS } from "../constants";
 import { AdminWebhookSettings, WebhookSettings, RawMailRow } from "../models";
-import { commonParseMail, sendWebhook } from "../common";
+import { commonParseMail, isValidWebhookUrl, sendWebhook } from "../common";
 import { resolveRawEmail } from "../gzip";
 import { getWebhookAttachments } from '../utils/webhook';
 import i18n from "../i18n";
@@ -29,6 +29,10 @@ async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response
         return c.text(msgs.WebhookNotAllowedForUserMsg, 403);
     }
     const settings = await c.req.json<WebhookSettings>();
+    // Security: validate webhook URL to prevent SSRF
+    if (settings.url && !isValidWebhookUrl(settings.url)) {
+        return c.text(msgs.InvalidRequestBodyMsg || "Invalid webhook URL", 400);
+    }
     await c.env.KV.put(
         `${CONSTANTS.WEBHOOK_KV_USER_SETTINGS_KEY}:${address}`,
         JSON.stringify(settings));
@@ -44,6 +48,10 @@ async function testWebhookSettings(c: Context<HonoCustomType>): Promise<Response
     const requestedMailId = settings.mail_id;
     if (requestedMailId !== undefined && (!Number.isSafeInteger(requestedMailId) || requestedMailId <= 0)) {
         return c.text(msgs.InvalidMailIdMsg, 400);
+    }
+    // Security: validate webhook URL to prevent SSRF (test endpoint takes URL from request body)
+    if (!isValidWebhookUrl(settings.url)) {
+        return c.text(msgs.InvalidRequestBodyMsg || "Invalid webhook URL", 400);
     }
     const { address } = c.get("jwtPayload");
     const mailRow = requestedMailId !== undefined ? await c.env.DB.prepare(

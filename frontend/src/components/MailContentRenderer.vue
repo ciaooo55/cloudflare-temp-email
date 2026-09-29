@@ -6,6 +6,7 @@ import ShadowHtmlComponent from "./ShadowHtmlComponent.vue";
 import AiExtractInfo from "./AiExtractInfo.vue";
 import { getDownloadEmlUrl } from '../utils/email-parser';
 import { blockRemoteContent } from '../utils/remote-content-policy';
+import { sanitizeHtml } from '../utils/sanitize-html';
 import { utcToLocalDate } from '../utils';
 import { useGlobalState } from '../store';
 
@@ -78,7 +79,9 @@ watch(() => props.mail.id, () => {
 
 const processedMail = computed(() => {
   if (autoLoadRemoteImages.value || showRemoteImages.value) {
-    return { message: props.mail.message, blocked: 0 };
+    // Security fix: always sanitize HTML even when auto-loading remote images.
+    // sanitizeHtml removes XSS vectors but allows remote images to load.
+    return { message: sanitizeHtml(props.mail.message), blocked: 0 };
   }
   const { html, blocked } = blockRemoteContent(props.mail.message);
   return { message: html, blocked };
