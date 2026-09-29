@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |Security| Telegram webhook now returns 400 instead of 500 on malformed JSON (previously an uncaught parse exception)
+- fix: |Security| Hardened XSS sanitization on the email snapshot page: covers `<svg/onload>` slash-separated event handlers, unclosed `<script>`/`<iframe>` tags, and entity-obfuscated `javascript:` URLs; 12 adversarial test cases pass, normal email content (codes, links, images) unaffected
 - perf: |Performance| 20 admin tab views switched to lazy loading (`defineAsyncComponent`): first-screen JS drops from ~1.6MB to ~1MB (Admin chunk 477KB → 45KB); each tab's code is downloaded only when first opened
 - perf: |Performance| Statistics API now runs its 6 `count(*)` queries in parallel via D1 `batch()` instead of sequentially — statistics page loads faster
 - perf: |Performance| Removed the redundant second mail-parse call in the receiving pipeline; the already-cached parse result is reused
