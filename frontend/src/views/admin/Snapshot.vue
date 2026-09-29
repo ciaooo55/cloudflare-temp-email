@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 // @ts-ignore
 import { api } from '../../api'
 
 const message = useMessage()
+const dialog = useDialog()
 const { t } = useScopedI18n('views.admin.Snapshot')
 
 type Binding = {
@@ -101,18 +102,25 @@ const addBinding = async () => {
 }
 
 const invalidate = async (b: Binding) => {
-    if (!confirm(t('confirmInvalidate'))) return;
-    try {
-        await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' })
-        message.success(t('successTip'))
-        // Optimistic update: remove from list immediately (KV.list is eventually consistent)
-        const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
-        if (idx >= 0) {
-            bindings.value.splice(idx, 1);
+    dialog.warning({
+        title: '确认操作',
+        content: t('confirmInvalidate'),
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' })
+                message.success(t('successTip'))
+                // Optimistic update: remove from list immediately (KV.list is eventually consistent)
+                const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
+                if (idx >= 0) {
+                    bindings.value.splice(idx, 1);
+                }
+            } catch (error) {
+                message.error((error as Error).message || "error");
+            }
         }
-    } catch (error) {
-        message.error((error as Error).message || "error");
-    }
+    })
 }
 
 const copyUrl = async (url: string) => {
@@ -199,27 +207,34 @@ const batchBind = async () => {
 
 // 更换链接：直接重新创建绑定，后端会自动让旧链接失效（原子操作）
 const replaceBinding = async (b: Binding) => {
-    if (!confirm('确定要更换链接吗？旧链接将立即失效。')) return;
-    try {
-        const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
-            method: 'POST',
-            body: JSON.stringify({ address: b.address, durationHours: newDuration.value }),
-        });
-        if (res.binding) {
-            message.success('链接已更换，旧链接已失效');
-            // Optimistic update: replace the binding in place
-            const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
-            if (idx >= 0) {
-                bindings.value[idx] = res.binding;
-            } else {
-                bindings.value.unshift(res.binding);
+    dialog.warning({
+        title: '确认操作',
+        content: '确定要更换链接吗？旧链接将立即失效。',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
+                    method: 'POST',
+                    body: JSON.stringify({ address: b.address, durationHours: newDuration.value }),
+                });
+                if (res.binding) {
+                    message.success('链接已更换，旧链接已失效');
+                    // Optimistic update: replace the binding in place
+                    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
+                    if (idx >= 0) {
+                        bindings.value[idx] = res.binding;
+                    } else {
+                        bindings.value.unshift(res.binding);
+                    }
+                } else {
+                    message.error(res.error || "error");
+                }
+            } catch (error) {
+                message.error((error as Error).message || "error");
             }
-        } else {
-            message.error(res.error || "error");
         }
-    } catch (error) {
-        message.error((error as Error).message || "error");
-    }
+    })
 }
 
 const quickDurations = computed(() => [

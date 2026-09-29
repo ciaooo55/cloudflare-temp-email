@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
+import { useDialog } from 'naive-ui'
 
 // @ts-ignore
 import { useGlobalState } from '../../store'
@@ -8,6 +9,7 @@ import { useGlobalState } from '../../store'
 import { api } from '../../api'
 // @ts-ignore
 const message = useMessage()
+const dialog = useDialog()
 
 const { t } = useScopedI18n('views.admin.Telegram')
 
@@ -119,14 +121,21 @@ const toggleBot = async (bot: BotItem) => {
 }
 
 const deleteBot = async (bot: BotItem) => {
-    if (!confirm(t('confirmDelete'))) return;
-    try {
-        await api.fetch(`/admin/notify/telegram_bots/${bot.id}`, { method: 'DELETE' })
-        message.success(t('successTip'))
-        await fetchBots();
-    } catch (error) {
-        message.error((error as Error).message || "error");
-    }
+    dialog.warning({
+        title: '确认操作',
+        content: t('confirmDelete'),
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await api.fetch(`/admin/notify/telegram_bots/${bot.id}`, { method: 'DELETE' })
+                message.success(t('successTip'))
+                await fetchBots();
+            } catch (error) {
+                message.error((error as Error).message || "error");
+            }
+        }
+    })
 }
 
 const openTestModal = (bot: BotItem) => {

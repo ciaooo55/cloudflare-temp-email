@@ -87,6 +87,7 @@ onMounted(async () => {
     <n-spin description="loading..." :show="loading">
       <n-notification-provider container-style="margin-top: 60px;">
         <n-message-provider container-style="margin-top: 20px;">
+          <n-dialog-provider>
           <n-grid x-gap="12" :cols="gridMaxCols">
             <n-gi v-if="showSideMargin" span="1">
               <div class="side" v-if="showAd">
@@ -113,6 +114,7 @@ onMounted(async () => {
             </n-gi>
           </n-grid>
           <n-back-top />
+          </n-dialog-provider>
         </n-message-provider>
       </n-notification-provider>
     </n-spin>

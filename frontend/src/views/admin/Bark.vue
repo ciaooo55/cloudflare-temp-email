@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 // @ts-ignore
 import { api } from '../../api'
 
 const message = useMessage()
+const dialog = useDialog()
 const { t } = useScopedI18n('views.admin.Bark')
 
 type DeviceItem = {
@@ -74,19 +75,26 @@ const addDevice = async () => {
 }
 
 const deleteDevice = async (device: DeviceItem) => {
-    if (!confirm(t('confirmDelete'))) return;
-    try {
-        const rest = devices.value.filter(d => d.id !== device.id)
-            .map(d => ({ id: d.id, name: d.name, enabled: d.enabled, keys: '' }));
-        await api.fetch(`/admin/notify/bark`, {
-            method: 'POST',
-            body: JSON.stringify({ pushUrl: pushUrl.value, devices: rest }),
-        })
-        message.success(t('successTip'))
-        await fetchData();
-    } catch (error) {
-        message.error((error as Error).message || "error");
-    }
+    dialog.warning({
+        title: '确认操作',
+        content: t('confirmDelete'),
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                const rest = devices.value.filter(d => d.id !== device.id)
+                    .map(d => ({ id: d.id, name: d.name, enabled: d.enabled, keys: '' }));
+                await api.fetch(`/admin/notify/bark`, {
+                    method: 'POST',
+                    body: JSON.stringify({ pushUrl: pushUrl.value, devices: rest }),
+                })
+                message.success(t('successTip'))
+                await fetchData();
+            } catch (error) {
+                message.error((error as Error).message || "error");
+            }
+        }
+    })
 }
 
 const testDevice = async (device?: DeviceItem) => {
