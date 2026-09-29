@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import { CONSTANTS } from "../constants";
-import { getJsonSetting, saveSetting } from "../utils";
+import { getDomains, getJsonSetting, isDomainOrSubdomain, saveSetting } from "../utils";
 import {
     createSnapshotBindingRecord,
     deleteSnapshotBinding,
@@ -324,11 +324,11 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
     const origin = snapshotOrigin(c);
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
-    // 地址必须存在
-    if (c.env.DB) {
-        const exists = await c.env.DB.prepare(`SELECT id FROM address WHERE name = ?`).bind(addr).first("id").catch(() => null);
-        if (!exists) return c.json({ error: "该邮箱地址不存在，请先创建" }, 400);
-    }
+    // 只要域名在允许列表中即可绑定（任意地址都能收到发到本 Worker 的邮件）
+    const domain = addr.split("@")[1] || "";
+    const allowedDomains = getDomains(c);
+    const domainOk = allowedDomains.some(d => isDomainOrSubdomain(domain, d));
+    if (!domainOk) return c.json({ error: `域名 ${domain} 不在允许列表中` }, 400);
     const binding = await createSnapshotBindingRecord(c, addr, hours, origin);
     return c.json({ success: true, binding });
 }
