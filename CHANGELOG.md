@@ -8,6 +8,10 @@
 
 ## v1.13.0(main)
 
+- perf: |性能| 管理后台「全局邮箱设置」接口 8 个 KV 读取从串行改为并行，冷启动下加载从 15 秒降至 1 秒内
+- fix: |安全| AI 提取的验证码/链接必须真实存在于邮件正文中，否则视为幻觉丢弃并回退本地正则（修复 AI 返回 482913 但邮件中是 123456 的问题）
+- fix: |安全| Webhook SSRF 加固：重定向手动跟随（每跳重新校验 URL，最多 3 跳）、10 秒超时、每地址每分钟最多 30 次限流、补全 IPv6 私网段与十进制/十六进制 IP 混淆拦截、拦截 URL 中的用户名密码
+- fix: |文案| 管理后台「D1 存储容量」改为「数据库存储容量」，面向用户不再显示技术词
 - fix: |确认框| 管理后台快照「更换链接」「失效」、Bark/TG 删除按钮的原生 `confirm()` 在部分浏览器无响应，改为 Naive UI 对话框并补上 `n-dialog-provider`，确认框可正常弹出
 - remove: |精简| 移除多用户体系、改为管理员单账户：`/` 自动跳转 `/admin`，删除公开邮箱网页、用户中心、注册/登录、OAuth2 第三方登录、Passkey、用户角色、邮箱绑定、兑换码、地址口令网页登录（`/open_api/credential_login`）及全部 `/user_api/*`、`/redeem_api/*` 后端接口；管理员后台只保留管理员密码登录，可查看管理邮件/地址/附件并配置 TG、Bark、快照、AI、Webhook 等功能；移除 `ENABLE_REDEEM_CODE`、`REDEEM_CODE_URL`、`DISABLE_SHOW_GITHUB_FOR_USER`、`ENABLE_INDEX_ABOUT`、`ADMIN_USER_ROLE`、`USER_ROLES`、`USER_DEFAULT_ROLE` 环境变量及相关管理端展示；已有数据库中的旧多用户表（users、users_address、user_roles、user_passkeys、redeem_codes）不再使用，需手动清理；已删除的多用户专属 E2E 测试同步清理
 - test: |测试| 新增后端管理 API 集成测试（TG Bot 增删改查/启停/测试/webhook、Bark 多设备配置与测试、快照 TTL、固定快照绑定全流程、AI 设置与自定义接口测试），覆盖 Token/Key 脱敏、旧快照失效、网页配置优先环境变量；43 个单测通过（3 个文件因 Node ESM 解析不了 extensionless import 在导入阶段失败，属既有测试链问题）
