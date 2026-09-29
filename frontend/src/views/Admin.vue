@@ -193,7 +193,7 @@ onMounted(async () => {
           <n-tab-pane name="workerconfig" :tab="t('workerconfig')">
             <WorkerConfig />
           </n-tab-pane>
-          <n-tab-pane name="maintenance_tasks" :tab="t('maintenance')">
+          <n-tab-pane name="maintenance_tasks" :tab="t('maintenanceTasks')">
             <Maintenance />
           </n-tab-pane>
         </n-tabs>

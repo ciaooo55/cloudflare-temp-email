@@ -547,6 +547,10 @@ export const MESSAGE_REGISTRY = {
       "en": "Maintenance",
       "zh": "维护"
     },
+    "maintenanceTasks": {
+      "en": "Cleanup & Tasks",
+      "zh": "清理维护"
+    },
     "ok": {
       "en": "OK",
       "zh": "确定"
@@ -2213,5 +2217,19 @@ export const getMessageSource = <N extends MessageNamespace>(
   key: MessageKey<N>,
   locale: 'en' | 'zh',
 ) => {
-  return MESSAGE_REGISTRY[namespace]?.[key]?.[locale]
+  const entry = MESSAGE_REGISTRY[namespace]?.[key] as unknown
+  if (entry == null || typeof entry !== 'object' || Array.isArray(entry)) return undefined
+  const record = entry as Record<string, unknown>
+  // 普通叶子 { en, zh }
+  if (locale in record && (typeof record[locale] === 'string' || record[locale] == null)) {
+    return record[locale]
+  }
+  // 嵌套组（如 labels: { KEY: { en, zh } }）：逐项解析 locale
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(record)) {
+    if (v != null && typeof v === 'object' && !Array.isArray(v) && locale in (v as Record<string, unknown>)) {
+      out[k] = (v as Record<string, unknown>)[locale]
+    }
+  }
+  return out
 }
