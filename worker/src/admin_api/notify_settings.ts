@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import { CONSTANTS } from "../constants";
-import { getDomains, getJsonSetting, isDomainOrSubdomain, saveSetting } from "../utils";
+import { getJsonSetting, saveSetting } from "../utils";
 import {
     createSnapshotBindingRecord,
     deleteSnapshotBinding,
@@ -324,14 +324,23 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
     const origin = snapshotOrigin(c);
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
-    // 只要域名在允许列表中即可绑定（任意地址都能收到发到本 Worker 的邮件）
-    const domain = addr.split("@")[1] || "";
-    const allowedDomains = getDomains(c);
-    const domainOk = allowedDomains.some(d => isDomainOrSubdomain(domain, d));
+    // 只要域名在允许列表中即可绑定（任意地址都能收到发到本 Worker 的邮件，不要求地址已存在）
+    const domain = (addr.split("@")[1] || "").toLowerCase();
+    const domainOk = SNAPSHOT_ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith("." + d));
     if (!domainOk) return c.json({ error: `域名 ${domain} 不在允许列表中` }, 400);
     const binding = await createSnapshotBindingRecord(c, addr, hours, origin);
     return c.json({ success: true, binding });
 }
+
+// 快照绑定允许的域名（与前端一致，支持子域名）
+const SNAPSHOT_ALLOWED_DOMAINS = [
+    'bbb99.us.ci', 'ca555.de5.net', 'ciaoo.de5.net', 'free555.de5.net',
+    'free55.de5.net', 'free5.us.ci', 'kkk88.ccwu.cc', 'yyy22.de5.net',
+    '1111122222.dpdns.org', 'ciaooo11.ccwu.cc', 'ciaooo22.ccwu.cc', 'ciaooo33.us.ci',
+    'ciaooo55.ccwu.cc', 'ciaooo55.de5.net', 'ciaooo55.dpdns.org', 'ciaooo55.us.ci',
+    'ciaooo66.ccwu.cc', 'ciaooo77.us.ci', 'ciaooo88.ccwu.cc', 'looo.cloud',
+    'ciaooo66.dpdns.org', 'ciaooo77.dpdns.org',
+];
 
 async function invalidateSnapshotBinding(c: Context<HonoCustomType>): Promise<Response> {
     const address = c.req.param("address") || "";
