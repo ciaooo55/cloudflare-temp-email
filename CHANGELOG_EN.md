@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |Copy| Fixed missing Chinese labels on the Worker config page: nested i18n label groups (`labels`) were silently skipped by the message builder; config items now show proper labels like "站点访问密码（是否已设置）" and "可用域名"
+- fix: |Copy| Renamed the inner tab under "维护" to "清理维护" to avoid confusion with the top-level "维护" tab
 - fix: |Security| Telegram webhook now returns 400 instead of 500 on malformed JSON (previously an uncaught parse exception)
 - fix: |Security| Hardened XSS sanitization on the email snapshot page: covers `<svg/onload>` slash-separated event handlers, unclosed `<script>`/`<iframe>` tags, and entity-obfuscated `javascript:` URLs; 12 adversarial test cases pass, normal email content (codes, links, images) unaffected
 - perf: |Performance| 20 admin tab views switched to lazy loading (`defineAsyncComponent`): first-screen JS drops from ~1.6MB to ~1MB (Admin chunk 477KB → 45KB); each tab's code is downloaded only when first opened
