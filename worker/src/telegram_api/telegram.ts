@@ -507,7 +507,7 @@ async function sendBarkPush(env: Bindings, mail: {
         } else if (mail.snapshotUrl) {
             params.set("url", mail.snapshotUrl);
         }
-        const base = (pushUrl || DEFAULT_BARK_PUSH_URL).replace(/\/+$/, "");
+        const base = (pushUrl || DEFAULT_BARK_PUSH_URL).replace(/\/+$/, "").replace(/\/push$/, "");
         await fetch(`${base}/push?${params}`, { signal: AbortSignal.timeout(15000) });
     } catch (error) {
         console.error("bark push failed", error);
