@@ -1698,6 +1698,50 @@ export const MESSAGE_REGISTRY = {
     "ttlTip": {
       "en": "Snapshots are automatically deleted after this long. Default 24 hours.",
       "zh": "快照超过此时长后自动删除，默认 24 小时。"
+    },
+    "batchTitle": {
+      "en": "Batch Bind",
+      "zh": "批量绑定"
+    },
+    "batchPlaceholder": {
+      "en": "One email per line, e.g.:\ntest@ciaooo55.us.ci\nhello@bbb99.us.ci",
+      "zh": "每行一个邮箱地址，例如：\ntest@ciaooo55.us.ci\nhello@bbb99.us.ci"
+    },
+    "batchBind": {
+      "en": "Bind All",
+      "zh": "批量绑定"
+    },
+    "validate": {
+      "en": "Validate",
+      "zh": "检测格式"
+    },
+    "validCount": {
+      "en": "{n} valid",
+      "zh": "{n} 个有效"
+    },
+    "invalidFormat": {
+      "en": "Invalid format",
+      "zh": "格式错误"
+    },
+    "invalidDomain": {
+      "en": "Domain not in allowlist",
+      "zh": "域名不在列表中"
+    },
+    "alreadyBound": {
+      "en": "Already bound",
+      "zh": "已绑定"
+    },
+    "replaceLink": {
+      "en": "Replace Link",
+      "zh": "更换链接"
+    },
+    "confirmReplace": {
+      "en": "Replace the link? The old URL will stop working and a new one will be generated.",
+      "zh": "更换链接？旧链接将失效，会生成新链接。"
+    },
+    "binding": {
+      "en": "Binding...",
+      "zh": "绑定中..."
     }
   },
   "views.admin.AiExtractSettings": {

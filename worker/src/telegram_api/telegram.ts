@@ -17,6 +17,7 @@ import {
     buildCompactMailMessage,
     createMailSnapshot,
     extractVerificationCodeWithSubject,
+    getSnapshotBinding,
 } from "./mail_snapshot";
 import { resolveRawEmail } from "../gzip";
 import { UserFromGetMe } from "telegraf/types";
@@ -546,13 +547,19 @@ export async function sendMailNotifications(
     const wantTg = !!(tgUserId || tgGlobalList.length);
 
     // 邮件快照只建一次，TG 和 Bark 共用；TTL 取网页配置（默认 24h）
+    // 若该地址有绑定的固定快照，直接用绑定链接（内容已由 refreshBoundSnapshot 更新），不再新建一次性快照
     const snapshotTtl = await getSnapshotTtlSeconds(c).catch(() => 86400);
     let snapshotPromise: Promise<string | null> | null = null;
     let snapshotUrl: string | null = null;
     if (wantBark || wantTg) {
         try {
-            snapshotPromise = createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
-            snapshotUrl = await snapshotPromise;
+            const bound = await getSnapshotBinding(c, address).catch(() => null);
+            if (bound?.url) {
+                snapshotUrl = bound.url;
+            } else {
+                snapshotPromise = createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
+                snapshotUrl = await snapshotPromise;
+            }
         } catch (error) {
             console.error("mail snapshot failed", error);
             snapshotPromise = null;
@@ -594,7 +601,8 @@ export async function sendMailNotifications(
             buttons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
         }
         const fullMail = body === undefined ? mail : header + body + footer;
-        snapshotPromise ??= createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
+        // 若外层已有快照链接（绑定的固定链接），直接复用，不再新建
+        snapshotPromise ??= snapshotUrl ? Promise.resolve(snapshotUrl) : createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
         const snapshotUrl = await snapshotPromise;
         if (snapshotUrl) {
             const info = {
