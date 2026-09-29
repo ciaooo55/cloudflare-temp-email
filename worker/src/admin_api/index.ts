@@ -13,8 +13,6 @@ import admin_mail_api from './admin_mail_api'
 import { sendMailbyAdmin, sendMailByBindingAdmin } from './send_mail'
 import db_api from './db_api'
 import ip_blacklist_settings from './ip_blacklist_settings'
-// TEMPORARY: email simulation endpoint, DELETE AFTER TESTING
-import simulate_email from './simulate_email'
 import ai_extract_settings from './ai_extract_settings'
 import notify_settings from './notify_settings'
 import config_api from './config_api'
@@ -74,9 +72,6 @@ api.get('/admin/worker/configs', worker_config.getConfig)
 // send mail by admin
 api.post('/admin/send_mail', sendMailbyAdmin)
 api.post('/admin/send_mail_by_binding', sendMailByBindingAdmin)
-
-// TEMPORARY: simulate receiving an email, DELETE AFTER TESTING
-api.post('/admin/simulate_email', simulate_email.simulateEmail)
 
 // db api
 api.get('admin/db_version', db_api.getVersion)
