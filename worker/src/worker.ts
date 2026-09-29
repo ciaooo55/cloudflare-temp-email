@@ -233,8 +233,8 @@ app.get('/health_check', health_check)
 app.get('/m/:token', async c => {
 	const token = c.req.param('token');
 	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
-	// 边缘缓存防刷：同一快照的重复访问直接走边缘缓存，不消耗 Worker/KV 额度
-	// 注意：Cache API 按 PoP 独立，但已能吸收绝大多数刷量
+	// 边缘缓存防刷：同一快照的重复访问优先走边缘缓存，减少 KV 读取与页面重复生成
+	// 注意：请求仍会进入 Worker（按正常请求计费）；Cache API 按 PoP 独立缓存
 	const cache = caches.default;
 	const cacheKey = new Request(c.req.url, { method: 'GET' });
 	try {

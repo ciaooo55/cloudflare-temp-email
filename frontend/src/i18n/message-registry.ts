@@ -1834,16 +1834,16 @@ export const MESSAGE_REGISTRY = {
       "zh": "自定义接口"
     },
     "modeFollowEnv": {
-      "en": "Follow environment variable",
-      "zh": "跟随环境变量"
+      "en": "Follow global setting",
+      "zh": "跟随全局设置"
     },
     "modeLocal": {
       "en": "Local rules only",
       "zh": "仅本地规则"
     },
     "modeTip": {
-      "en": "Web setting takes precedence over the AI_EXTRACT_MODE env variable.",
-      "zh": "网页设置优先于 AI_EXTRACT_MODE 环境变量。"
+      "en": "Web setting takes precedence over the global setting.",
+      "zh": "网页设置优先于全局设置。"
     },
     "test": {
       "en": "Test",
@@ -2672,8 +2672,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "Telegram 机器人管理"
     },
     "botManagementTip": {
-      "en": "Add one or more bots here. Pushes are sent via all enabled bots independently. A bot configured via the TELEGRAM_BOT_TOKEN env variable still works.",
-      "zh": "在这里添加一个或多个机器人。推送会经由所有启用的机器人独立发送。环境变量 TELEGRAM_BOT_TOKEN 配置的机器人仍然有效。"
+      "en": "Add one or more bots here. Pushes are sent via all enabled bots independently. A previously configured default bot still works.",
+      "zh": "在这里添加一个或多个机器人。推送会经由所有启用的机器人独立发送。此前已配置好的默认机器人仍然有效。"
     },
     "botName": {
       "en": "Name",
@@ -2696,8 +2696,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "机器人名称，如 主机器人"
     },
     "noBots": {
-      "en": "No bots configured here. Pushes will use the TELEGRAM_BOT_TOKEN env variable if set.",
-      "zh": "这里还没有配置机器人。如设置了 TELEGRAM_BOT_TOKEN 环境变量，推送会走该机器人。"
+      "en": "No bots configured here. Pushes will use the default bot if one is configured.",
+      "zh": "这里还没有配置机器人。如已配置默认机器人，推送会走该机器人。"
     },
     "setWebhook": {
       "en": "Set Webhook",
@@ -2924,8 +2924,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "顶部"
     },
     "useIframeShowMail": {
-      "en": "Use iframe Show HTML Mail",
-      "zh": "使用iframe显示HTML邮件"
+      "en": "Show HTML Mail in Embedded Frame",
+      "zh": "用内嵌框架显示HTML邮件"
     },
     "useSideMargin": {
       "en": "Turn on the side margins on the left and right sides of the page",
@@ -2974,16 +2974,16 @@ export const MESSAGE_REGISTRY = {
       "zh": "创建邮箱时允许子域名后缀匹配"
     },
     "create_address_subdomain_match_env_locked": {
-      "en": "Worker env ENABLE_CREATE_ADDRESS_SUBDOMAIN_MATCH is currently false. The saved admin switch can be modified, but it will not take effect until env is enabled or removed.",
-      "zh": "当前 Worker 环境变量 ENABLE_CREATE_ADDRESS_SUBDOMAIN_MATCH 为 false。后台开关仍可保存，但在 env 打开或移除前不会生效。"
+      "en": "This feature is currently disabled in the server configuration. The admin switch can still be saved, but it will not take effect until enabled in the server configuration.",
+      "zh": "当前服务器配置中该功能为关闭状态。后台开关仍可保存，但在服务器配置中打开前不会生效。"
     },
     "create_address_subdomain_match_follow_env": {
-      "en": "Follow Environment Variable",
-      "zh": "跟随环境变量"
+      "en": "Follow Server Configuration",
+      "zh": "跟随服务器配置"
     },
     "create_address_subdomain_match_follow_env_note": {
-      "en": "Choosing \"Follow Environment Variable\" clears the admin override and returns to the unset state. The effective result is still controlled by the Worker env and the precedence rules.",
-      "zh": "选择“跟随环境变量”会清空后台覆盖，恢复为未设置状态；最终是否开启仍由 Worker env 和优先级规则决定。"
+      "en": "Choosing \"Follow Server Configuration\" clears the admin override and returns to the unset state. The effective result is still controlled by the server configuration and the precedence rules.",
+      "zh": "选择“跟随服务器配置”会清空后台覆盖，恢复为未设置状态；最终是否开启仍由服务器配置和优先级规则决定。"
     },
     "create_address_subdomain_match_force_disable": {
       "en": "Force Disable",
@@ -2994,12 +2994,12 @@ export const MESSAGE_REGISTRY = {
       "zh": "强制开启"
     },
     "create_address_subdomain_match_note": {
-      "en": "RANDOM_SUBDOMAIN_DOMAINS already allows random or manual subdomains for listed base domains. This switch additionally allows API callers to specify subdomains under other allowed base domains.",
-      "zh": "RANDOM_SUBDOMAIN_DOMAINS 已允许在所列基础域名下随机生成或手动输入子域名；此开关额外允许 API 在其他已授权基础域名下指定子域名。"
+      "en": "The random subdomain setting already allows random or manual subdomains for listed base domains. This switch additionally allows API callers to specify subdomains under other allowed base domains.",
+      "zh": "随机子域名设置已允许在所列基础域名下随机生成或手动输入子域名；此开关额外允许 API 在其他已授权基础域名下指定子域名。"
     },
     "create_address_subdomain_match_tip": {
-      "en": "Only affects /api/new_address and /admin/new_address domain validation. Example: when enabled, foo.example.com can match configured base domain example.com.",
-      "zh": "仅影响 /api/new_address 和 /admin/new_address 的域名校验。例如开启后，foo.example.com 可以匹配已配置的基础域名 example.com。"
+      "en": "Only affects domain validation when creating addresses. Example: when enabled, foo.example.com can match configured base domain example.com.",
+      "zh": "仅影响新建邮箱时的域名校验。例如开启后，foo.example.com 可以匹配已配置的基础域名 example.com。"
     },
     "delete_rule": {
       "en": "Delete",

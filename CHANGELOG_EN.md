@@ -8,7 +8,7 @@
 
 ## v1.13.0(main)
 
-- perf: |Anti-abuse| Snapshot access now uses edge caching (Cache API): repeated visits to the same snapshot are served from edge cache without consuming Worker/KV quota; cache is auto-purged on new mail arrival or binding delete/replace, ensuring timely refresh and immediate invalidation of old links
+- perf: |Anti-abuse| Snapshot access now uses edge caching (Cache API): repeated visits to the same snapshot are preferentially served from edge cache, reducing KV reads and page regeneration (requests still hit the Worker and count normally); cache purge is attempted on new mail arrival or binding delete/replace for timely refresh, and old links stop working once the cache expires
 - perf: |Performance| Admin "global mailbox settings" API now reads 8 KV keys in parallel instead of sequentially — cold-start load drops from 15s to under 1s
 - fix: |Security| AI-extracted verification codes/links must actually appear in the email body, otherwise treated as hallucination and discarded with fallback to local regex (fixes AI returning 482913 when the mail contains 123456)
 - fix: |Security| Webhook SSRF hardening: manual redirect following (each hop re-validated, max 3 hops), 10s timeout, 30 req/min per-address rate limit, complete IPv6 private ranges plus decimal/hex IP obfuscation blocking, credentials in URL blocked
@@ -28,7 +28,7 @@
 - feat: |Notify| Add multiple Telegram bots from the Admin console with enable/disable/delete, `getMe` validation, test messages and independent webhooks; web-added bots are merged with env token variables and deduplicated before pushing
 - feat: |Notify| Configure multiple Bark devices from the Admin console (enable/disable/delete per device), custom push server URL, per-device/all-device tests; Telegram and Bark push concurrently as peers, one failing does not affect the other
 - feat: |Snapshot| Regular mail snapshot auto-delete duration is configurable from the web page, default 24 hours
-- feat: |Snapshot| Pinned snapshot bindings: bind a fixed snapshot URL to a mailbox address; new mail overwrites the old content while the URL stays the same; bind/update/set expiry/invalidate early from the web page with automatic unbind on expiry; re-binding invalidates the old URL immediately
+- feat: |Snapshot| Pinned snapshot bindings: bind a fixed snapshot URL to a mailbox address; new mail overwrites the old content while the URL stays the same; bind/update/set expiry/invalidate early from the web page with automatic unbind on expiry; re-binding deletes the old binding record and old snapshot content immediately, and the old URL stops serving stale content across edge caches within ~30 seconds
 - feat: |AI Extract| Configure extract mode, custom API URL/key/model and test the endpoint from the Admin console; web settings take precedence over environment variables and the saved API key is never echoed back
 - feat: |User| Search bound mailboxes by email address in address management with accurate pagination (issue #1156)
 - feat: |AI Extract| Add `AI_EXTRACT_MODE` to explicitly choose local rules only (`local`) or prefer Workers AI (`ai`); defaults to local rules when unset so mail content is never sent to AI. **Upgrade note**: deployments that relied on the Workers AI binding to enable AI extraction automatically must set `AI_EXTRACT_MODE = "ai"`
@@ -37,7 +37,7 @@
 
 - fix: |Mail| Check the SMTP envelope sender and every From email address against sender blacklists; parse addresses independently so body parsing failures or multiple From addresses cannot skip matching; preserve envelope checks on address parsing errors
 - fix: |AI Extract| In `ai` mode, an address allowlist miss now skips only the Workers AI call and still falls back to local verification-code extraction
-- fix: |Snapshot| Pinned snapshot placeholder HTML now lives for the binding duration instead of being capped by the regular snapshot TTL; re-binding the same address removes the old binding, reverse index and old snapshot so the old URL dies immediately
+- fix: |Snapshot| Pinned snapshot placeholder HTML now lives for the binding duration instead of being capped by the regular snapshot TTL; re-binding the same address removes the old binding, reverse index and old snapshot, so the old URL's stored content is deleted immediately and edge caches converge within ~30 seconds
 
 ### Improvements
 

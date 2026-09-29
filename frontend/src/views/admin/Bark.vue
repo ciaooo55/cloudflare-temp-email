@@ -97,7 +97,12 @@ const deleteDevice = async (device: DeviceItem) => {
     })
 }
 
+const testingDeviceId = ref<string | null>(null);
+
 const testDevice = async (device?: DeviceItem) => {
+    const testingId = device ? device.id : '__all__';
+    if (testingDeviceId.value) return;
+    testingDeviceId.value = testingId;
     testResult.value = '';
     try {
         const res = await api.fetch(`/admin/notify/bark/test`, {
@@ -105,9 +110,16 @@ const testDevice = async (device?: DeviceItem) => {
             body: JSON.stringify(device ? { deviceId: device.id } : {}),
         })
         testResult.value = res.ok ? t('testOk') : `${t('testFail')}${res.error || ''}`;
-        if (res.ok) message.success(t('successTip'));
+        if (res.ok) {
+            message.success(t('successTip'));
+        } else {
+            message.error(testResult.value);
+        }
     } catch (error) {
         testResult.value = `${t('testFail')}${(error as Error).message || ''}`;
+        message.error(testResult.value);
+    } finally {
+        testingDeviceId.value = null;
     }
 }
 
@@ -118,7 +130,7 @@ onMounted(fetchData)
     <div class="center">
         <n-card :bordered="false" embedded :title="t('title')" style="max-width: 800px; overflow: auto;">
             <n-flex justify="end">
-                <n-button @click="testDevice()" secondary>{{ t('testAll') }}</n-button>
+                <n-button @click="testDevice()" secondary :loading="testingDeviceId === '__all__'" :disabled="!!testingDeviceId">{{ t('testAll') }}</n-button>
                 <n-button @click="saveAll" type="primary">{{ t('save') }}</n-button>
             </n-flex>
             <n-form-item-row :label="t('pushUrl')" style="margin-top: 12px;">
@@ -144,7 +156,7 @@ onMounted(fetchData)
                         <td><n-switch v-model:value="d.enabled" :round="false" /></td>
                         <td>
                             <n-flex>
-                                <n-button size="small" @click="testDevice(d)">{{ t('test') }}</n-button>
+                                <n-button size="small" @click="testDevice(d)" :loading="testingDeviceId === d.id" :disabled="!!testingDeviceId">{{ t('test') }}</n-button>
                                 <n-button v-if="!d.id.startsWith('env')" size="small" type="error" ghost @click="deleteDevice(d)">{{ t('delete') }}</n-button>
                             </n-flex>
                         </td>

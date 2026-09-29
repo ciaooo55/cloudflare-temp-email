@@ -57,6 +57,7 @@ const showTestModal = ref(false)
 const testBotId = ref('')
 const testChatId = ref('')
 const testResult = ref('')
+const testingBot = ref(false)
 
 const fetchBots = async () => {
     try {
@@ -145,6 +146,8 @@ const openTestModal = (bot: BotItem) => {
 }
 
 const runBotTest = async () => {
+    if (testingBot.value) return;
+    testingBot.value = true;
     testResult.value = '';
     try {
         const res = await api.fetch(`/admin/notify/telegram_bots/${testBotId.value}/test`, {
@@ -154,9 +157,16 @@ const runBotTest = async () => {
         testResult.value = res.ok
             ? `${t('testOk')}${res.username ? ' @' + res.username : ''}${res.messageSent ? '，' + t('testMsgSent') : ''}`
             : `${t('testFail')}${res.error || ''}`;
-        if (res.ok) message.success(t('successTip'));
+        if (res.ok) {
+            message.success(t('successTip'));
+        } else {
+            message.error(testResult.value);
+        }
     } catch (error) {
         testResult.value = `${t('testFail')}${(error as Error).message || ''}`;
+        message.error(testResult.value);
+    } finally {
+        testingBot.value = false;
     }
 }
 
@@ -292,7 +302,7 @@ onMounted(async () => {
                 </n-form-item-row>
                 <n-text v-if="testResult" depth="3" style="font-size: 12px; white-space: pre-wrap;">{{ testResult }}</n-text>
                 <template #action>
-                    <n-button type="primary" @click="runBotTest">{{ t('test') }}</n-button>
+                    <n-button type="primary" @click="runBotTest" :loading="testingBot" :disabled="testingBot">{{ t('test') }}</n-button>
                 </template>
             </n-modal>
             <n-card :bordered="false" embedded>
