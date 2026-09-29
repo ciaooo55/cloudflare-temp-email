@@ -1,6 +1,6 @@
 import { Context } from "hono";
 
-import { getJsonSetting } from "../utils";
+import { getJsonSetting, normalizeAddressDomain } from "../utils";
 import { sendMailNotifications } from "../telegram_api";
 import { auto_reply } from "./auto_reply";
 import { isBlocked } from "./black_list";
@@ -11,6 +11,7 @@ import { extractEmailInfo } from "./ai_extract";
 import { forwardEmail } from "./forward";
 import { EmailRuleSettings } from "../models";
 import { CONSTANTS } from "../constants";
+import { storeRawMail } from "./storage";
 
 
 async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Promise<string> {
@@ -33,9 +34,10 @@ async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Pr
 
 async function email(message: ForwardableEmailMessage, env: Bindings, ctx: ExecutionContext) {
     const recipient = await getRecipient(message, env);
-    if (await isBlocked(message.from, env)) {
+    const toAddress = normalizeAddressDomain(recipient);
+    if (await isBlocked(message, env)) {
         message.setReject("Reject from address");
-        console.log(`Reject message from ${message.from} to ${message.to}`);
+        console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
     }
     const rawEmail = await new Response(message.raw).text();
@@ -45,10 +47,10 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // check if junk mail
     try {
-        const is_junk = await check_if_junk_mail(env, recipient, parsedEmailContext, message.headers.get("Message-ID"));
+        const is_junk = await check_if_junk_mail(env, toAddress, parsedEmailContext, message.headers.get("Message-ID"));
         if (is_junk) {
             message.setReject("Junk mail");
-            console.log(`Junk mail from ${message.from} to ${message.to}`);
+            console.log(`Junk mail from ${message.from} to ${toAddress}`);
             return;
         }
     } catch (error) {
@@ -63,10 +65,10 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         if (emailRuleSettings?.blockReceiveUnknowAddressEmail) {
             const db_address_id = await env.DB.prepare(
                 `SELECT id FROM address where name = ? `
-            ).bind(recipient).first("id");
+            ).bind(toAddress).first("id");
             if (!db_address_id) {
                 message.setReject("Unknown address");
-                console.log(`Unknown address mail from ${message.from} to ${message.to}`);
+                console.log(`Unknown address mail from ${message.from} to ${toAddress}`);
                 return;
             }
         }
@@ -76,36 +78,37 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // remove attachment if configured or size > 2MB
     try {
-        await remove_attachment_if_need(env, parsedEmailContext, message.from, recipient, message.rawSize);
+        await remove_attachment_if_need(env, parsedEmailContext, message.from, toAddress, message.rawSize);
     } catch (error) {
         console.error("remove attachment error", error);
     }
 
     const message_id = message.headers.get("Message-ID");
     // save email
-    try {
-        const { success } = await env.DB.prepare(
-            `INSERT INTO raw_mails (source, address, raw, message_id) VALUES (?, ?, ?, ?)`
-        ).bind(
-            message.from, recipient, parsedEmailContext.rawEmail, message_id
-        ).run();
+    const storedMailId = await storeRawMail(
+        env, message.from, toAddress, message_id, parsedEmailContext.rawEmail
+    ).then(({ success, meta }) => {
         if (!success) {
-            message.setReject(`Failed save message to ${message.to}`);
-            console.error(`Failed save message from ${message.from} to ${message.to}`);
+            message.setReject(`Failed save message to ${toAddress}`);
+            console.error(`Failed save message from ${message.from} to ${toAddress}`);
         }
-    }
-    catch (error) {
+        return success ? meta.last_row_id : undefined;
+    }).catch((error) => {
         console.error("save email error", error);
-    }
+        return undefined;
+    });
 
     // forward email
     await forwardEmail(message, env, recipient);
+
+    // AI email content extraction
+    const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);
 
     // send mail notifications
     try {
         await sendMailNotifications(
             { env: env } as Context<HonoCustomType>,
-            recipient, parsedEmailContext, message_id);
+            toAddress, parsedEmailContext, message_id, aiExtractResult);
     } catch (error) {
         console.error("send mail notifications error", error);
     }
@@ -114,7 +117,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     try {
         await triggerWebhook(
             { env: env } as Context<HonoCustomType>,
-            recipient, parsedEmailContext, message_id
+            toAddress, parsedEmailContext, storedMailId, aiExtractResult
         );
     } catch (error) {
         console.error("send webhook error", error);
@@ -126,7 +129,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         const parsedText = parsedEmail?.text ?? ""
         const rpcEmail: RPCEmailMessage = {
             from: message.from,
-            to: recipient,
+            to: toAddress,
             rawEmail: rawEmail,
             headers: message.headers
         }
@@ -136,10 +139,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     }
 
     // auto reply email
-    if (recipient === message.to) await auto_reply(message, env);
-
-    // AI email content extraction
-    await extractEmailInfo(parsedEmailContext, env, message_id, recipient);
+    if (recipient === message.to) await auto_reply(message, env, toAddress);
 }
 
 export { email }
