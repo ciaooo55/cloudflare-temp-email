@@ -57,10 +57,18 @@ const maskBarkKeys = (keys: string) => {
 
 async function listTelegramBots(c: Context<HonoCustomType>): Promise<Response> {
     const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
-    return c.json(bots.map(b => ({
+    const result = bots.map(b => ({
         id: b.id, name: b.name, enabled: b.enabled,
         createdAt: b.createdAt, maskedToken: maskTelegramToken(b.token || ""),
-    })));
+    }));
+    // 若 KV 里没有配置，但环境变量里有，则显示环境变量的（脱敏）
+    if (!result.length && c.env.TELEGRAM_BOT_TOKEN) {
+        result.push({
+            id: "env", name: "环境变量配置", enabled: true,
+            createdAt: Date.now(), maskedToken: maskTelegramToken(c.env.TELEGRAM_BOT_TOKEN),
+        });
+    }
+    return c.json(result);
 }
 
 async function createTelegramBot(c: Context<HonoCustomType>): Promise<Response> {
@@ -168,6 +176,13 @@ async function getBark(c: Context<HonoCustomType>): Promise<Response> {
     const devices = (settings?.devices || []).map(d => ({
         id: d.id, name: d.name, enabled: d.enabled, maskedKeys: maskBarkKeys(d.keys || ""),
     }));
+    // 若 KV 里没有配置，但环境变量里有，则显示环境变量的（脱敏）
+    if (!devices.length && c.env.BARK_DEVICE_KEYS) {
+        devices.push({
+            id: "env", name: "环境变量配置", enabled: true,
+            maskedKeys: maskBarkKeys(c.env.BARK_DEVICE_KEYS),
+        });
+    }
     return c.json({ devices, pushUrl: settings?.pushUrl || DEFAULT_BARK_PUSH_URL });
 }
 
