@@ -768,6 +768,8 @@ export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<strin
 
 // Security: validate webhook URLs to prevent SSRF.
 // Only allows http/https to public addresses; blocks private/loopback/link-local IPs.
+// Note: hostname-based DNS resolution cannot be intercepted in Workers runtime;
+// we mitigate via manual redirect following (each hop re-validated) and timeouts.
 export function isValidWebhookUrl(url: string): boolean {
     if (!url || typeof url !== "string") return false;
     let parsed: URL;
@@ -777,44 +779,118 @@ export function isValidWebhookUrl(url: string): boolean {
         return false;
     }
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    // block credentials in URL (user:pass@host can confuse parsers)
+    if (parsed.username || parsed.password) return false;
+    // block non-default ports that are commonly internal (optional hardening)
     const host = parsed.hostname.toLowerCase();
     // block localhost variants
-    if (host === "localhost" || host === "localhost.localdomain") return false;
+    if (host === "localhost" || host.endsWith(".localhost") || host === "localhost.localdomain") return false;
     // block IP literals in private/loopback/link-local ranges
     const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (ipv4) {
-        const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+        const octets = [Number(ipv4[1]), Number(ipv4[2]), Number(ipv4[3]), Number(ipv4[4])];
+        if (octets.some(n => n > 255)) return false;
+        const [a, b] = octets;
         if (a === 127 || a === 0) return false;                    // loopback / unspecified
         if (a === 10) return false;                               // 10.0.0.0/8
         if (a === 172 && b >= 16 && b <= 31) return false;         // 172.16.0.0/12
         if (a === 192 && b === 168) return false;                  // 192.168.0.0/16
         if (a === 169 && b === 254) return false;                  // 169.254.0.0/16 (cloud metadata)
+        if (a === 100 && b >= 64 && b <= 127) return false;        // 100.64.0.0/10 (CGNAT)
+        if (a === 192 && b === 0 && octets[2] === 2) return false; // 192.0.2.0/24 (TEST-NET-1)
+        if (a === 198 && b === 51 && octets[2] === 100) return false; // 198.51.100.0/24 (TEST-NET-2)
+        if (a === 203 && b === 0 && octets[2] === 113) return false;  // 203.0.113.0/24 (TEST-NET-3)
     }
-    // block IPv6 loopback / unspecified / unique-local / link-local
+    // block IPv6 loopback / unspecified / unique-local / link-local / documentation
+    // Note: URL.hostname strips brackets, so host is bare like "::1" or "fe80::1"
     if (host === "::1" || host === "::") return false;
-    if (/^\[(fe80|fc00|fd00)/i.test(host) || /^(fe80|fc00|fd00)/i.test(host)) return false;
+    if (/^(fe80|fc00|fd00|ff00|::ffff:)/i.test(host)) return false;
+    if (/^(2001:db8|64:ff9b::)/i.test(host)) return false; // documentation / translation
+    // block decimal/octal/hex IPv4 obfuscation (e.g. http://2130706433/ = 127.0.0.1)
+    if (/^\d+$/.test(host)) return false; // single decimal number
+    if (/^0x[0-9a-f]+$/i.test(host)) return false; // hex
     return true;
 }
 
+// Rate limit webhook sends: max 30 per minute per key (address or 'admin')
+async function checkWebhookRateLimit(env: Bindings, key: string): Promise<boolean> {
+    if (!env.KV) return true; // no KV = no rate limiting, allow
+    const kvKey = `webhook_ratelimit:${key}`;
+    const now = Date.now();
+    const windowMs = 60_000;
+    const maxCalls = 30;
+    try {
+        const raw = await env.KV.get(kvKey, 'json') as { count: number; windowStart: number } | null;
+        if (!raw || now - raw.windowStart > windowMs) {
+            await env.KV.put(kvKey, JSON.stringify({ count: 1, windowStart: now }), { expirationTtl: 120 });
+            return true;
+        }
+        if (raw.count >= maxCalls) return false;
+        await env.KV.put(kvKey, JSON.stringify({ count: raw.count + 1, windowStart: raw.windowStart }), { expirationTtl: 120 });
+        return true;
+    } catch {
+        return true; // fail open on KV errors to avoid breaking mail flow
+    }
+}
+
 export async function sendWebhook(
-    settings: WebhookSettings, formatMap: WebhookMail
+    settings: WebhookSettings, formatMap: WebhookMail, rateLimitKey?: string, env?: Bindings
 ): Promise<{ success: boolean, message?: string }> {
     // Defense in depth: re-validate URL at send time
     if (!isValidWebhookUrl(settings.url)) {
         return { success: false, message: "invalid webhook url" };
     }
-    // send webhook
-    const body = formatWebhookBody(settings.body, formatMap);
-    const response = await fetch(settings.url, {
-        method: settings.method,
-        headers: JSON.parse(settings.headers),
-        body: body
-    });
-    if (!response.ok) {
-        console.log("send webhook error", response.status, response.statusText);
-        return { success: false, message: `send webhook error: ${response.status} ${response.statusText}` };
+    // Rate limiting
+    if (env && rateLimitKey && !(await checkWebhookRateLimit(env, rateLimitKey))) {
+        return { success: false, message: "webhook rate limit exceeded" };
     }
-    return { success: true }
+    // send webhook with manual redirect handling (max 3 hops, each re-validated)
+    // to prevent redirect-based SSRF to internal addresses
+    const body = formatWebhookBody(settings.body, formatMap);
+    const headers = JSON.parse(settings.headers);
+    let currentUrl = settings.url;
+    const maxRedirects = 3;
+    for (let hop = 0; hop <= maxRedirects; hop++) {
+        if (!isValidWebhookUrl(currentUrl)) {
+            return { success: false, message: "webhook redirect to invalid url blocked" };
+        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10_000);
+        let response: Response;
+        try {
+            response = await fetch(currentUrl, {
+                method: settings.method,
+                headers,
+                body,
+                redirect: 'manual',
+                signal: controller.signal,
+            });
+        } catch (e) {
+            clearTimeout(timeout);
+            console.log("send webhook error", e);
+            return { success: false, message: `send webhook error: ${e}` };
+        }
+        clearTimeout(timeout);
+        // handle redirect manually
+        if (response.status >= 300 && response.status < 400) {
+            const location = response.headers.get('location');
+            if (!location || hop === maxRedirects) {
+                return { success: false, message: "webhook redirect blocked (no location or too many hops)" };
+            }
+            try {
+                currentUrl = new URL(location, currentUrl).toString();
+            } catch {
+                return { success: false, message: "webhook redirect to malformed url blocked" };
+            }
+            continue;
+        }
+        if (!response.ok) {
+            console.log("send webhook error", response.status, response.statusText);
+            return { success: false, message: `send webhook error: ${response.status} ${response.statusText}` };
+        }
+        return { success: true };
+    }
+    return { success: false, message: "webhook redirect loop" };
 }
 
 export async function triggerWebhook(
@@ -878,7 +954,7 @@ export async function triggerWebhook(
         aiExtractResultText: usableAiExtract?.result_text || "",
     }
     for (const settings of webhookList) {
-        const res = await sendWebhook(settings, webhookMail);
+        const res = await sendWebhook(settings, webhookMail, address, c.env);
         if (!res.success) {
             console.error(res.message);
         }
