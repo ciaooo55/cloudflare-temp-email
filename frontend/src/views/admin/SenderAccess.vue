@@ -55,7 +55,6 @@ const fetchData = async () => {
       count.value = addressCount;
     }
   } catch (error) {
-    console.log(error)
     message.error(error.message || "error");
   }
 }

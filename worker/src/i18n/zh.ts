@@ -5,9 +5,7 @@ const messages: LocaleMessages = {
     InvalidMailIdMsg: "无效的邮件 ID",
     MailNotFoundMsg: "邮件不存在",
     CustomAuthPasswordMsg: "你已启用私有站点密码,请提供密码",
-    UserTokenExpiredMsg: "您的令牌已过期, 请重新登录",
     UserAcceesTokenExpiredMsg: "您的访问令牌已过期, 请刷新页面",
-    UserRoleIsNotAdminMsg: "您的用户角色不是管理员, 无权访问",
     NeedAdminPasswordMsg: "您需要提供管理员密码才能访问此页面",
     AdminApiIpNotAllowedMsg: "当前 IP 不在管理员白名单中",
 
@@ -25,28 +23,9 @@ const messages: LocaleMessages = {
     InvalidAddressCredentialMsg: "无效的邮箱地址凭据",
     UserDeleteEmailDisabledMsg: "用户删除邮箱/邮件已禁用, 请联系管理员",
 
-    RedeemCodeUnavailableMsg: "兑换码无效、已使用或已过期",
-    RedeemCodeInvalidMsg: "兑换码配置无效",
-    RedeemRoleConflictMsg: "当前用户已有其他角色，无法兑换",
 
-    UserNotFoundMsg: "用户不存在",
-    UserAlreadyExistsMsg: "用户已存在, 请登录",
-    FailedToRegisterMsg: "注册失败",
-    UserRegistrationDisabledMsg: "用户注册已禁用, 请联系管理员",
-    UserMailDomainMustInMsg: "用户邮箱域必须在此列表中",
-    UserEmailNotMatchRegexMsg: "邮箱地址格式不符合要求",
-    InvalidVerifyCodeMsg: "无效的验证码",
     InvalidEmailOrPasswordMsg: "无效的邮箱或密码",
-    VerifyMailSenderNotSetMsg: "验证邮件发送邮箱未设置, 请联系管理员",
-    CodeAlreadySentMsg: "验证码已发送, 请稍等",
-    InvalidUserDefaultRoleMsg: "无效的用户默认角色, 请联系管理员",
-    FailedUpdateUserDefaultRoleMsg: "更新用户默认角色失败, 请联系管理员",
 
-    Oauth2ClientIDNotFoundMsg: "Oauth2 客户端 ID 未设置, 请联系管理员",
-    Oauth2CliendIDOrCodeMissingMsg: "Oauth2 客户端 ID 或 code 缺失",
-    Oauth2FailedGetUserInfoMsg: "从 Oauth2 提供商获取用户信息失败",
-    Oauth2FailedGetAccessTokenMsg: "从 Oauth2 提供商获取访问令牌失败",
-    Oauth2FailedGetUserEmailMsg: "从 Oauth2 提供商获取用户邮箱失败",
 
     PasswordChangeDisabledMsg: "密码修改已禁用",
     NewPasswordRequiredMsg: "新密码不能为空",
@@ -67,10 +46,6 @@ const messages: LocaleMessages = {
     InvalidDomainMsg: "无效的域名",
     RandomSubdomainNotAllowedMsg: "当前域名未启用随机子域名",
     AddressAlreadyExistsMsg: "邮箱地址已存在",
-    MaxAddressCountReachedMsg: "已达到最大地址数量限制",
-    AddressNotBindedMsg: "邮箱地址未绑定",
-    AddressAlreadyBindedMsg: "邮箱地址已绑定, 请先解绑",
-    TargetUserNotFoundMsg: "目标用户不存在",
 
     // Send mail related
     NoBalanceMsg: "余额不足",
@@ -78,7 +53,6 @@ const messages: LocaleMessages = {
     SubjectEmptyMsg: "主题不能为空",
     ContentEmptyMsg: "内容不能为空",
     AlreadyRequestedMsg: "已经申请过了",
-    EnableResendOrSmtpMsg: "请先为此域名启用 resend 或 smtp",
     EnableResendOrSmtpOrSendMailMsg: "请先为此域名启用 resend、smtp 或 SEND_MAIL",
     ServerSendMailDailyLimitMsg: "服务器今日发信次数已达上限",
     ServerSendMailMonthlyLimitMsg: "服务器本月发信次数已达上限",
@@ -92,12 +66,6 @@ const messages: LocaleMessages = {
     InvalidCleanupConfigMsg: "无效的 cleanType 或 cleanDays",
     InvalidCleanTypeMsg: "无效的 cleanType",
     CleanupFailedMsg: "清理失败，请检查清理配置；禁用地址活跃时间更新时，无法按不活跃时间清理。",
-    EnableKVForMailVerifyMsg: "如果要启用邮件验证，请先启用 KV",
-    VerifyMailDomainInvalidMsg: "验证邮件发送者域名必须在",
-    InvalidMaxAddressCountMsg: "无效的 maxAddressCount",
-    FailedDeleteUserMsg: "删除用户失败",
-    InvalidUserIdMsg: "无效的 user_id",
-    InvalidRoleTextMsg: "无效的 role_text",
 
     // SQL validation
     SqlEmptyMsg: "SQL 语句为空",
@@ -105,21 +73,6 @@ const messages: LocaleMessages = {
     SqlOnlyDeleteMsg: "只允许 DELETE 语句",
     SqlSingleStatementMsg: "只允许单条 SQL 语句",
     SqlNoCommentsMsg: "不允许 SQL 注释",
-
-    // Passkey related
-    InvalidPasskeyNameMsg: "无效的 passkey 名称",
-    PasskeyNotFoundMsg: "Passkey 不存在",
-    AuthenticationFailedMsg: "认证失败",
-    RegistrationFailedMsg: "注册失败",
-
-    // Auto reply related
-    AutoReplyDisabledMsg: "自动回复已禁用",
-    InvalidAutoReplyMsg: "无效的主题或消息",
-    SubjectOrMessageTooLongMsg: "主题或消息太长",
-
-    // Bind address related
-    NoAddressOrUserTokenMsg: "缺少地址或用户令牌",
-    InvalidAddressOrUserTokenMsg: "无效的地址或用户令牌",
 
     // Pagination related
     InvalidLimitMsg: "无效的 limit 参数",

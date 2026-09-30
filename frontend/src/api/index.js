@@ -11,7 +11,7 @@ import { ErrorCode } from './error-codes'
 
 const API_BASE = APP_CONFIG.API_BASE || "";
 const {
-    loading, auth, jwt, settings, openSettings,
+    loading, auth, jwt, openSettings,
     announcement,
     showAuth, adminAuth, showAdminAuth
 } = useGlobalState();
@@ -134,22 +134,6 @@ const getOpenSettings = async (message, notification) => {
     }
 }
 
-const getSettings = async () => {
-    try {
-        if (typeof jwt.value != 'string' || jwt.value.trim() === '' || jwt.value === 'undefined') {
-            return "";
-        }
-        const res = await apiFetch("/api/settings");;
-        settings.value = {
-            address: res["address"],
-            send_balance: res["send_balance"],
-        };
-    } finally {
-        settings.value.fetched = true;
-    }
-}
-
-
 const adminShowAddressCredential = async (id) => {
     try {
         const { jwt: addressCredential } = await apiFetch(`/admin/show_password/${id}`);
@@ -171,7 +155,6 @@ const adminDeleteAddress = async (id) => {
 
 export const api = {
     fetch: apiFetch,
-    getSettings,
     getOpenSettings,
     adminShowAddressCredential,
     adminDeleteAddress,

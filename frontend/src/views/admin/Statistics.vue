@@ -33,7 +33,6 @@ const fetchStatistics = async () => {
         statistics.value.activeAddressCount7days = activeAddressCount7days || 0;
         statistics.value.activeAddressCount30days = activeAddressCount30days || 0;
     } catch (error) {
-        console.log(error)
         message.error(error.message || "error");
     }
 }

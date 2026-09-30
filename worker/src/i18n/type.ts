@@ -3,9 +3,7 @@ export type LocaleMessages = {
     InvalidMailIdMsg: string
     MailNotFoundMsg: string
     CustomAuthPasswordMsg: string
-    UserTokenExpiredMsg: string
     UserAcceesTokenExpiredMsg: string
-    UserRoleIsNotAdminMsg: string
     NeedAdminPasswordMsg: string
     AdminApiIpNotAllowedMsg: string
 
@@ -23,28 +21,9 @@ export type LocaleMessages = {
     InvalidAddressCredentialMsg: string
     UserDeleteEmailDisabledMsg: string
 
-    RedeemCodeUnavailableMsg: string
-    RedeemCodeInvalidMsg: string
-    RedeemRoleConflictMsg: string
 
-    UserNotFoundMsg: string
-    UserAlreadyExistsMsg: string
-    FailedToRegisterMsg: string
-    UserRegistrationDisabledMsg: string
-    UserMailDomainMustInMsg: string
-    UserEmailNotMatchRegexMsg: string
-    InvalidVerifyCodeMsg: string
     InvalidEmailOrPasswordMsg: string
-    VerifyMailSenderNotSetMsg: string
-    CodeAlreadySentMsg: string
-    InvalidUserDefaultRoleMsg: string
-    FailedUpdateUserDefaultRoleMsg: string
 
-    Oauth2ClientIDNotFoundMsg: string
-    Oauth2CliendIDOrCodeMissingMsg: string
-    Oauth2FailedGetUserInfoMsg: string
-    Oauth2FailedGetAccessTokenMsg: string
-    Oauth2FailedGetUserEmailMsg: string
 
     PasswordChangeDisabledMsg: string
     NewPasswordRequiredMsg: string
@@ -65,10 +44,6 @@ export type LocaleMessages = {
     InvalidDomainMsg: string
     RandomSubdomainNotAllowedMsg: string
     AddressAlreadyExistsMsg: string
-    MaxAddressCountReachedMsg: string
-    AddressNotBindedMsg: string
-    AddressAlreadyBindedMsg: string
-    TargetUserNotFoundMsg: string
 
     // Send mail related
     NoBalanceMsg: string
@@ -76,7 +51,6 @@ export type LocaleMessages = {
     SubjectEmptyMsg: string
     ContentEmptyMsg: string
     AlreadyRequestedMsg: string
-    EnableResendOrSmtpMsg: string
     EnableResendOrSmtpOrSendMailMsg: string
     ServerSendMailDailyLimitMsg: string
     ServerSendMailMonthlyLimitMsg: string
@@ -90,12 +64,6 @@ export type LocaleMessages = {
     InvalidCleanupConfigMsg: string
     InvalidCleanTypeMsg: string
     CleanupFailedMsg: string
-    EnableKVForMailVerifyMsg: string
-    VerifyMailDomainInvalidMsg: string
-    InvalidMaxAddressCountMsg: string
-    FailedDeleteUserMsg: string
-    InvalidUserIdMsg: string
-    InvalidRoleTextMsg: string
 
     // SQL validation
     SqlEmptyMsg: string
@@ -103,21 +71,6 @@ export type LocaleMessages = {
     SqlOnlyDeleteMsg: string
     SqlSingleStatementMsg: string
     SqlNoCommentsMsg: string
-
-    // Passkey related
-    InvalidPasskeyNameMsg: string
-    PasskeyNotFoundMsg: string
-    AuthenticationFailedMsg: string
-    RegistrationFailedMsg: string
-
-    // Auto reply related
-    AutoReplyDisabledMsg: string
-    InvalidAutoReplyMsg: string
-    SubjectOrMessageTooLongMsg: string
-
-    // Bind address related
-    NoAddressOrUserTokenMsg: string
-    InvalidAddressOrUserTokenMsg: string
 
     // Pagination related
     InvalidLimitMsg: string

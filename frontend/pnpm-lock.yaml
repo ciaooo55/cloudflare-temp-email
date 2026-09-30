@@ -50,9 +50,6 @@ importers:
       vue:
         specifier: ^3.5.42
         version: 3.5.42(typescript@5.4.5)
-      vue-clipboard3:
-        specifier: ^2.0.0
-        version: 2.0.0
       vue-i18n:
         specifier: ^11.4.10
         version: 11.4.10(vue@3.5.42(typescript@5.4.5))
@@ -3133,9 +3130,6 @@ packages:
     resolution: {integrity: sha512-iox0I3RZzxtKlcgYaStQYKEzWWGAduMmq+jS7OrNdQo1FgGfPMubGL3uGHOU9n97NIvfFDBGnpSvkWyb/NSn/Q==}
     peerDependencies:
       vue: ^3.0.0
-
-  vue-clipboard3@2.0.0:
-    resolution: {integrity: sha512-Q9S7dzWGax7LN5iiSPcu/K1GGm2gcBBlYwmMsUc5/16N6w90cbKow3FnPmPs95sungns4yvd9/+JhbAznECS2A==}
 
   vue-i18n@11.4.10:
     resolution: {integrity: sha512-Lp+BjOxqzOY87DS6Z8KrQrpiTr9IN/Lt4kZEilwyXG2Wrx+AcU6IVsAW92HNXtVcn1HFFPV6ty41p9e/qDpyvg==}
@@ -6469,10 +6463,6 @@ snapshots:
     dependencies:
       evtd: 0.2.4
       vue: 3.5.42(typescript@5.4.5)
-
-  vue-clipboard3@2.0.0:
-    dependencies:
-      clipboard: 2.0.11
 
   vue-i18n@11.4.10(vue@3.5.42(typescript@5.4.5)):
     dependencies:

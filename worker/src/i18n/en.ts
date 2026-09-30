@@ -5,9 +5,7 @@ const messages: LocaleMessages = {
     InvalidMailIdMsg: "Invalid mail ID",
     MailNotFoundMsg: "Mail not found",
     CustomAuthPasswordMsg: "You have enabled the private site password, please provide the password",
-    UserTokenExpiredMsg: "Your token has expired, please login again",
     UserAcceesTokenExpiredMsg: "Your access token has expired, please refresh the page",
-    UserRoleIsNotAdminMsg: "Your user role is not admin, no access to visit this page",
     NeedAdminPasswordMsg: "You need to provide the admin password to access this page",
     AdminApiIpNotAllowedMsg: "Your IP address isn't on the admin whitelist",
 
@@ -25,28 +23,9 @@ const messages: LocaleMessages = {
     InvalidAddressCredentialMsg: "Invalid address credential",
     UserDeleteEmailDisabledMsg: "User delete address/email is disabled, please contact the administrator",
 
-    RedeemCodeUnavailableMsg: "The redemption code is invalid, used, or expired",
-    RedeemCodeInvalidMsg: "Invalid redemption code configuration",
-    RedeemRoleConflictMsg: "The user already has a different role",
 
-    UserNotFoundMsg: "User not found",
-    UserAlreadyExistsMsg: "User already exists, please login",
-    FailedToRegisterMsg: "Failed to register",
-    UserRegistrationDisabledMsg: "User registration is disabled, please contact the administrator",
-    UserMailDomainMustInMsg: "User mail domain must be in this list",
-    UserEmailNotMatchRegexMsg: "Email address format does not match the required pattern",
-    InvalidVerifyCodeMsg: "Invalid verify code",
     InvalidEmailOrPasswordMsg: "Invalid email or password",
-    VerifyMailSenderNotSetMsg: "Verify mail sender address is not set, please contact the administrator",
-    CodeAlreadySentMsg: "Code already sent, please wait",
-    InvalidUserDefaultRoleMsg: "Invalid user default role, please contact the administrator",
-    FailedUpdateUserDefaultRoleMsg: "Failed to update user default role, please contact the administrator",
 
-    Oauth2ClientIDNotFoundMsg: "Oauth2 client ID is not set, please contact the administrator",
-    Oauth2CliendIDOrCodeMissingMsg: "Oauth2 client ID or code is missing",
-    Oauth2FailedGetUserInfoMsg: "Failed to get user info from Oauth2 provider",
-    Oauth2FailedGetAccessTokenMsg: "Failed to get access token from Oauth2 provider",
-    Oauth2FailedGetUserEmailMsg: "Failed to get user email from Oauth2 provider",
 
     PasswordChangeDisabledMsg: "Password change is disabled",
     NewPasswordRequiredMsg: "New password is required",
@@ -67,10 +46,6 @@ const messages: LocaleMessages = {
     InvalidDomainMsg: "Invalid domain",
     RandomSubdomainNotAllowedMsg: "Random subdomain is not enabled for this domain",
     AddressAlreadyExistsMsg: "Address already exists",
-    MaxAddressCountReachedMsg: "Max address count reached",
-    AddressNotBindedMsg: "Address is not binded",
-    AddressAlreadyBindedMsg: "Address is already binded, please unbind first",
-    TargetUserNotFoundMsg: "Target user not found",
 
     // Send mail related
     NoBalanceMsg: "No balance",
@@ -78,7 +53,6 @@ const messages: LocaleMessages = {
     SubjectEmptyMsg: "Subject is empty",
     ContentEmptyMsg: "Content is empty",
     AlreadyRequestedMsg: "Already requested",
-    EnableResendOrSmtpMsg: "Please enable resend or smtp for this domain",
     EnableResendOrSmtpOrSendMailMsg: "Please enable resend, smtp or SEND_MAIL for this domain",
     ServerSendMailDailyLimitMsg: "Server daily send quota has been reached",
     ServerSendMailMonthlyLimitMsg: "Server monthly send quota has been reached",
@@ -92,12 +66,6 @@ const messages: LocaleMessages = {
     InvalidCleanupConfigMsg: "Invalid cleanType or cleanDays",
     InvalidCleanTypeMsg: "Invalid cleanType",
     CleanupFailedMsg: "Cleanup failed. Check your cleanup settings; inactive-address cleanup is unavailable when address activity updates are disabled.",
-    EnableKVForMailVerifyMsg: "Please enable KV first if you want to enable mail verify",
-    VerifyMailDomainInvalidMsg: "VerifyMailSender domain must be in",
-    InvalidMaxAddressCountMsg: "Invalid maxAddressCount",
-    FailedDeleteUserMsg: "Failed to delete user",
-    InvalidUserIdMsg: "Invalid user_id",
-    InvalidRoleTextMsg: "Invalid role_text",
 
     // SQL validation
     SqlEmptyMsg: "SQL statement is empty",
@@ -105,21 +73,6 @@ const messages: LocaleMessages = {
     SqlOnlyDeleteMsg: "Only DELETE statements are allowed",
     SqlSingleStatementMsg: "Only single SQL statement is allowed",
     SqlNoCommentsMsg: "SQL comments are not allowed",
-
-    // Passkey related
-    InvalidPasskeyNameMsg: "Invalid passkey name",
-    PasskeyNotFoundMsg: "Passkey not found",
-    AuthenticationFailedMsg: "Authentication failed",
-    RegistrationFailedMsg: "Registration failed",
-
-    // Auto reply related
-    AutoReplyDisabledMsg: "Auto reply is disabled",
-    InvalidAutoReplyMsg: "Invalid subject or message",
-    SubjectOrMessageTooLongMsg: "Subject or message is too long",
-
-    // Bind address related
-    NoAddressOrUserTokenMsg: "No address or user token",
-    InvalidAddressOrUserTokenMsg: "Invalid address or user token",
 
     // Pagination related
     InvalidLimitMsg: "Invalid limit",

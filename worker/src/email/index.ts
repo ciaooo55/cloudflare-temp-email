@@ -5,8 +5,8 @@ import { sendMailNotifications } from '../telegram_api/index.ts';
 import { refreshBoundSnapshot } from '../telegram_api/mail_snapshot.ts';
 import { isBlocked } from './black_list.ts';
 import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common.ts';
-import { check_if_junk_mail } from './check_junk.ts';
-import { remove_attachment_if_need } from './check_attachment.ts';
+import { checkIfJunkMail } from './check_junk.ts';
+import { removeAttachmentIfNeed } from './check_attachment.ts';
 import { extractEmailInfo } from './ai_extract.ts';
 import { EmailRuleSettings } from '../models/index.ts';
 import { CONSTANTS } from '../constants.ts';
@@ -46,7 +46,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // check if junk mail
     try {
-        const is_junk = await check_if_junk_mail(env, toAddress, parsedEmailContext, message.headers.get("Message-ID"));
+        const is_junk = await checkIfJunkMail(env, toAddress, parsedEmailContext, message.headers.get("Message-ID"));
         if (is_junk) {
             message.setReject("Junk mail");
             console.log(`Junk mail from ${message.from} to ${toAddress}`);
@@ -77,7 +77,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // remove attachment if configured or size > 2MB
     try {
-        await remove_attachment_if_need(env, parsedEmailContext, message.from, toAddress, message.rawSize);
+        await removeAttachmentIfNeed(env, parsedEmailContext, message.from, toAddress, message.rawSize);
     } catch (error) {
         console.error("remove attachment error", error);
     }

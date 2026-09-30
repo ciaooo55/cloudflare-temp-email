@@ -1,18 +1,3 @@
-import type {
-    AuthenticatorTransportFuture,
-    CredentialDeviceType,
-    Base64URLString,
-} from '@simplewebauthn/server';
-
-export type Passkey = {
-    id: Base64URLString;
-    publicKey: string;
-    counter: number;
-    deviceType: CredentialDeviceType;
-    backedUp: boolean;
-    transports?: AuthenticatorTransportFuture[];
-};
-
 export class AdminWebhookSettings {
     enableAllowList: boolean;
     allowList: string[];

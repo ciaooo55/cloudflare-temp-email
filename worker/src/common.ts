@@ -379,7 +379,7 @@ export const newAddress = async (
         name = trimLower(c.env.PREFIX) + name;
     }
     // check domain
-    const allowDomains = checkAllowDomains ? await getAllowDomains(c) : getDomains(c);
+    const allowDomains = checkAllowDomains ? await getDefaultDomains(c) : getDomains(c);
     // if domain is not set, select domain based on environment configuration
     if (!domain && allowDomains.length > 0) {
         const createAddressDefaultDomainFirst = getBooleanValue(c.env.CREATE_ADDRESS_DEFAULT_DOMAIN_FIRST);
@@ -751,10 +751,6 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
 
 export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<string | undefined> => {
     return trimLower(c.env.PREFIX);
-}
-
-export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<string[]> => {
-    return getDefaultDomains(c);
 }
 
 // Security: validate webhook URLs to prevent SSRF.

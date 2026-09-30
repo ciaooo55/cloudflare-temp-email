@@ -2,7 +2,7 @@ import { getBooleanValue } from '../utils.ts';
 import { commonParseMail } from '../common.ts';
 import { createMimeMessage } from "mimetext";
 
-export const remove_attachment_if_need = async (
+export const removeAttachmentIfNeed = async (
     env: Bindings,
     parsedEmailContext: ParsedEmailContext,
     from_address: string,

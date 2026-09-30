@@ -43,10 +43,6 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "components.MailBox": {
-    "attachments": {
-      "en": "Show Attachments",
-      "zh": "查看附件"
-    },
     "autoRefresh": {
       "en": "Auto Refresh",
       "zh": "自动刷新"
@@ -99,10 +95,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Previous",
       "zh": "上一封"
     },
-    "query": {
-      "en": "Query",
-      "zh": "查询"
-    },
     "refresh": {
       "en": "Refresh",
       "zh": "刷新"
@@ -115,21 +107,9 @@ export const MESSAGE_REGISTRY = {
       "en": "Reply",
       "zh": "回复"
     },
-    "saveToS3": {
-      "en": "Save to S3",
-      "zh": "保存到S3"
-    },
     "selectAll": {
       "en": "Select All of This Page",
       "zh": "全选本页"
-    },
-    "showHtmlMail": {
-      "en": "Show Html Mail",
-      "zh": "显示HTML邮件"
-    },
-    "showTextMail": {
-      "en": "Show Text Mail",
-      "zh": "显示纯文本邮件"
     },
     "success": {
       "en": "Success",
@@ -231,10 +211,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Show Text Mail",
       "zh": "显示纯文本邮件"
     },
-    "size": {
-      "en": "Size",
-      "zh": "大小"
-    }
   },
   "components.Turnstile": {
     "refresh": {
@@ -421,10 +397,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Dark",
       "zh": "深色"
     },
-    "mailbox": {
-      "en": "Mailbox",
-      "zh": "邮箱"
-    },
     "light": {
       "en": "Light",
       "zh": "浅色"
@@ -445,10 +417,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Cloudflare Temp Email",
       "zh": "Cloudflare 临时邮件"
     },
-    "userCenter": {
-      "en": "User Center",
-      "zh": "用户中心"
-    }
   },
   "views.Admin": {
     "about": {
@@ -523,10 +491,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Admin Password Login",
       "zh": "管理员密码登录"
     },
-    "loginViaUserAdmin": {
-      "en": "User Account (Admin Role)",
-      "zh": "用户账号（管理员权限）"
-    },
     "logout": {
       "en": "Logout",
       "zh": "退出登录"
@@ -567,14 +531,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Quick Setup",
       "zh": "快速设置"
     },
-    "redeemCodes": {
-      "en": "Redemption Codes",
-      "zh": "兑换码"
-    },
-    "roleAddressConfig": {
-      "en": "Role Address Config",
-      "zh": "角色地址配置"
-    },
     "sendBox": {
       "en": "Sent",
       "zh": "发件箱"
@@ -606,22 +562,6 @@ export const MESSAGE_REGISTRY = {
     "unknow": {
       "en": "Mails with unknow receiver",
       "zh": "无收件人邮件"
-    },
-    "user": {
-      "en": "User",
-      "zh": "用户"
-    },
-    "userOauth2Settings": {
-      "en": "Oauth2 Settings",
-      "zh": "Oauth2 设置"
-    },
-    "user_management": {
-      "en": "User Management",
-      "zh": "用户管理"
-    },
-    "user_settings": {
-      "en": "User Settings",
-      "zh": "用户设置"
     },
     "webhookSettings": {
       "en": "Webhook Settings",
@@ -766,10 +706,6 @@ export const MESSAGE_REGISTRY = {
       "en": "OFF by default = real-time: every open reads the newest content, new mail shows in seconds. ON = cache for the chosen duration (saves quota, resists refresh abuse, but new mail can lag up to the chosen duration).",
       "zh": "默认关闭=实时：每次打开都读取最新内容，新邮件秒级可见。开启后按所选时长缓存（省额度、抗刷，但新邮件最多延迟所选时长）。"
     },
-    "boundCacheTtl": {
-      "en": "Cache duration",
-      "zh": "缓存时长"
-    },
     "seconds": {
       "en": "sec",
       "zh": "秒"
@@ -866,10 +802,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Snapshots are automatically deleted after this long. Default 24 hours.",
       "zh": "快照超过此时长后自动删除，默认 24 小时。"
     },
-    "batchTitle": {
-      "en": "Batch Bind",
-      "zh": "批量绑定"
-    },
     "batchPlaceholder": {
       "en": "One email per line, e.g.:\ntest{'@'}ciaooo55.us.ci\nhello{'@'}bbb99.us.ci",
       "zh": "每行一个邮箱地址，例如：\ntest{'@'}ciaooo55.us.ci\nhello{'@'}bbb99.us.ci"
@@ -877,14 +809,6 @@ export const MESSAGE_REGISTRY = {
     "batchBind": {
       "en": "Bind All",
       "zh": "批量绑定"
-    },
-    "validate": {
-      "en": "Validate",
-      "zh": "检测格式"
-    },
-    "validCount": {
-      "en": "{n} valid",
-      "zh": "{n} 个有效"
     },
     "invalidFormat": {
       "en": "Invalid format",
@@ -905,10 +829,6 @@ export const MESSAGE_REGISTRY = {
     "confirmReplace": {
       "en": "Replace the link? The old URL will stop working and a new one will be generated.",
       "zh": "更换链接？旧链接将失效，会生成新链接。"
-    },
-    "binding": {
-      "en": "Binding...",
-      "zh": "绑定中..."
     },
     "confirmTitle": {
       "en": "Confirm",
@@ -1142,17 +1062,9 @@ export const MESSAGE_REGISTRY = {
       "en": "Sender address is empty",
       "zh": "发件人地址不能为空"
     },
-    "fromName": {
-      "en": "Your Name and Address, leave Name blank to use email address",
-      "zh": "你的名称和地址，名称不填写则使用邮箱地址"
-    },
     "html": {
       "en": "HTML source",
       "zh": "HTML 源码"
-    },
-    "options": {
-      "en": "Options",
-      "zh": "选项"
     },
     "preview": {
       "en": "Preview",
@@ -1202,10 +1114,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Recipient address is empty",
       "zh": "收件人地址不能为空"
     },
-    "toName": {
-      "en": "Recipient Name and Address, leave Name blank to use email address",
-      "zh": "收件人名称和地址，名称不填写则使用邮箱地址"
-    },
     "tooLarge": {
       "en": "Too large file, please upload file less than 1MB.",
       "zh": "文件过大, 请上传小于1MB的文件。"
@@ -1215,14 +1123,6 @@ export const MESSAGE_REGISTRY = {
     "actions": {
       "en": "Actions",
       "zh": "操作"
-    },
-    "addressCredential": {
-      "en": "Mail Address Credential",
-      "zh": "邮箱地址凭证"
-    },
-    "addressCredentialTip": {
-      "en": "Please copy the Mail Address Credential and you can use it to login to your email account.",
-      "zh": "请复制邮箱地址凭证，你可以使用它登录你的邮箱。"
     },
     "addressQueryTip": {
       "en": "Leave blank to query all email addresses",
@@ -1666,10 +1566,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Enabled",
       "zh": "已启用"
     },
-    "disabled": {
-      "en": "Disabled",
-      "zh": "已停用"
-    },
     "enableGlobalMailPush": {
       "en": "Enable Global Mail Push(Manually input telegram Chat ID)",
       "zh": "启用全局邮件推送(手动输入邮箱管理员的 telegram Chat ID, 回车增加)"
@@ -1852,18 +1748,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Email Address",
       "zh": "邮箱地址"
     },
-    "addressCredential": {
-      "en": "Mail Address Credential",
-      "zh": "邮箱地址凭证"
-    },
-    "addressCredentialTip": {
-      "en": "Please copy the Mail Address Credential and you can use it to login to your email account.",
-      "zh": "请复制邮箱地址凭证，你可以使用它登录你的邮箱。"
-    },
-    "addressPassword": {
-      "en": "Mailbox Password",
-      "zh": "邮箱密码"
-    },
     "createEmailAddress": {
       "en": "Create Email Address",
       "zh": "创建邮箱"
@@ -1887,10 +1771,6 @@ export const MESSAGE_REGISTRY = {
     "generateName": {
       "en": "Generate Fake Name",
       "zh": "生成随机名字"
-    },
-    "linkWithAddressCredential": {
-      "en": "Open to auto login email link",
-      "zh": "打开即可自动登录邮箱的链接"
     },
     "normalSubdomain": {
       "en": "Normal Domain",
@@ -1976,14 +1856,6 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.AccountSettings": {
-    "actions": {
-      "en": "Actions",
-      "zh": "操作"
-    },
-    "add": {
-      "en": "Add",
-      "zh": "添加"
-    },
     "address_block_list": {
       "en": "Address Block Keywords for Users(Admin can skip)",
       "zh": "邮件地址屏蔽关键词(管理员可跳过检查)"
@@ -1995,14 +1867,6 @@ export const MESSAGE_REGISTRY = {
     "block_receive_unknow_address_email": {
       "en": "Block receive unknow address email",
       "zh": "禁止接收未知地址邮件"
-    },
-    "cancel": {
-      "en": "Cancel",
-      "zh": "取消"
-    },
-    "config": {
-      "en": "Config",
-      "zh": "配置"
     },
     "create_address_subdomain_match": {
       "en": "Allow Subdomain Suffix Match When Creating Address",
@@ -2036,42 +1900,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Only affects domain validation when creating addresses. Example: when enabled, foo.example.com can match configured base domain example.com.",
       "zh": "仅影响新建邮箱时的域名校验。例如开启后，foo.example.com 可以匹配已配置的基础域名 example.com。"
     },
-    "delete_rule": {
-      "en": "Delete",
-      "zh": "删除"
-    },
-    "delete_rule_confirm": {
-      "en": "Are you sure you want to delete this rule?",
-      "zh": "确定要删除这条规则吗？"
-    },
-    "delete_success": {
-      "en": "Delete Success",
-      "zh": "删除成功"
-    },
-    "domain_list": {
-      "en": "Domain List (Optional)",
-      "zh": "域名列表（可选）"
-    },
-    "email_forwarding_config": {
-      "en": "Email Forwarding Configuration",
-      "zh": "邮件转发配置"
-    },
-    "forward_address": {
-      "en": "Forward Address",
-      "zh": "转发地址"
-    },
-    "forward_address_required": {
-      "en": "Forward address is required",
-      "zh": "转发地址不能为空"
-    },
-    "forward_placeholder": {
-      "en": "forward{'@'}example.com",
-      "zh": "forward{'@'}example.com"
-    },
-    "forwarding_rule_warning": {
-      "en": "Each rule will run independently. Forward address needs to be a verified address.",
-      "zh": "每条规则独立运行，转发地址需要为已验证的地址。"
-    },
     "fromBlockList": {
       "en": "Block Keywords for receive email",
       "zh": "接收邮件地址屏蔽关键词"
@@ -2080,37 +1908,13 @@ export const MESSAGE_REGISTRY = {
       "en": "Type and press Enter to add",
       "zh": "输入后按回车键添加"
     },
-    "match_all": {
-      "en": "All",
-      "zh": "全部"
-    },
-    "match_any": {
-      "en": "Any",
-      "zh": "任一"
-    },
     "noLimitSendAddressList": {
       "en": "No Balance Limit Send Address List",
       "zh": "无余额限制发送地址列表"
     },
-    "regex_invalid": {
-      "en": "Invalid regex pattern",
-      "zh": "无效的正则表达式"
-    },
-    "regex_too_long": {
-      "en": "Regex pattern too long (max 200 characters)",
-      "zh": "正则表达式过长（最大200字符）"
-    },
-    "rule_index": {
-      "en": "Rule",
-      "zh": "规则"
-    },
     "save": {
       "en": "Save",
       "zh": "保存"
-    },
-    "select_domain": {
-      "en": "Select Domain",
-      "zh": "选择域名"
     },
     "send_address_block_list": {
       "en": "Address Block Keywords for send email",
@@ -2143,22 +1947,6 @@ export const MESSAGE_REGISTRY = {
     "send_mail_monthly_limit_invalid": {
       "en": "Monthly limit must be an integer greater than or equal to -1",
       "zh": "每月额度必须是大于等于 -1 的整数"
-    },
-    "source_match_mode": {
-      "en": "Match Mode",
-      "zh": "匹配模式"
-    },
-    "source_patterns": {
-      "en": "Source Address Regex (Optional)",
-      "zh": "来源地址正则（可选）"
-    },
-    "source_patterns_placeholder": {
-      "en": "e.g. gmail.com",
-      "zh": "例如: gmail.com"
-    },
-    "source_patterns_tip": {
-      "en": "Domain list filters by recipient address, source regex filters by sender address. Both conditions must match for forwarding (AND logic). Leave either empty to skip that filter.",
-      "zh": "域名列表按收件地址过滤，来源正则按发件地址过滤，两者均为可选。同时配置时需同时满足（AND 逻辑），留空则跳过该条件。"
     },
     "successTip": {
       "en": "Save Success",
@@ -2284,10 +2072,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Run every N minutes",
       "zh": "每 N 分钟执行一次"
     },
-    "sqlName": {
-      "en": "Name",
-      "zh": "名称"
-    },
     "rawMailsOlderThanLabel": {
       "en": "Delete mails received more than N minutes ago",
       "zh": "删除 N 分钟前收到的邮件"
@@ -2308,10 +2092,6 @@ export const MESSAGE_REGISTRY = {
       "en": "Scheduled Tasks",
       "zh": "定时任务"
     },
-    "sqlStatement": {
-      "en": "SQL Statement (DELETE only)",
-      "zh": "SQL 语句 (仅限 DELETE)"
-    },
     "scheduledTip": {
       "en": "Each task below runs automatically on its own schedule. Changes take effect right after saving, no redeploy needed.",
       "zh": "下面每个任务都会按自己设定的时间自动执行，保存后立即生效，不用重新部署。"
@@ -2319,10 +2099,6 @@ export const MESSAGE_REGISTRY = {
     "tip": {
       "en": "Please input the days",
       "zh": "请输入天数"
-    },
-    "unboundAddressLabel": {
-      "en": "Cleanup the unbound address before n days",
-      "zh": "清理 n 天前的未绑定用户地址"
     },
     "confirmTitle": {
       "en": "Confirm",
@@ -2454,12 +2230,6 @@ export const MESSAGE_REGISTRY = {
       "zh": "Webhook 白名单(请输入允许使用webhook 的邮箱地址, 回车增加)"
     }
   },
-  "views.common.AdminContact": {
-    "adminContact": {
-      "en": "If you need help, please contact the administrator ({msg})",
-      "zh": "如果你需要帮助，请联系管理员 ({msg})"
-    }
-  }
 } as const
 
 type MessageRegistry = typeof MESSAGE_REGISTRY
