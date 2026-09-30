@@ -1,4 +1,7 @@
-import type { RawMailRow, WebhookMail } from '../models/index.ts';
+import type { RawMailRow, WebhookMail, WebhookSettings } from '../models/index.ts';
+import { Context } from "hono";
+import { commonParseMail, sendWebhook } from '../common.ts';
+import { resolveRawEmail } from '../gzip.ts';
 
 export const WEBHOOK_ATTACHMENT_TTL_SECONDS = 24 * 60 * 60;
 export const SAFE_INLINE_IMAGE_TYPES = new Set([
@@ -81,4 +84,40 @@ export const formatWebhookBody = (body: string, mail: WebhookMail): string => {
         if (!Object.hasOwn(formatMap, key)) return placeholder;
         return JSON.stringify(formatMap[key as keyof typeof formatMap]).replace(/^"(.*)"$/, '$1');
     });
+}
+
+/**
+ * 测试 webhook：解析指定邮件（或空测试数据），按给定 settings 发一次 webhook。
+ * admin 和用户两侧的 test 端点共用；调用方负责各自的权限校验和 mailRow 查询。
+ * 返回 null 表示发送成功，返回 Response 表示失败（直接返回给客户端）。
+ */
+export const sendTestWebhook = async (
+    c: Context<HonoCustomType>,
+    settings: WebhookSettings,
+    mailRow: RawMailRow | null,
+    to: string,
+): Promise<Response | null> => {
+    const mailId = mailRow?.id;
+    const raw = mailRow ? await resolveRawEmail(mailRow) : "";
+    const parsedEmailContext: ParsedEmailContext = { rawEmail: raw };
+    const parsedEmail = await commonParseMail(parsedEmailContext);
+    const res = await sendWebhook(settings, {
+        attachments: await getWebhookAttachments(c.env, mailRow, parsedEmail?.attachments),
+        id: mailId || "0",
+        url: c.env.FRONTEND_URL ? `${c.env.FRONTEND_URL}?mail_id=${mailId}` : "",
+        from: parsedEmail?.sender || "test@test.com",
+        to,
+        subject: parsedEmail?.subject || "test subject",
+        raw: raw || "test raw email",
+        parsedText: parsedEmail?.text || "test parsed text",
+        parsedHtml: parsedEmail?.html || "test parsed html",
+        aiExtract: null,
+        aiExtractType: "",
+        aiExtractResult: "",
+        aiExtractResultText: ""
+    });
+    if (!res.success) {
+        return c.text(res.message || "send webhook error", 400);
+    }
+    return null;
 }

@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- refactor: |Cleanup| Deduplicated webhook test-send logic: admin and user `testWebhookSettings` now share the new `utils/webhook.sendTestWebhook`, removing ~30 lines of duplication
 - refactor: |Cleanup| Paid off yesterday's tech debt: added `address?` to the `ParsedEmailContext` type and removed two `as any` casts in `mail_snapshot.ts` (`parsed?.sender` was already in the type)
 - refactor: |Cleanup| Removed a redundant D1 query when creating addresses: `insertAddressRecord` now returns `meta.last_row_id` directly instead of SELECT-ing the id afterwards
 - refactor: |Cleanup| Deduplicated Turnstile checks: new shared `utils.requireTurnstile` helper replaces 3 identical inline blocks in `address_auth.ts` and `open_api/auth.ts`

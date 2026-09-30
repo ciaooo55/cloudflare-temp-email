@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- refactor: |代码清理| webhook 测试发送逻辑去重：admin 和用户两侧的 `testWebhookSettings` 共用新的 `utils/webhook.sendTestWebhook`，删掉约 30 行重复代码
 - refactor: |代码清理| 补上昨天欠的技术债：`ParsedEmailContext` 类型补上 `address?` 字段，`mail_snapshot.ts` 里删掉两处 `as any` 硬绕（`parsed?.sender` 本来就在类型里）
 - refactor: |代码清理| 建地址去掉多余的一次 D1 查询：`insertAddressRecord` 改为直接返回 `meta.last_row_id`，不再 SELECT 查 id
 - refactor: |代码清理| Turnstile 校验三处去重：新增 `utils.requireTurnstile` 公共函数，替换 `address_auth.ts`、`open_api/auth.ts` 两处共三块逐字相同的代码

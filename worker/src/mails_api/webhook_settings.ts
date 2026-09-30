@@ -1,9 +1,8 @@
 import { Context } from "hono";
 import { CONSTANTS } from '../constants.ts';
 import { AdminWebhookSettings, WebhookSettings, RawMailRow } from '../models/index.ts';
-import { commonParseMail, isValidWebhookUrl, sendWebhook } from '../common.ts';
-import { resolveRawEmail } from '../gzip.ts';
-import { getWebhookAttachments } from '../utils/webhook.ts';
+import { isValidWebhookUrl } from '../common.ts';
+import { sendTestWebhook } from '../utils/webhook.ts';
 import i18n from '../i18n/index.ts';
 
 
@@ -59,31 +58,11 @@ async function testWebhookSettings(c: Context<HonoCustomType>): Promise<Response
     ).bind(requestedMailId, address).first<RawMailRow>() : await c.env.DB.prepare(
         `SELECT * FROM raw_mails WHERE address = ? ORDER BY RANDOM() LIMIT 1`
     ).bind(address).first<RawMailRow>();
-    const mailId = mailRow?.id;
     if (requestedMailId !== undefined && !mailRow) {
         return c.text(msgs.MailNotFoundMsg, 404);
     }
-    const raw = mailRow ? await resolveRawEmail(mailRow) : "";
-    const parsedEmailContext: ParsedEmailContext = { rawEmail: raw };
-    const parsedEmail = await commonParseMail(parsedEmailContext);
-    const res = await sendWebhook(settings, {
-        attachments: await getWebhookAttachments(c.env, mailRow, parsedEmail?.attachments),
-        id: mailId || "0",
-        url: c.env.FRONTEND_URL ? `${c.env.FRONTEND_URL}?mail_id=${mailId}` : "",
-        from: parsedEmail?.sender || "test@test.com",
-        to: address,
-        subject: parsedEmail?.subject || "test subject",
-        raw: raw || "test raw email",
-        parsedText: parsedEmail?.text || "test parsed text",
-        parsedHtml: parsedEmail?.html || "test parsed html",
-        aiExtract: null,
-        aiExtractType: "",
-        aiExtractResult: "",
-        aiExtractResultText: ""
-    });
-    if (!res.success) {
-        return c.text(res.message || "send webhook error", 400);
-    }
+    const err = await sendTestWebhook(c, settings, mailRow, address);
+    if (err) return err;
     return c.json({ success: true });
 }
 
