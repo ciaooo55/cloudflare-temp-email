@@ -7,7 +7,7 @@ import settings from './settings.ts'
 import miniapp from './miniapp.ts'
 import i18n from '../i18n/index.ts'
 import { CONSTANTS } from '../constants.ts'
-import { getJsonSetting } from '../utils.ts'
+import { getJsonSetting, generateSecureHexToken } from '../utils.ts'
 import type { TelegramBotEntry } from '../admin_api/notify_settings.ts'
 
 export const api = new Hono<HonoCustomType>();
@@ -24,7 +24,7 @@ const hasTelegramBot = async (c: Context<HonoCustomType>) => {
 };
 
 api.use("/telegram/*", async (c, next) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!c.env.KV) {
         return c.text(msgs.KVNotAvailableMsg, 400);
     }
@@ -35,7 +35,7 @@ api.use("/telegram/*", async (c, next) => {
 });
 
 api.use("/admin/telegram/*", async (c, next) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!c.env.KV) {
         return c.text(msgs.KVNotAvailableMsg, 400);
     }
@@ -57,7 +57,7 @@ const handleTelegramWebhook = async (
         }
     }
     if (!token) {
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
         return c.text(msgs.TgBotTokenRequiredMsg, 400);
     }
     const tgBot = newTelegramBot(c, token);
@@ -92,18 +92,15 @@ api.post("/telegram/webhook", async (c) => {
 });
 
 api.post("/admin/telegram/init", async (c) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const token = c.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
         return c.text(msgs.TgBotTokenRequiredMsg, 400);
     }
     const domain = new URL(c.req.url).host;
     const webhookUrl = `https://${domain}/telegram/webhook`;
-    console.log(`setting webhook to ${webhookUrl}`);
     // Security: generate a secret token for webhook verification
-    const secretBytes = new Uint8Array(32);
-    crypto.getRandomValues(secretBytes);
-    const webhookSecret = [...secretBytes].map(b => b.toString(16).padStart(2, "0")).join("");
+    const webhookSecret = generateSecureHexToken(32);
     const bot = newTelegramBot(c, token);
     await bot.telegram.setWebhook(webhookUrl, { secret_token: webhookSecret })
     await c.env.KV.put("telegram:webhook-secret:default", webhookSecret);
@@ -114,7 +111,7 @@ api.post("/admin/telegram/init", async (c) => {
 });
 
 api.get("/admin/telegram/status", async (c) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const token = c.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
         return c.text(msgs.TgBotTokenRequiredMsg, 400);

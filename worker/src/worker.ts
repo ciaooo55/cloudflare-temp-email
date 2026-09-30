@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { Jwt } from 'hono/utils/jwt'
 import { addressJwtAuth } from './address_auth.ts';
 
-import { api as commonApi } from './commom_api.ts';
+import { api as commonApi } from './common_api.ts';
 import { api as openAuthApi } from './open_api/auth.ts';
 import { api as mailsApi } from './mails_api/index.ts'
 import { api as adminApi } from './admin_api/index.ts';
@@ -136,7 +136,7 @@ const checkoutUserRolePayload = async (
 		if (!payload.exp) return;
 		// exp is in seconds
 		if (payload.exp < Math.floor(Date.now() / 1000)) {
-			return c.json({ code: ErrorCode.AUTH_USER_ACCESS_TOKEN_EXPIRED, message: i18n.getMessagesbyContext(c).UserAcceesTokenExpiredMsg }, 401);
+			return c.json({ code: ErrorCode.AUTH_USER_ACCESS_TOKEN_EXPIRED, message: i18n.getMessagesByContext(c).UserAcceesTokenExpiredMsg }, 401);
 		}
 		if (typeof payload?.user_role !== "string") return;
 		if (userId !== undefined && payload.user_id !== userId) return;

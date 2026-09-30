@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { TelegramSettings } from './settings.ts';
+import { generateSecureHexToken } from '../utils.ts';
 
 export const DEFAULT_SNAPSHOT_TTL = 86400; // 默认 24h，可在管理后台修改
 
@@ -139,9 +140,7 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
         } catch { /* invalid optional URL */ }
     }
     if (!origin) return null;
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    const token = [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("");
+    const token = generateSecureHexToken(32);
     await c.env.KV.put(`mailhtml:${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || ""), { expirationTtl: ttlSeconds });
     return `${origin}/m/${token}`;
 }
@@ -315,9 +314,7 @@ export async function createSnapshotBindingRecord(
     origin: string
 ): Promise<SnapshotBinding> {
     const addr = address.trim().toLowerCase();
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    const token = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+    const token = generateSecureHexToken(32);
     const now = Date.now();
     const binding: SnapshotBinding = {
         address: addr, token,

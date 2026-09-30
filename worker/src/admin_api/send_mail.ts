@@ -6,7 +6,7 @@ import { ensureSendMailLimit, increaseSendMailLimitCount } from '../mails_api/se
 import { getMailDomain } from '../utils.ts';
 
 const getAdminSendMailErrorMessage = (
-    msgs: ReturnType<typeof i18n.getMessagesbyContext>,
+    msgs: ReturnType<typeof i18n.getMessagesByContext>,
     error: unknown
 ): string => {
     const message = error instanceof Error ? error.message : "";
@@ -16,7 +16,7 @@ const getAdminSendMailErrorMessage = (
 }
 
 export const sendMailbyAdmin = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     let reqJson;
     try {
         reqJson = await c.req.json();
@@ -48,7 +48,7 @@ export const sendMailbyAdmin = async (c: Context<HonoCustomType>) => {
 }
 
 export const sendMailByBindingAdmin = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!c.env.SEND_MAIL) {
         return c.text(msgs.EnableSendMailMsg, 400)
     }

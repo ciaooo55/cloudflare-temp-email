@@ -18,7 +18,7 @@ const Account = defineAsyncComponent(() => import('./admin/Account.vue'));
 const CreateAccount = defineAsyncComponent(() => import('./admin/CreateAccount.vue'));
 const AccountSettings = defineAsyncComponent(() => import('./admin/AccountSettings.vue'));
 const Mails = defineAsyncComponent(() => import('./admin/Mails.vue'));
-const MailsUnknow = defineAsyncComponent(() => import('./admin/MailsUnknow.vue'));
+const MailsUnknown = defineAsyncComponent(() => import('./admin/MailsUnknown.vue'));
 const About = defineAsyncComponent(() => import('./common/About.vue'));
 const Maintenance = defineAsyncComponent(() => import('./admin/Maintenance.vue'));
 const DatabaseManager = defineAsyncComponent(() => import('./admin/DatabaseManager.vue'));
@@ -160,7 +160,7 @@ onMounted(async () => {
             <Mails />
           </n-tab-pane>
           <n-tab-pane name="unknow" :tab="t('unknow')">
-            <MailsUnknow />
+            <MailsUnknown />
           </n-tab-pane>
           <n-tab-pane name="sendBox" :tab="t('sendBox')">
             <SendBox />

@@ -112,7 +112,7 @@ async function getTelegramBindAddress(c: Context<HonoCustomType>): Promise<Respo
 
 async function newTelegramAddress(c: Context<HonoCustomType>): Promise<Response> {
     const { initData, address, cf_token, enableRandomSubdomain } = await c.req.json().catch(() => ({}));
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     // check cf turnstile
     try {
         await checkCfTurnstile(c, cf_token);
@@ -138,7 +138,7 @@ async function newTelegramAddress(c: Context<HonoCustomType>): Promise<Response>
 
 async function bindAddress(c: Context<HonoCustomType>): Promise<Response> {
     const { initData, jwt } = await c.req.json().catch(() => ({}));
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     try {
         const userId = await checkTelegramAuth(c, initData);
         await bindTelegramAddress(c, userId, jwt, msgs);
@@ -163,7 +163,7 @@ async function unbindAddress(c: Context<HonoCustomType>): Promise<Response> {
 
 async function getMail(c: Context<HonoCustomType>): Promise<Response> {
     const { initData, mailId } = await c.req.json().catch(() => ({}));
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     try {
         if (checkIsAdmin(c)) {
             const result = await c.env.DB.prepare(

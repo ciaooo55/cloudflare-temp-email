@@ -18,7 +18,7 @@ import { getDomainRoute, resolveSendChannels } from '../send_config.ts';
 export const api = new Hono<HonoCustomType>()
 
 api.post('/api/request_send_mail_access', async (c) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { address } = c.get("jwtPayload")
     if (!address) {
         return c.text(msgs.AddressNotFoundMsg, 400)
@@ -184,7 +184,7 @@ export const sendMail = async (
         isAdmin?: boolean
     }
 ): Promise<void> => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!address) {
         throw new Error(msgs.AddressNotFoundMsg)
     }
@@ -348,7 +348,7 @@ api.get('/api/sendbox', async (c) => {
 })
 
 api.delete('/api/sendbox/:id', async (c) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL)) {
         return c.text(msgs.UserDeleteEmailDisabledMsg, 403)
     }

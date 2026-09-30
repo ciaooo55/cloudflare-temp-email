@@ -123,7 +123,7 @@ const removeTelegramBinding = async (
 export const unbindTelegramAddress = async (
     c: Context<HonoCustomType>, userId: string, address: string
 ): Promise<boolean> => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const bindings = await getTelegramBindings(c, userId);
     for (const { payload } of bindings) {
         if (payload?.address !== address) continue;

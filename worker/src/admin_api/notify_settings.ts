@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import { CONSTANTS } from '../constants.ts';
-import { getDomains, getJsonSetting, isDomainOrSubdomain, saveSetting } from '../utils.ts';
+import { getDomains, getJsonSetting, isDomainOrSubdomain, saveSetting, generateSecureHexToken } from '../utils.ts';
 import {
     createSnapshotBindingRecord,
     deleteSnapshotBinding,
@@ -55,11 +55,7 @@ export const DEFAULT_BOUND_CACHE_TTL = 10;
 /** 前端时间挡位（秒）：10秒 / 30秒 / 1分钟 / 5分钟 */
 export const BOUND_CACHE_TTL_PRESETS = [10, 30, 60, 300];
 
-const newId = () => {
-    const bytes = new Uint8Array(8);
-    crypto.getRandomValues(bytes);
-    return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
-};
+const newId = () => generateSecureHexToken(8);
 
 const maskTelegramToken = (token: string) => {
     const idx = token.indexOf(":");
@@ -196,9 +192,7 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
     try {
         // Security: generate a secret token for webhook verification
         // Telegram will send it in X-Telegram-Bot-Api-Secret-Token header
-        const secretBytes = new Uint8Array(32);
-        crypto.getRandomValues(secretBytes);
-        const webhookSecret = [...secretBytes].map(b => b.toString(16).padStart(2, "0")).join("");
+        const webhookSecret = generateSecureHexToken(32);
         const webhookUrl = `https://${new URL(c.req.url).host}/telegram/webhook/${id}`;
         const res = await fetch(`https://api.telegram.org/bot${bot.token}/setWebhook`, {
             method: "POST",

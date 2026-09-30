@@ -84,7 +84,7 @@ const get = async (c: Context<HonoCustomType>) => {
 };
 
 const save = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const {
         blockList, sendBlockList, noLimitSendAddressList,
         verifiedAddressList, fromBlockList, emailRuleSettings, addressCreationSettings,

@@ -14,7 +14,7 @@ export default {
         // fallback language
         return en;
     },
-    getMessagesbyContext: (
+    getMessagesByContext: (
         c: Context<HonoCustomType>
     ): LocaleMessages => {
         const locale = c?.get?.("lang") || c.env?.DEFAULT_LANG;

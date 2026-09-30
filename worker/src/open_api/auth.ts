@@ -8,7 +8,7 @@ const api = new Hono<HonoCustomType>()
 
 api.post('/open_api/site_login', async (c) => {
     const { password, cf_token } = await c.req.json().catch(() => ({}));
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (utils.isGlobalTurnstileEnabled(c)) {
         try {
             await checkCfTurnstile(c, cf_token);
@@ -26,7 +26,7 @@ api.post('/open_api/site_login', async (c) => {
 
 api.post('/open_api/admin_login', async (c) => {
     const { password, cf_token } = await c.req.json().catch(() => ({}));
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (utils.isGlobalTurnstileEnabled(c)) {
         try {
             await checkCfTurnstile(c, cf_token);

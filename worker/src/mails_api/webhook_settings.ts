@@ -8,7 +8,7 @@ import i18n from '../i18n/index.ts';
 
 
 async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { address } = c.get("jwtPayload")
     const adminSettings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
     if (adminSettings?.enableAllowList && !adminSettings?.allowList.includes(address)) {
@@ -22,7 +22,7 @@ async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response>
 
 
 async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { address } = c.get("jwtPayload")
     const adminSettings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
     if (adminSettings?.enableAllowList && !adminSettings?.allowList.includes(address)) {
@@ -40,7 +40,7 @@ async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response
 }
 
 async function testWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const settings = await c.req.json<WebhookSettings & { mail_id?: number }>().catch(() => null);
     if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
         return c.text(msgs.InvalidRequestBodyMsg, 400);

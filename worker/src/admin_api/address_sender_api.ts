@@ -21,7 +21,7 @@ const list = async (c: Context<HonoCustomType>) => {
 };
 
 const update = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     /* eslint-disable prefer-const */
     let { address, address_id, balance, enabled } = await c.req.json();
     /* eslint-enable prefer-const */

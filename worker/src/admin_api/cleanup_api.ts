@@ -70,7 +70,7 @@ export const executeCustomSqlCleanup = async (
     c: Context<HonoCustomType>,
     customSql: CustomSqlCleanup
 ): Promise<{ success: boolean; rowsAffected?: number; error?: string }> => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!customSql || !customSql.sql) {
         return { success: false, error: msgs.InvalidCleanupConfigMsg };
     }
@@ -97,7 +97,7 @@ export const executeCustomSqlCleanup = async (
 
 export default {
     cleanup: async (c: Context<HonoCustomType>) => {
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
         const { cleanType, cleanDays } = await c.req.json();
         try {
             const success = await cleanup(c, cleanType, cleanDays);
@@ -115,7 +115,7 @@ export default {
         return c.json(cleanupSetting)
     },
     saveCleanup: async (c: Context<HonoCustomType>) => {
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
         const cleanupSetting = await c.req.json<CleanupSettings>();
 
         // Validate custom SQL cleanup list
@@ -144,7 +144,7 @@ export default {
     },
     // 手动立即执行一次 raw_mails 清理
     cleanupRawMailsNow: async (c: Context<HonoCustomType>) => {
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
         try {
             const body: { minutes?: number } = await c.req.json().catch(() => ({}));
             const minutes = Math.max(1, Math.floor(Number(body.minutes) || 10));

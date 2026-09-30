@@ -6,7 +6,7 @@ import { newAddress, getAddressPrefix, generateRandomName } from '../common.ts'
 import { CONSTANTS } from '../constants.ts'
 
 const createNewAddress = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const userPayload = c.get("userPayload");
 
     if (getBooleanValue(c.env.DISABLE_ANONYMOUS_USER_CREATE_EMAIL)

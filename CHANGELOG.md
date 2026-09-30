@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- refactor: |代码清理| 消除重复的随机 hex 生成逻辑：新增 `utils.generateSecureHexToken` 公共函数，统一替换 5 处（Telegram webhook secret ×2、快照 token ×2、ID 生成 ×1）；删除 `address_auth.ts` 未使用的 `hashPassword` 导入；删除 `telegram_api/index.ts` 遗留的 webhook 调试日志
+- refactor: |代码清理| 修正三处拼写错误：`commom_api.ts`→`common_api.ts`、`MailsUnknow.vue`→`MailsUnknown.vue`、`getMessagesbyContext`→`getMessagesByContext`（全项目 52 处调用同步更新）
 - feat: |快照| 绑定快照边缘缓存做成网页可调：快照设置页新增开关（默认关闭=实时读取）与时间挡位（10秒/30秒/1分钟/5分钟）。关闭时跳过边缘缓存，新邮件秒级可见、更换链接秒级失效（KV 写入会直接失效各 PoP 的 KV 边缘缓存）；开启后按所选挡位缓存。配置存 D1，网页改完即时生效
 - fix: |快照| 更换/删除绑定后旧链接立即失效：`/m/` 路由先校验绑定有效性再查边缘缓存；删除时反向索引写入短 TTL 删除标记（120 秒），旧 token 在各 PoP 直接 404，不再 serving 边缘缓存里的旧页面
 - fix: |快照| 绑定快照边缘缓存从 30 秒降到 10 秒，快照相关 KV 读取边缘缓存取最小值 30 秒（KV.get 默认 60 秒）：新邮件、连续邮件最多约 30 秒可见，旧链接最多约 30 秒失效（通常立即）

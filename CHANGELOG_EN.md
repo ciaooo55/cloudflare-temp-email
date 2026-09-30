@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- refactor: |Cleanup| Removed duplicated secure-hex generation: new shared `utils.generateSecureHexToken` helper replaces 5 inline copies (Telegram webhook secret x2, snapshot token x2, ID generation x1); removed unused `hashPassword` import in `address_auth.ts`; removed leftover webhook debug log in `telegram_api/index.ts`
+- refactor: |Cleanup| Fixed three typos: `commom_api.ts` -> `common_api.ts`, `MailsUnknow.vue` -> `MailsUnknown.vue`, `getMessagesbyContext` -> `getMessagesByContext` (52 call sites updated project-wide)
 - feat: |Snapshots| Bound-snapshot edge cache is now configurable in the admin panel: the snapshot settings tab has a toggle (default OFF = real-time reads) and duration presets (10s / 30s / 1min / 5min). With the toggle off, edge caching is skipped entirely: new mail shows in seconds and replaced links 404 in seconds (KV writes invalidate each PoP's KV edge cache directly). With it on, responses are cached for the chosen duration. Settings live in D1 and take effect immediately
 - fix: |Snapshots| Snapshot admin tab blank page: Vue I18n parsed unescaped `@` in message texts (e.g. `address@example.com`, `@BotFather`) as linked-message syntax, throwing `SyntaxError: 10` at runtime message compilation and crashing component render; all `@` in messages across locales are now escaped as `{'@'}` literals
 - fix: |Snapshots| Binding list API response is validated as an array; a non-array response keeps the empty list so the template's `bindings.length` never throws (blank page)

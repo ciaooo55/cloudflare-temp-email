@@ -47,7 +47,7 @@ const listAddresses = async (c: Context<HonoCustomType>) => {
 
 const createNewAddress = async (c: Context<HonoCustomType>) => {
     const { name, domain, enablePrefix, enableRandomSubdomain } = await c.req.json();
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!name) {
         return c.text(msgs.RequiredFieldMsg, 400)
     }
@@ -68,7 +68,7 @@ const createNewAddress = async (c: Context<HonoCustomType>) => {
 };
 
 const deleteAddress = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { id } = c.req.param();
     // single batch runs as one transaction: rows keyed by address name are
     // deleted first and the address row last, so the name subqueries still
@@ -98,7 +98,7 @@ const deleteAddress = async (c: Context<HonoCustomType>) => {
 };
 
 const clearInbox = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { id } = c.req.param();
     const { success: mailSuccess } = await c.env.DB.prepare(
         `DELETE FROM raw_mails WHERE address IN`
@@ -111,7 +111,7 @@ const clearInbox = async (c: Context<HonoCustomType>) => {
 };
 
 const clearSentItems = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { id } = c.req.param();
     const { success: sendboxSuccess } = await c.env.DB.prepare(
         `DELETE FROM sendbox WHERE address IN`
@@ -136,7 +136,7 @@ const showPassword = async (c: Context<HonoCustomType>) => {
 };
 
 const resetPassword = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const { id } = c.req.param();
     const { password } = await c.req.json();
     // NOTE: Keep the admin API field as password, but the value is a frontend SHA-256 hash.

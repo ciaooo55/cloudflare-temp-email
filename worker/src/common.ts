@@ -299,7 +299,7 @@ const insertAddressRecord = async (
     c: Context<HonoCustomType>,
     address: string,
     sourceMeta: string | undefined | null,
-    msgs: ReturnType<typeof i18n.getMessagesbyContext>
+    msgs: ReturnType<typeof i18n.getMessagesByContext>
 ): Promise<void> => {
     try {
         const result = await c.env.DB.prepare(
@@ -347,7 +347,7 @@ export const newAddress = async (
         sourceMeta?: string | undefined | null,
     }
 ): Promise<{ address: string, jwt: string, password?: string | null, address_id: number }> => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     // trim whitespace and remove special characters
     name = name.trim().replace(getNameRegex(c), '')
     // check name
@@ -480,7 +480,7 @@ export const cleanup = async (
     if (cleanType === "inactiveAddress" && getBooleanValue(c.env.DISABLE_ADDRESS_UPDATED_AT)) {
         return false;
     }
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!cleanType || typeof cleanDays !== 'number' || cleanDays < 0 || cleanDays > 1000) {
         throw new Error(msgs.InvalidCleanupConfigMsg)
     }
@@ -586,7 +586,7 @@ export const deleteAddressWithData = async (
     address: string | undefined | null,
     address_id: number | undefined | null
 ): Promise<boolean> => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL)) {
         throw new Error(msgs.UserDeleteEmailDisabledMsg)
     }
@@ -637,7 +637,7 @@ export const handleListQuery = async (
     orderBy?: string,
     hiddenFields: string[] = []
 ): Promise<Response> => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (typeof limit === "string") {
         limit = parseInt(limit);
     }
@@ -688,7 +688,7 @@ export const handleMailListQuery = async (
     orderBy?: string
 ): Promise<Response> => {
     const { resolveRawEmailList } = await import('./gzip.ts');
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (typeof limit === "string") limit = parseInt(limit);
     if (typeof offset === "string") offset = parseInt(offset);
     if (!limit || limit < 0 || limit > 100) return c.text(msgs.InvalidLimitMsg, 400);

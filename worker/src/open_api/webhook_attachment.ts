@@ -15,7 +15,7 @@ export const getWebhookAttachment = async (
     c: Context<HonoCustomType>
 ): Promise<Response> => {
     if (!getBooleanValue(c.env.ENABLE_WEBHOOK)) {
-        return c.text(i18n.getMessagesbyContext(c).WebhookNotEnabledMsg, 403);
+        return c.text(i18n.getMessagesByContext(c).WebhookNotEnabledMsg, 403);
     }
     const mailId = Number(c.req.param('mail_id'));
     const index = Number(c.req.param('index'));

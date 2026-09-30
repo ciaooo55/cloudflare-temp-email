@@ -29,7 +29,7 @@ async function getIpBlacklistSettings(c: Context<HonoCustomType>): Promise<Respo
  * Save IP blacklist settings to database
  */
 async function saveIpBlacklistSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const settings = await c.req.json<IpBlacklistSettings>();
 
     // Backward compatibility: default new fields if absent (older frontends)

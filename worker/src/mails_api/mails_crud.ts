@@ -48,7 +48,7 @@ const getMail = async (c: Context<HonoCustomType>) => {
 };
 
 const deleteMail = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL)) {
         return c.text(msgs.UserDeleteEmailDisabledMsg, 403)
     }
@@ -80,7 +80,7 @@ const deleteAddress = async (c: Context<HonoCustomType>) => {
 };
 
 const clearInbox = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL)) {
         return c.text(msgs.UserDeleteEmailDisabledMsg, 403)
     }
@@ -95,7 +95,7 @@ const clearInbox = async (c: Context<HonoCustomType>) => {
 };
 
 const clearSentItems = async (c: Context<HonoCustomType>) => {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     if (!getBooleanValue(c.env.ENABLE_USER_DELETE_EMAIL)) {
         return c.text(msgs.UserDeleteEmailDisabledMsg, 403)
     }

@@ -129,7 +129,7 @@ export const ensureSendMailLimit = async (
     c: Context<HonoCustomType>
 ): Promise<void> => {
     try {
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
         const config = await getSendMailLimitConfig(c);
         if (!config || (!config.dailyEnabled && !config.monthlyEnabled)) {
             return;

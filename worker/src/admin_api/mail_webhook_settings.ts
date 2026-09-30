@@ -14,7 +14,7 @@ async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response>
 }
 
 async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const settings = await c.req.json<WebhookSettings>().catch(() => null);
     if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
         return c.text(msgs.InvalidRequestBodyMsg, 400);
@@ -38,7 +38,7 @@ async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response
 }
 
 async function testWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const msgs = i18n.getMessagesbyContext(c);
+    const msgs = i18n.getMessagesByContext(c);
     const settings = await c.req.json<WebhookSettings & { mail_id?: number }>().catch(() => null);
     if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
         return c.text(msgs.InvalidRequestBodyMsg, 400);

@@ -1,13 +1,13 @@
 import { Context } from 'hono';
 import i18n from '../i18n/index.ts';
-import utils, { getBooleanValue, hashPassword, checkCfTurnstile } from '../utils.ts';
+import utils, { getBooleanValue, checkCfTurnstile } from '../utils.ts';
 import { Jwt } from 'hono/utils/jwt';
 
 export default {
     // 修改地址密码
     changePassword: async (c: Context<HonoCustomType>) => {
         const { new_password } = await c.req.json().catch(() => ({}));
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
         const { address, address_id } = c.get("jwtPayload");
 
         // 检查功能是否启用
@@ -38,7 +38,7 @@ export default {
     // 地址密码登录
     login: async (c: Context<HonoCustomType>) => {
         const { email, password, cf_token } = await c.req.json().catch(() => ({}));
-        const msgs = i18n.getMessagesbyContext(c);
+        const msgs = i18n.getMessagesByContext(c);
 
         // 检查功能是否启用
         if (!getBooleanValue(c.env.ENABLE_ADDRESS_PASSWORD)) {

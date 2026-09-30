@@ -392,3 +392,10 @@ export default {
     getJsonValue: getJsonObjectValue,
     getStringList: getStringArray
 }
+
+/** 生成密码学安全的随机 hex 字符串（byteLength 个随机字节 → 2*byteLength 个 hex 字符） */
+export const generateSecureHexToken = (byteLength: number): string => {
+    const bytes = new Uint8Array(byteLength);
+    crypto.getRandomValues(bytes);
+    return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+}
