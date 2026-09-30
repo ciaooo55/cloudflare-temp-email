@@ -9,6 +9,7 @@ import { api as mailsApi } from './mails_api/index.ts'
 import { api as adminApi } from './admin_api/index.ts';
 import { api as apiSendMail } from './mails_api/send_mail_api.ts'
 import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml, deleteSnapshotBinding, SNAPSHOT_BIND_DELETED, SNAPSHOT_KV_EDGE_TTL } from './telegram_api/mail_snapshot.ts';
+import { getBoundSnapshotCacheConfig, boundSnapshotCacheControl } from './admin_api/notify_settings.ts';
 import { api as telegramApi } from './telegram_api/index.ts'
 
 import i18n from './i18n/index.ts';
@@ -233,9 +234,14 @@ app.get('/health_check', health_check)
 app.get('/m/:token', async c => {
 	const token = c.req.param('token');
 	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
+	// 绑定快照边缘缓存配置（网页可调，默认关闭=实时读取）：
+	// 关闭时跳过 caches.default，KV 写入会直接失效各 PoP 的 KV 边缘缓存，
+	// 因此新邮件秒级可见、更换链接秒级失效；开启时按所选挡位缓存。
+	const boundCacheCfg = await getBoundSnapshotCacheConfig(c).catch(() => ({ enabled: false, ttlSeconds: 10 }));
+	const useEdgeCache = boundCacheCfg.enabled;
 	// 边缘缓存防刷：同一快照的重复访问优先走边缘缓存，减少 KV 读取与页面重复生成
 	// 注意：请求仍会进入 Worker（按正常请求计费）；Cache API 按 PoP 独立缓存
-	const cache = caches.default;
+	const cache: Cache | null = useEdgeCache ? caches.default : null;
 	const cacheKey = new Request(c.req.url, { method: 'GET' });
 	// 先校验绑定有效性，再查边缘缓存：
 	// 更换/失效链接后旧链接必须立即 404，不能继续 serving 边缘缓存里的旧页面。
@@ -248,14 +254,14 @@ app.get('/m/:token', async c => {
 			if (boundAddr === SNAPSHOT_BIND_DELETED) {
 				// 链接已被更换/失效/删除：直接 404，并清掉本 PoP 可能残留的旧缓存。
 				// 注意不能 fallback 到查缓存，否则各 PoP 边缘缓存里的旧页面会被继续 serving。
-				try { await cache.delete(cacheKey); } catch { /* ignore */ }
+				try { if (cache) await cache.delete(cacheKey); } catch { /* ignore */ }
 				return c.text('该快照链接已失效', 404);
 			}
 			if (boundAddr) {
 				const binding = await c.env.KV.get<{ expiresAt: number }>(snapshotBindKey(boundAddr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
 				if (!binding || binding.expiresAt <= Date.now()) {
 					await deleteSnapshotBinding(c, boundAddr, token).catch(() => {});
-					try { await cache.delete(cacheKey); } catch { /* ignore */ }
+					try { if (cache) await cache.delete(cacheKey); } catch { /* ignore */ }
 					return c.text('该快照绑定已到期', 404);
 				}
 				isBoundSnapshot = true;
@@ -264,10 +270,12 @@ app.get('/m/:token', async c => {
 			console.error('snapshot binding check failed', error);
 		}
 	}
-	try {
-		const cached = await cache.match(cacheKey);
-		if (cached) return cached;
-	} catch { /* cache miss, continue */ }
+	if (cache) {
+		try {
+			const cached = await cache.match(cacheKey);
+			if (cached) return cached;
+		} catch { /* cache miss, continue */ }
+	}
 	// 快照-邮箱绑定：绑定过期后快照链接失效（有效性已在上面校验，这里只读内容）
 	let html: string | null = null;
 	try {
@@ -284,10 +292,9 @@ app.get('/m/:token', async c => {
 		console.error('snapshot sanitize failed', error);
 		return c.text('邮件快照处理失败', 500);
 	}
-	// 绑定的快照内容随新邮件更新，用短缓存保证及时刷新；一次性快照内容不变，可长缓存抗刷
-	// 注意：caches.default 按 PoP 独立，新邮件写入时的 purge 到不了用户所在的 PoP，
-	// 这里的 max-age 就是用户能看到旧内容的最长延迟
-	const cacheControl = isBoundSnapshot ? 'public, max-age=10' : 'public, max-age=86400';
+	// 绑定的快照内容随新邮件更新：网页开关默认关闭=实时读取（no-store，新邮件秒级可见）；
+	// 开关开启时按所选时间挡位缓存。一次性快照内容不变，始终长缓存抗刷。
+	const cacheControl = isBoundSnapshot ? boundSnapshotCacheControl(boundCacheCfg) : 'public, max-age=86400';
 	const response = new Response(html, {
 		headers: {
 			'Content-Type': 'text/html;charset=utf-8',
@@ -297,10 +304,12 @@ app.get('/m/:token', async c => {
 			'Cache-Control': cacheControl,
 		},
 	});
-	// 写入边缘缓存（不等待，避免阻塞响应）
-	try {
-		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
-	} catch { /* cache put failed, serve directly */ }
+	// 写入边缘缓存（不等待，避免阻塞响应）；开关关闭时不写
+	if (cache) {
+		try {
+			c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+		} catch { /* cache put failed, serve directly */ }
+	}
 	return response;
 });
 app.all('/*', async c => c.text("Not Found", 404))

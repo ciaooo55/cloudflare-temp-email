@@ -19,6 +19,16 @@ type Binding = {
 }
 
 const ttlHours = ref(24)
+// 绑定快照边缘缓存：开关默认关闭（实时），时间挡位 10秒/30秒/1分钟/5分钟
+const boundCacheEnabled = ref(false)
+const boundCacheTtl = ref(10)
+const boundCachePresets = ref<number[]>([10, 30, 60, 300])
+const boundCacheTtlOptions = computed(() =>
+    boundCachePresets.value.map(v => ({
+        label: v < 60 ? `${v} ${t('seconds')}` : `${v / 60} ${t('minutes')}`,
+        value: v,
+    }))
+)
 const bindings = ref<Binding[]>([])
 const newAddress = ref('')
 const newDuration = ref(168)
@@ -38,6 +48,11 @@ const fetchAll = async () => {
     try {
         const s = await api.fetch(`/admin/notify/snapshot`)
         ttlHours.value = s.ttlHours || 24
+        boundCacheEnabled.value = s.boundCacheEnabled === true
+        boundCacheTtl.value = s.boundCacheTtl || 10
+        if (Array.isArray(s.boundCacheTtlPresets) && s.boundCacheTtlPresets.length) {
+            boundCachePresets.value = s.boundCacheTtlPresets
+        }
         allowedDomains.value = Array.isArray(s.allowedDomains) ? s.allowedDomains : []
         const b = await api.fetch(`/admin/notify/snapshot_bindings`)
         // Defensive: if the API ever returns non-array (null/error shape),
@@ -48,11 +63,15 @@ const fetchAll = async () => {
     }
 }
 
-const saveTtl = async () => {
+const saveSettings = async () => {
     try {
         await api.fetch(`/admin/notify/snapshot`, {
             method: 'POST',
-            body: JSON.stringify({ ttlHours: ttlHours.value }),
+            body: JSON.stringify({
+                ttlHours: ttlHours.value,
+                boundCacheEnabled: boundCacheEnabled.value,
+                boundCacheTtl: boundCacheTtl.value,
+            }),
         })
         message.success(t('successTip'))
     } catch (error) {
@@ -251,10 +270,22 @@ onMounted(fetchAll)
             <n-form-item-row :label="t('ttlHours')">
                 <n-input-group>
                     <n-input-number v-model:value="ttlHours" :min="1" :max="8760" style="width: 200px;" />
-                    <n-button type="primary" @click="saveTtl">{{ t('save') }}</n-button>
+                    <n-button type="primary" @click="saveSettings">{{ t('save') }}</n-button>
                 </n-input-group>
                 <template #feedback>
                     <n-text depth="3" style="font-size: 12px;">{{ t('ttlTip') }}</n-text>
+                </template>
+            </n-form-item-row>
+
+            <n-form-item-row :label="t('boundCache')">
+                <n-flex align="center">
+                    <n-switch v-model:value="boundCacheEnabled" />
+                    <n-select v-model:value="boundCacheTtl" :options="boundCacheTtlOptions"
+                        :disabled="!boundCacheEnabled" style="width: 140px;" />
+                    <n-button type="primary" @click="saveSettings">{{ t('save') }}</n-button>
+                </n-flex>
+                <template #feedback>
+                    <n-text depth="3" style="font-size: 12px;">{{ t('boundCacheTip') }}</n-text>
                 </template>
             </n-form-item-row>
 

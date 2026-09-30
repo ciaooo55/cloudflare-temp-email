@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- feat: |Snapshots| Bound-snapshot edge cache is now configurable in the admin panel: the snapshot settings tab has a toggle (default OFF = real-time reads) and duration presets (10s / 30s / 1min / 5min). With the toggle off, edge caching is skipped entirely: new mail shows in seconds and replaced links 404 in seconds (KV writes invalidate each PoP's KV edge cache directly). With it on, responses are cached for the chosen duration. Settings live in D1 and take effect immediately
 - fix: |Snapshots| Snapshot admin tab blank page: Vue I18n parsed unescaped `@` in message texts (e.g. `address@example.com`, `@BotFather`) as linked-message syntax, throwing `SyntaxError: 10` at runtime message compilation and crashing component render; all `@` in messages across locales are now escaped as `{'@'}` literals
 - fix: |Snapshots| Binding list API response is validated as an array; a non-array response keeps the empty list so the template's `bindings.length` never throws (blank page)
 

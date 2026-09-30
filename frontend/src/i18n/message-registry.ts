@@ -758,6 +758,26 @@ export const MESSAGE_REGISTRY = {
       "en": "Bind",
       "zh": "绑定"
     },
+    "boundCache": {
+      "en": "Bound snapshot edge cache",
+      "zh": "绑定快照边缘缓存"
+    },
+    "boundCacheTip": {
+      "en": "OFF by default = real-time: every open reads the newest content, new mail shows in seconds. ON = cache for the chosen duration (saves quota, resists refresh abuse, but new mail can lag up to the chosen duration).",
+      "zh": "默认关闭=实时：每次打开都读取最新内容，新邮件秒级可见。开启后按所选时长缓存（省额度、抗刷，但新邮件最多延迟所选时长）。"
+    },
+    "boundCacheTtl": {
+      "en": "Cache duration",
+      "zh": "缓存时长"
+    },
+    "seconds": {
+      "en": "sec",
+      "zh": "秒"
+    },
+    "minutes": {
+      "en": "min",
+      "zh": "分钟"
+    },
     "bindings": {
       "en": "Address Bindings",
       "zh": "邮箱绑定"

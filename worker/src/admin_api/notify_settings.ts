@@ -35,12 +35,25 @@ export type BarkSettings = {
 
 export type SnapshotSettings = {
     ttlHours: number;
+    /**
+     * 绑定快照边缘缓存开关：默认关闭。
+     * 关闭 = 每次打开都实时读取最新内容（新邮件秒级可见，更换链接秒级失效）；
+     * 开启 = 按 boundCacheTtl 缓存（省额度、抗刷，但新邮件最多延迟所选时长）。
+     */
+    boundCacheEnabled?: boolean;
+    /** 绑定快照边缘缓存时长（秒），前端提供 10/30/60/300 四档 */
+    boundCacheTtl?: number;
 };
 
 export type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
 
 export const DEFAULT_BARK_PUSH_URL = "https://bark.ciaooo55.us.ci/push";
 export const DEFAULT_SNAPSHOT_TTL_HOURS = 24;
+/** 绑定快照边缘缓存默认关闭；开启时默认 10 秒 */
+export const DEFAULT_BOUND_CACHE_ENABLED = false;
+export const DEFAULT_BOUND_CACHE_TTL = 10;
+/** 前端时间挡位（秒）：10秒 / 30秒 / 1分钟 / 5分钟 */
+export const BOUND_CACHE_TTL_PRESETS = [10, 30, 60, 300];
 
 const newId = () => {
     const bytes = new Uint8Array(8);
@@ -287,6 +300,9 @@ async function getSnapshot(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await getJsonSetting<SnapshotSettings>(c, CONSTANTS.SNAPSHOT_SETTINGS_KEY);
     return c.json({
         ttlHours: settings?.ttlHours || DEFAULT_SNAPSHOT_TTL_HOURS,
+        boundCacheEnabled: settings?.boundCacheEnabled === true,
+        boundCacheTtl: normalizeBoundCacheTtl(settings?.boundCacheTtl),
+        boundCacheTtlPresets: BOUND_CACHE_TTL_PRESETS,
         // 快照绑定允许的域名：历史 22 个收信域名 + Worker 配置的 DOMAINS 的并集，
         // 前端从这里取，不再各自硬编码
         allowedDomains: getSnapshotAllowedDomains(c),
@@ -294,10 +310,21 @@ async function getSnapshot(c: Context<HonoCustomType>): Promise<Response> {
 }
 
 async function saveSnapshot(c: Context<HonoCustomType>): Promise<Response> {
-    const { ttlHours } = await c.req.json<{ ttlHours?: number }>();
+    const { ttlHours, boundCacheEnabled, boundCacheTtl } = await c.req.json<{
+        ttlHours?: number; boundCacheEnabled?: boolean; boundCacheTtl?: number;
+    }>();
     const hours = Math.max(1, Math.min(24 * 365, Math.floor(Number(ttlHours) || DEFAULT_SNAPSHOT_TTL_HOURS)));
-    await saveSetting(c, CONSTANTS.SNAPSHOT_SETTINGS_KEY, JSON.stringify({ ttlHours: hours }));
-    return c.json({ success: true, ttlHours: hours });
+    const prev = await getJsonSetting<SnapshotSettings>(c, CONSTANTS.SNAPSHOT_SETTINGS_KEY);
+    const enabled = typeof boundCacheEnabled === "boolean"
+        ? boundCacheEnabled
+        : (prev?.boundCacheEnabled === true);
+    const ttl = boundCacheTtl !== undefined
+        ? normalizeBoundCacheTtl(boundCacheTtl)
+        : normalizeBoundCacheTtl(prev?.boundCacheTtl);
+    await saveSetting(c, CONSTANTS.SNAPSHOT_SETTINGS_KEY, JSON.stringify({
+        ttlHours: hours, boundCacheEnabled: enabled, boundCacheTtl: ttl,
+    }));
+    return c.json({ success: true, ttlHours: hours, boundCacheEnabled: enabled, boundCacheTtl: ttl });
 }
 
 function snapshotOrigin(c: Context<HonoCustomType>): string | null {
@@ -370,6 +397,41 @@ export async function getSnapshotTtlSeconds(c: Context<HonoCustomType>): Promise
     } catch {
         return DEFAULT_SNAPSHOT_TTL_HOURS * 3600;
     }
+}
+
+/** 归一化绑定快照缓存时长：非法值回退默认 10 秒，钳制在 5~600 秒 */
+export function normalizeBoundCacheTtl(value: unknown): number {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n <= 0) return DEFAULT_BOUND_CACHE_TTL;
+    return Math.max(5, Math.min(600, n));
+}
+
+export type BoundSnapshotCacheConfig = {
+    /** 边缘缓存开关，默认 false（关闭=实时读取） */
+    enabled: boolean;
+    /** 缓存时长（秒），默认 10 */
+    ttlSeconds: number;
+};
+
+/**
+ * 读取绑定快照边缘缓存配置（D1 settings，无边缘缓存，网页改完即时生效）。
+ * 默认关闭：每次打开都实时读 KV，新邮件秒级可见、更换链接秒级失效。
+ */
+export async function getBoundSnapshotCacheConfig(c: Context<HonoCustomType>): Promise<BoundSnapshotCacheConfig> {
+    try {
+        const s = await getJsonSetting<SnapshotSettings>(c, CONSTANTS.SNAPSHOT_SETTINGS_KEY);
+        return {
+            enabled: s?.boundCacheEnabled === true,
+            ttlSeconds: normalizeBoundCacheTtl(s?.boundCacheTtl),
+        };
+    } catch {
+        return { enabled: DEFAULT_BOUND_CACHE_ENABLED, ttlSeconds: DEFAULT_BOUND_CACHE_TTL };
+    }
+}
+
+/** 绑定快照的 Cache-Control：关闭=不缓存（实时），开启=按挡位缓存 */
+export function boundSnapshotCacheControl(cfg: BoundSnapshotCacheConfig): string {
+    return cfg.enabled ? `public, max-age=${cfg.ttlSeconds}` : "no-store";
 }
 
 export type WebPushBot = {

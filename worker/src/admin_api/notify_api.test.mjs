@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, afterEach } from "node:test";
-import notifyApi, { getSnapshotTtlSeconds, getWebPushConfig, DEFAULT_BARK_PUSH_URL } from "./notify_settings.ts";
+import notifyApi, { getSnapshotTtlSeconds, getWebPushConfig, DEFAULT_BARK_PUSH_URL, getBoundSnapshotCacheConfig, normalizeBoundCacheTtl, boundSnapshotCacheControl, BOUND_CACHE_TTL_PRESETS } from "./notify_settings.ts";
 import { createSnapshotBindingRecord, refreshBoundSnapshot, getSnapshotBinding, SNAPSHOT_BIND_DELETED } from "../telegram_api/mail_snapshot.ts";
 
 // ---------- mock 基础设施 ----------
@@ -342,4 +342,65 @@ test("快照绑定: 到期后读取自动清理", async () => {
     assert.equal(kv.store.get("snapshot-bind:u@example.com"), undefined);
     assert.equal(kv.store.get(`snapshot-bindrev:${b.token}`).value, SNAPSHOT_BIND_DELETED);
     assert.equal(kv.store.get(`mailhtml:${b.token}`), undefined);
+});
+
+// ---------- 绑定快照边缘缓存开关 ----------
+test("绑定快照缓存配置: 默认关闭=实时读取", async () => {
+    const kv = makeKv(), db = makeDb();
+    const cfg = await getBoundSnapshotCacheConfig(makeCtx({ kv, db }));
+    assert.deepEqual(cfg, { enabled: false, ttlSeconds: 10 });
+    assert.equal(boundSnapshotCacheControl(cfg), "no-store");
+    assert.deepEqual(BOUND_CACHE_TTL_PRESETS, [10, 30, 60, 300]);
+});
+
+test("normalizeBoundCacheTtl: 非法值回退默认 10, 钳制 5~600", () => {
+    assert.equal(normalizeBoundCacheTtl(undefined), 10);
+    assert.equal(normalizeBoundCacheTtl(null), 10);
+    assert.equal(normalizeBoundCacheTtl(0), 10);
+    assert.equal(normalizeBoundCacheTtl(-5), 10);
+    assert.equal(normalizeBoundCacheTtl("abc"), 10);
+    assert.equal(normalizeBoundCacheTtl(10), 10);
+    assert.equal(normalizeBoundCacheTtl(30), 30);
+    assert.equal(normalizeBoundCacheTtl(300), 300);
+    assert.equal(normalizeBoundCacheTtl(1), 5);
+    assert.equal(normalizeBoundCacheTtl(99999), 600);
+});
+
+test("快照设置 save/get 回环: 开关+时间挡位", async () => {
+    const kv = makeKv(), db = makeDb();
+    // 默认值
+    let r = await bodyOf(await notifyApi.getSnapshot(makeCtx({ kv, db })));
+    assert.equal(r.data.ttlHours, 24);
+    assert.equal(r.data.boundCacheEnabled, false);
+    assert.equal(r.data.boundCacheTtl, 10);
+    assert.deepEqual(r.data.boundCacheTtlPresets, [10, 30, 60, 300]);
+    // 开启 + 60 秒挡位
+    r = await bodyOf(await notifyApi.saveSnapshot(makeCtx({ kv, db, body: { ttlHours: 24, boundCacheEnabled: true, boundCacheTtl: 60 } })));
+    assert.equal(r.data.success, true);
+    assert.equal(r.data.boundCacheEnabled, true);
+    assert.equal(r.data.boundCacheTtl, 60);
+    r = await bodyOf(await notifyApi.getSnapshot(makeCtx({ kv, db })));
+    assert.equal(r.data.boundCacheEnabled, true);
+    assert.equal(r.data.boundCacheTtl, 60);
+    assert.equal(r.data.ttlHours, 24);
+    const cfg = await getBoundSnapshotCacheConfig(makeCtx({ kv, db }));
+    assert.deepEqual(cfg, { enabled: true, ttlSeconds: 60 });
+    assert.equal(boundSnapshotCacheControl(cfg), "public, max-age=60");
+    // 只改 ttlHours 时开关状态不丢失
+    await notifyApi.saveSnapshot(makeCtx({ kv, db, body: { ttlHours: 48 } }));
+    r = await bodyOf(await notifyApi.getSnapshot(makeCtx({ kv, db })));
+    assert.equal(r.data.ttlHours, 48);
+    assert.equal(r.data.boundCacheEnabled, true);
+    assert.equal(r.data.boundCacheTtl, 60);
+});
+
+test("快照设置: 非法挡位值被归一化, 开关可关闭", async () => {
+    const kv = makeKv(), db = makeDb();
+    let r = await bodyOf(await notifyApi.saveSnapshot(makeCtx({ kv, db, body: { boundCacheEnabled: true, boundCacheTtl: 99999 } })));
+    assert.equal(r.data.boundCacheTtl, 600);
+    r = await bodyOf(await notifyApi.saveSnapshot(makeCtx({ kv, db, body: { boundCacheEnabled: false } })));
+    assert.equal(r.data.boundCacheEnabled, false);
+    const cfg = await getBoundSnapshotCacheConfig(makeCtx({ kv, db }));
+    assert.equal(cfg.enabled, false);
+    assert.equal(boundSnapshotCacheControl(cfg), "no-store");
 });
