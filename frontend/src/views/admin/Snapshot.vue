@@ -39,7 +39,10 @@ const fetchAll = async () => {
         const s = await api.fetch(`/admin/notify/snapshot`)
         ttlHours.value = s.ttlHours || 24
         allowedDomains.value = Array.isArray(s.allowedDomains) ? s.allowedDomains : []
-        bindings.value = await api.fetch(`/admin/notify/snapshot_bindings`)
+        const b = await api.fetch(`/admin/notify/snapshot_bindings`)
+        // Defensive: if the API ever returns non-array (null/error shape),
+        // keep [] so the template's `bindings.length` never throws (blank tab).
+        bindings.value = Array.isArray(b) ? b : []
     } catch (error) {
         message.error((error as Error).message || "error");
     }

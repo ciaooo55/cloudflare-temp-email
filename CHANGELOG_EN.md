@@ -8,6 +8,9 @@
 
 ## v1.13.0(main)
 
+- fix: |Snapshots| Snapshot admin tab is now imported synchronously: in production the Vite async preload hung (blank tab) when the CSS link's load event never fired; Snapshot is now bundled into the Admin chunk instead of a separate async chunk
+- fix: |Snapshots| Binding list API response is validated as an array; a non-array response keeps the empty list so the template's `bindings.length` never throws (blank page)
+
 - fix: |Receiving| Reject and abort immediately when mail storage fails: previously a failed store would still trigger AI parsing, snapshots, and Telegram/Bark/webhook pushes ("ghost pushes"); now a failed store rejects the message with no further actions
 - fix: |Receiving| Mail list API returns 400 for `offset=NaN` (malformed pagination parameter behavior was previously undefined)
 - fix: |Webhook| Webhook custom headers must be a JSON object when saved; invalid configs are no longer written, and a runtime parse failure degrades to empty headers instead of throwing
