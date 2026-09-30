@@ -8,6 +8,11 @@
 
 ## v1.13.0(main)
 
+- refactor: |Cleanup| Paid off yesterday's tech debt: added `address?` to the `ParsedEmailContext` type and removed two `as any` casts in `mail_snapshot.ts` (`parsed?.sender` was already in the type)
+- refactor: |Cleanup| Removed a redundant D1 query when creating addresses: `insertAddressRecord` now returns `meta.last_row_id` directly instead of SELECT-ing the id afterwards
+- refactor: |Cleanup| Deduplicated Turnstile checks: new shared `utils.requireTurnstile` helper replaces 3 identical inline blocks in `address_auth.ts` and `open_api/auth.ts`
+- refactor: |Cleanup| Snapshot KV key prefix `mailhtml:` extracted into the `SNAPSHOT_HTML_KV_PREFIX` constant (was hardcoded in 5 places)
+- feat: |Receiving| Anti mail-bomb: 30/min per sender+recipient pair, 99/min per sender across all recipients; graduated bans on violation (10 min -> 1 hour -> 24 hours) with the offense counter resetting after 24h clean; counted by SMTP envelope sender
 - refactor: |Cleanup| Removed duplicated secure-hex generation: new shared `utils.generateSecureHexToken` helper replaces 5 inline copies (Telegram webhook secret x2, snapshot token x2, ID generation x1); removed unused `hashPassword` import in `address_auth.ts`; removed leftover webhook debug log in `telegram_api/index.ts`
 - refactor: |Cleanup| Fixed three typos: `commom_api.ts` -> `common_api.ts`, `MailsUnknow.vue` -> `MailsUnknown.vue`, `getMessagesbyContext` -> `getMessagesByContext` (52 call sites updated project-wide)
 - feat: |Snapshots| Bound-snapshot edge cache is now configurable in the admin panel: the snapshot settings tab has a toggle (default OFF = real-time reads) and duration presets (10s / 30s / 1min / 5min). With the toggle off, edge caching is skipped entirely: new mail shows in seconds and replaced links 404 in seconds (KV writes invalidate each PoP's KV edge cache directly). With it on, responses are cached for the chosen duration. Settings live in D1 and take effect immediately

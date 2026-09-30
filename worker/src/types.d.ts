@@ -178,6 +178,7 @@ type ParsedEmailAttachment = {
 
 type ParsedEmailContext = {
     rawEmail: string,
+    address?: string,
     parsedEmail?: {
         sender: string,
         subject: string,

@@ -355,6 +355,24 @@ export const checkCfTurnstile = async (
     }
 }
 
+/**
+ * Check global Turnstile if enabled. Returns a 400 Response on failure,
+ * null when check passes or Turnstile is not enabled.
+ */
+export const requireTurnstile = async (
+    c: Context<HonoCustomType>,
+    cf_token: string | undefined | null,
+    msgs: { TurnstileCheckFailedMsg: string }
+): Promise<Response | null> => {
+    if (!isGlobalTurnstileEnabled(c)) return null;
+    try {
+        await checkCfTurnstile(c, cf_token);
+    } catch (error) {
+        return c.text(msgs.TurnstileCheckFailedMsg, 400);
+    }
+    return null;
+}
+
 export const hashPassword = async (password: string): Promise<string> => {
     // use crypto to hash password
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
@@ -388,6 +406,7 @@ export default {
     getEnvStringList,
     isGlobalTurnstileEnabled,
     checkCfTurnstile,
+    requireTurnstile,
     getJsonSetting,
     getJsonValue: getJsonObjectValue,
     getStringList: getStringArray

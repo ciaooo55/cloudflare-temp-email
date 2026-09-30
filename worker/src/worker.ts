@@ -8,7 +8,7 @@ import { api as openAuthApi } from './open_api/auth.ts';
 import { api as mailsApi } from './mails_api/index.ts'
 import { api as adminApi } from './admin_api/index.ts';
 import { api as apiSendMail } from './mails_api/send_mail_api.ts'
-import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml, deleteSnapshotBinding, SNAPSHOT_BIND_DELETED, SNAPSHOT_KV_EDGE_TTL, DEFAULT_SNAPSHOT_TTL } from './telegram_api/mail_snapshot.ts';
+import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml, deleteSnapshotBinding, SNAPSHOT_BIND_DELETED, SNAPSHOT_KV_EDGE_TTL, DEFAULT_SNAPSHOT_TTL, SNAPSHOT_HTML_KV_PREFIX } from './telegram_api/mail_snapshot.ts';
 import { getBoundSnapshotCacheConfig, boundSnapshotCacheControl } from './admin_api/notify_settings.ts';
 import { api as telegramApi } from './telegram_api/index.ts'
 
@@ -293,7 +293,7 @@ app.get('/m/:token', async c => {
 	}
 	if (!html) {
 		try {
-			html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`, { cacheTtl: SNAPSHOT_KV_EDGE_TTL }) : null;
+			html = c.env.KV ? await c.env.KV.get(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, { cacheTtl: SNAPSHOT_KV_EDGE_TTL }) : null;
 		} catch (error) {
 			console.error('snapshot fetch failed', error);
 		}

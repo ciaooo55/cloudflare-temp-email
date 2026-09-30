@@ -4,6 +4,7 @@ import { generateSecureHexToken } from '../utils.ts';
 import { commonParseMail } from '../common.ts';
 
 export const DEFAULT_SNAPSHOT_TTL = 86400; // 默认 24h，可在管理后台修改
+export const SNAPSHOT_HTML_KV_PREFIX = "mailhtml:";
 
 export type SnapshotBinding = {
     address: string;
@@ -154,9 +155,9 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
     }
     if (!origin) return null;
     const token = generateSecureHexToken(32);
-    await c.env.KV.put(`mailhtml:${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
-        sender: (parsed as any)?.sender || "",
-        recipient: address || (parsedEmailContext as any)?.address || "",
+    await c.env.KV.put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
+        sender: parsed?.sender || "",
+        recipient: address || parsedEmailContext.address || "",
         dateMs: Date.now(),
     }), { expirationTtl: ttlSeconds });
     return `${origin}/m/${token}`;
@@ -273,7 +274,7 @@ export async function refreshBoundSnapshot(
     }
     try {
         await c.env.KV.put(
-            `mailhtml:${binding.token}`,
+            `${SNAPSHOT_HTML_KV_PREFIX}${binding.token}`,
             snapshotHtml,
             { expirationTtl: remainingSec }
         );
@@ -368,7 +369,7 @@ export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address:
     await Promise.allSettled([
         c.env.KV.delete(snapshotBindKey(address)),
         t ? c.env.KV.put(snapshotBindRevKey(t), SNAPSHOT_BIND_DELETED, { expirationTtl: SNAPSHOT_BIND_TOMBSTONE_TTL }) : Promise.resolve(),
-        t ? c.env.KV.delete(`mailhtml:${t}`) : Promise.resolve(),
+        t ? c.env.KV.delete(`${SNAPSHOT_HTML_KV_PREFIX}${t}`) : Promise.resolve(),
     ]);
     // 清除边缘缓存，保证旧链接立即失效（防刷缓存不影响删除语义）
     if (binding?.url) {
@@ -443,7 +444,7 @@ export async function createSnapshotBindingRecord(
     await Promise.all([
         c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), { expiration }),
         c.env.KV.put(snapshotBindRevKey(token), addr, { expiration }),
-        c.env.KV.put(`mailhtml:${token}`,
+        c.env.KV.put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`,
             buildSnapshotHtml("", `该快照已绑定 ${addr}，等待第一封新邮件到达后显示最新内容。`, "快照已绑定"),
             { expirationTtl: hours * 3600 }),
     ]);

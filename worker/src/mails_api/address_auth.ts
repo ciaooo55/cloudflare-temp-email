@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import i18n from '../i18n/index.ts';
-import utils, { getBooleanValue, checkCfTurnstile } from '../utils.ts';
+import utils, { getBooleanValue, requireTurnstile } from '../utils.ts';
 import { Jwt } from 'hono/utils/jwt';
 
 export default {
@@ -50,13 +50,8 @@ export default {
         }
 
         // check cf turnstile if global turnstile is enabled
-        if (utils.isGlobalTurnstileEnabled(c)) {
-            try {
-                await checkCfTurnstile(c, cf_token);
-            } catch (error) {
-                return c.text(msgs.TurnstileCheckFailedMsg, 400)
-            }
-        }
+        const turnstileError = await requireTurnstile(c, cf_token, msgs);
+        if (turnstileError) return turnstileError;
 
         // 查找地址
         const address = await c.env.DB.prepare(

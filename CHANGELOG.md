@@ -8,6 +8,11 @@
 
 ## v1.13.0(main)
 
+- refactor: |代码清理| 补上昨天欠的技术债：`ParsedEmailContext` 类型补上 `address?` 字段，`mail_snapshot.ts` 里删掉两处 `as any` 硬绕（`parsed?.sender` 本来就在类型里）
+- refactor: |代码清理| 建地址去掉多余的一次 D1 查询：`insertAddressRecord` 改为直接返回 `meta.last_row_id`，不再 SELECT 查 id
+- refactor: |代码清理| Turnstile 校验三处去重：新增 `utils.requireTurnstile` 公共函数，替换 `address_auth.ts`、`open_api/auth.ts` 两处共三块逐字相同的代码
+- refactor: |代码清理| 快照 KV key 前缀 `mailhtml:` 抽成 `SNAPSHOT_HTML_KV_PREFIX` 常量（原来 5 处硬编码）
+- feat: |收信| 防邮件炸弹：同一发件人+收件人 30 封/分钟、同一发件人所有收件人 99 封/分钟，触发后阶梯拉黑（10 分钟→1 小时→24 小时），24 小时无再犯计数清零；按 SMTP 信封发件人计数
 - refactor: |代码清理| 消除重复的随机 hex 生成逻辑：新增 `utils.generateSecureHexToken` 公共函数，统一替换 5 处（Telegram webhook secret ×2、快照 token ×2、ID 生成 ×1）；删除 `address_auth.ts` 未使用的 `hashPassword` 导入；删除 `telegram_api/index.ts` 遗留的 webhook 调试日志
 - refactor: |代码清理| 修正三处拼写错误：`commom_api.ts`→`common_api.ts`、`MailsUnknow.vue`→`MailsUnknown.vue`、`getMessagesbyContext`→`getMessagesByContext`（全项目 52 处调用同步更新）
 - feat: |快照| 绑定快照边缘缓存做成网页可调：快照设置页新增开关（默认关闭=实时读取）与时间挡位（10秒/30秒/1分钟/5分钟）。关闭时跳过边缘缓存，新邮件秒级可见、更换链接秒级失效（KV 写入会直接失效各 PoP 的 KV 边缘缓存）；开启后按所选挡位缓存。配置存 D1，网页改完即时生效

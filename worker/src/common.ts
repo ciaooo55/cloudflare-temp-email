@@ -300,7 +300,7 @@ const insertAddressRecord = async (
     address: string,
     sourceMeta: string | undefined | null,
     msgs: ReturnType<typeof i18n.getMessagesByContext>
-): Promise<void> => {
+): Promise<number> => {
     try {
         const result = await c.env.DB.prepare(
             `INSERT INTO address(name, source_meta) VALUES(?, ?)`
@@ -308,6 +308,7 @@ const insertAddressRecord = async (
         if (!result.success) {
             throw new Error(msgs.FailedCreateAddressMsg)
         }
+        return Number(result.meta.last_row_id) || 0;
     } catch (e) {
         const message = (e as Error).message;
         // Fallback: source_meta field may not exist, try without it
@@ -318,7 +319,7 @@ const insertAddressRecord = async (
             if (!result.success) {
                 throw new Error(msgs.FailedCreateAddressMsg)
             }
-            return;
+            return Number(result.meta.last_row_id) || 0;
         }
         throw e;
     }
@@ -415,12 +416,8 @@ export const newAddress = async (
         const address = `${name}@${addressDomain}`;
 
         try {
-            await insertAddressRecord(c, address, sourceMeta, msgs);
+            const address_id = await insertAddressRecord(c, address, sourceMeta, msgs);
             await updateAddressUpdatedAt(c, address);
-
-            const address_id = await c.env.DB.prepare(
-                `SELECT id FROM address where name = ?`
-            ).bind(address).first<number>("id");
 
             if (!address_id) {
                 throw new Error(msgs.FailedCreateAddressMsg);
