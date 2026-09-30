@@ -6,7 +6,7 @@
 | 项目 | 说明 |
 | --- | --- |
 | 中文名称 | Cloudflare 临时邮箱 |
-| GitHub 仓库名 | `cloudflare_temp_email` |
+| GitHub 仓库名 | `cloudflare-temp-email` |
 | 名称状态 | 保持当前名称，本轮没有改名 |
 | 主要用途 | 使用 Cloudflare Email Routing、Workers、Pages 和数据库搭建可收发的临时邮箱服务 |
 | 主要组成 | Worker 后端、前端、邮件解析、数据库脚本、SMTP 代理和部署文档 |
@@ -18,8 +18,8 @@
   <a href="https://github.com/dreamhunter2333/cloudflare_temp_email" target="_blank">
     <img alt="upstream" src="https://img.shields.io/badge/上游项目-dreamhunter2333%2Fcloudflare__temp__email-181717?logo=github">
   </a>
-  <a href="https://github.com/ciaooo55/cloudflare_temp_email/commits/main" target="_blank">
-    <img alt="fork last commit" src="https://img.shields.io/github/last-commit/ciaooo55/cloudflare_temp_email?label=本仓库最后提交">
+  <a href="https://github.com/ciaooo55/cloudflare-temp-email/commits/main" target="_blank">
+    <img alt="last commit" src="https://img.shields.io/github/last-commit/ciaooo55/cloudflare-temp-email?label=本仓库最后提交">
   </a>
   <a href="https://temp-mail-docs.awsl.uk" target="_blank">
     <img alt="docs" src="https://img.shields.io/badge/docs-grey?logo=vitepress">
