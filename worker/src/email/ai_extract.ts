@@ -74,28 +74,6 @@ async function extractWithCloudflareAI(
 
     throw new Error('Unexpected response format from Cloudflare AI');
 }
-
-/**
- * Parse JSON defensively: some endpoints wrap the JSON in prose or code fences.
- */
-function parseJsonLenient(text: string): {
-    type?: string; result?: string; result_text?: string
-} | null {
-    try {
-        return JSON.parse(text);
-    } catch {
-        // fall through
-    }
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-        try {
-            return JSON.parse(match[0]);
-        } catch {
-            // fall through
-        }
-    }
-    return null;
-}
 export {
     callCustomAiEndpoint as callCustomAiExtract,
     resolveCustomAiEndpointConfig as resolveCustomAiConfig,
