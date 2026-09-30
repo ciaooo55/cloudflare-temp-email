@@ -1,4 +1,4 @@
-import { LocaleMessages } from './type.ts';
+import type { LocaleMessages } from './type.ts';
 
 const messages: LocaleMessages = {
     InvalidRequestBodyMsg: "Invalid request body",

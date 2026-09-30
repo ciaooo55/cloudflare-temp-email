@@ -278,10 +278,25 @@ app.get('/m/:token', async c => {
 	}
 	// 快照-邮箱绑定：绑定过期后快照链接失效（有效性已在上面校验，这里只读内容）
 	let html: string | null = null;
-	try {
-		html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`, { cacheTtl: SNAPSHOT_KV_EDGE_TTL }) : null;
-	} catch (error) {
-		console.error('snapshot fetch failed', error);
+	// 绑定快照优先从 D1 读取：KV 读取有 30 秒边缘缓存强制下限，
+	// 新邮件到达后必须秒级可见，D1 无此限制；D1 miss/异常则回退到 KV。
+	// 一次性快照内容不变，继续走 KV（不受影响）。
+	if (isBoundSnapshot && c.env.DB) {
+		try {
+			const row = await c.env.DB.prepare(
+				"SELECT html FROM bound_snapshot_html WHERE token = ?"
+			).bind(token).first<{ html: string }>();
+			html = row?.html ?? null;
+		} catch (error) {
+			console.error('bound snapshot D1 fetch failed', error);
+		}
+	}
+	if (!html) {
+		try {
+			html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`, { cacheTtl: SNAPSHOT_KV_EDGE_TTL }) : null;
+		} catch (error) {
+			console.error('snapshot fetch failed', error);
+		}
 	}
 	if (!html) return c.text('邮件已过期或不存在', 404);
 	// 读取时二次消毒：存量快照可能是旧版消毒器生成的，新版规则在此处同样生效（纵深防御）

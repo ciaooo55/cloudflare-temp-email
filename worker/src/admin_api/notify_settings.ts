@@ -5,7 +5,9 @@ import {
     createSnapshotBindingRecord,
     deleteSnapshotBinding,
     listSnapshotBindingRecords,
+    snapshotBindKey,
 } from '../telegram_api/mail_snapshot.ts';
+import type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
 
 export type TelegramBotEntry = {
     id: string;
@@ -379,7 +381,14 @@ function getSnapshotAllowedDomains(c: Context<HonoCustomType>): string[] {
 
 async function invalidateSnapshotBinding(c: Context<HonoCustomType>): Promise<Response> {
     const address = c.req.param("address") || "";
-    await deleteSnapshotBinding(c, decodeURIComponent(address));
+    const addr = decodeURIComponent(address);
+    // 先查到旧 token 再删，保证 D1/KV/反向索引清干净（KV 边缘缓存可能导致直接删时反查不到 token）
+    let token: string | undefined;
+    try {
+        const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+        token = b?.token;
+    } catch { /* ignore */ }
+    await deleteSnapshotBinding(c, addr, token);
     return c.json({ success: true });
 }
 

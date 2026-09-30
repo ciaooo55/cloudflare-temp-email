@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import type { TelegramSettings } from './settings.ts';
 import { generateSecureHexToken } from '../utils.ts';
+import { commonParseMail } from '../common.ts';
 
 export const DEFAULT_SNAPSHOT_TTL = 86400; // 默认 24h，可在管理后台修改
 
@@ -118,12 +119,24 @@ export function sanitizeSnapshotHtml(html: string): string {
     return content;
 }
 
-export function buildSnapshotHtml(html: string, text: string, subject: string): string {
+export function buildSnapshotHtml(html: string, text: string, subject: string, meta?: { sender?: string; recipient?: string; dateMs?: number }): string {
     let content = sanitizeSnapshotHtml(String(html || ""));
     if (!content) {
         content = `<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit;margin:0">${escapeHtml(String(text || ""))}</pre>`;
     }
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(String(subject || "邮件快照"))}</title><style>body{max-width:760px;margin:0 auto;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;color:#222;word-wrap:break-word}img{max-width:100%;height:auto}a{color:#1a73e8}</style></head><body>${content}</body></html>`;
+    // 左上邮件元信息：来件邮箱、收件邮箱、中国时间
+    let header = "";
+    if (meta && (meta.sender || meta.recipient || meta.dateMs)) {
+        const timeStr = meta.dateMs
+            ? new Date(meta.dateMs).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
+            : "";
+        header = `<div style="background:#f5f7fa;border:1px solid #e1e4e8;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:13px;color:#586069;line-height:1.8">`
+            + (meta.sender ? `<div>来件邮箱：${escapeHtml(String(meta.sender))}</div>` : "")
+            + (meta.recipient ? `<div>收件邮箱：${escapeHtml(String(meta.recipient))}</div>` : "")
+            + (timeStr ? `<div>时间：${escapeHtml(timeStr)}</div>` : "")
+            + `</div>`;
+    }
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(String(subject || "邮件快照"))}</title><style>body{max-width:760px;margin:0 auto;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;color:#222;word-wrap:break-word}img{max-width:100%;height:auto}a{color:#1a73e8}</style></head><body>${header}${content}</body></html>`;
 }
 
 export async function createMailSnapshot(c: Context<HonoCustomType>, settings: TelegramSettings | null | undefined, parsedEmailContext: ParsedEmailContext, ttlSeconds: number = DEFAULT_SNAPSHOT_TTL): Promise<string | null> {
@@ -141,7 +154,11 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
     }
     if (!origin) return null;
     const token = generateSecureHexToken(32);
-    await c.env.KV.put(`mailhtml:${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || ""), { expirationTtl: ttlSeconds });
+    await c.env.KV.put(`mailhtml:${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
+        sender: (parsed as any)?.sender || "",
+        recipient: (parsedEmailContext as any)?.address || "",
+        dateMs: Date.now(),
+    }), { expirationTtl: ttlSeconds });
     return `${origin}/m/${token}`;
 }
 
@@ -190,10 +207,23 @@ export async function refreshBoundSnapshot(
     if (!c.env.KV) return null;
     const addr = address.toLowerCase();
     let binding: SnapshotBinding | null = null;
-    try {
-        binding = await c.env.KV.get<SnapshotBinding>(`snapshot-bind:${addr}`, { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
-    } catch {
-        return null;
+    // 优先读 D1：无 30 秒边缘缓存，建完绑定立即发邮件也能找到；D1 miss 再回退 KV
+    if (c.env.DB) {
+        try {
+            const row = await c.env.DB.prepare(
+                "SELECT token, url, expires_at, created_at FROM snapshot_bindings WHERE address = ?"
+            ).bind(addr).first<{ token: string; url: string; expires_at: number; created_at: number }>();
+            if (row) {
+                binding = { address: addr, token: row.token, url: row.url, expiresAt: row.expires_at, createdAt: row.created_at };
+            }
+        } catch { /* ignore, fallback to KV */ }
+    }
+    if (!binding) {
+        try {
+            binding = await c.env.KV.get<SnapshotBinding>(`snapshot-bind:${addr}`, { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+        } catch {
+            return null;
+        }
     }
     if (!binding) return null;
     if (binding.expiresAt <= Date.now()) {
@@ -204,12 +234,47 @@ export async function refreshBoundSnapshot(
         return null;
     }
     const parsed = parsedEmailContext.parsedEmail;
-    if (!parsed || (!parsed.html && !parsed.text)) return binding.url;
+    // parsedEmail 可能为空（email/index.ts 里 commonParseMail 失败时不会赋值）：
+    // 此时自己解析一次，保证快照一定写入，不静默跳过
+    let html = parsed?.html || "";
+    let text = parsed?.text || "";
+    let subject = parsed?.subject || "";
+    if (!html && !text) {
+        try {
+            const reparsed = await commonParseMail(parsedEmailContext);
+            if (reparsed) {
+                html = reparsed.html || "";
+                text = reparsed.text || "";
+                subject = reparsed.subject || subject;
+                parsedEmailContext.parsedEmail = reparsed;
+            }
+        } catch { /* ignore, 下面会直接返回 */ }
+    }
+    if (!html && !text) return binding.url;
     const remainingSec = Math.max(60, Math.floor((binding.expiresAt - Date.now()) / 1000));
+    const finalParsed = parsedEmailContext.parsedEmail;
+    const sender = finalParsed?.sender || "";
+    const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, dateMs: Date.now() });
+    // 绑定快照内容同时写入 D1：KV 读取有 30 秒边缘缓存强制下限，
+    // 新邮件到达后 /m/ 必须秒级可见，D1 无此限制。D1 写入失败则删行，
+    // 保证 /m/ 回退到 KV（KV 里是新内容，不会读到 D1 的旧行）。
+    if (c.env.DB) {
+        try {
+            await c.env.DB.prepare(
+                "INSERT INTO bound_snapshot_html (token, html, updated_at) VALUES (?, ?, ?) " +
+                "ON CONFLICT(token) DO UPDATE SET html=excluded.html, updated_at=excluded.updated_at"
+            ).bind(binding.token, snapshotHtml, Date.now()).run();
+        } catch (e) {
+            console.error("bound snapshot D1 write failed", e);
+            try {
+                await c.env.DB.prepare("DELETE FROM bound_snapshot_html WHERE token = ?").bind(binding.token).run();
+            } catch { /* ignore */ }
+        }
+    }
     try {
         await c.env.KV.put(
             `mailhtml:${binding.token}`,
-            buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || ""),
+            snapshotHtml,
             { expirationTtl: remainingSec }
         );
         // 内容已更新，清除边缘缓存保证及时刷新（否则 10 秒内看到的还是旧邮件）
@@ -242,6 +307,22 @@ export const SNAPSHOT_KV_EDGE_TTL = 30;
 /** 读取邮箱的固定快照绑定；过期则清理并返回 null */
 export async function getSnapshotBinding(c: Context<HonoCustomType>, address: string): Promise<SnapshotBinding | null> {
     if (!c.env.KV) return null;
+    // 优先读 D1（无边缘缓存），通知里的链接一定是最新；D1 miss 回退 KV
+    if (c.env.DB) {
+        try {
+            const row = await c.env.DB.prepare(
+                "SELECT token, url, expires_at, created_at FROM snapshot_bindings WHERE address = ?"
+            ).bind(address.toLowerCase()).first<{ token: string; url: string; expires_at: number; created_at: number }>();
+            if (row) {
+                const binding: SnapshotBinding = { address: address.toLowerCase(), token: row.token, url: row.url, expiresAt: row.expires_at, createdAt: row.created_at };
+                if (binding.expiresAt <= Date.now()) {
+                    await deleteSnapshotBinding(c, address, binding.token).catch(() => {});
+                    return null;
+                }
+                return binding;
+            }
+        } catch { /* ignore, fallback to KV */ }
+    }
     try {
         const binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         if (!binding) return null;
@@ -272,6 +353,18 @@ export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address:
         } catch { /* ignore */ }
     }
     const t = token || binding?.token;
+    // D1 中的绑定快照内容一并清理，避免 /m/ 从 D1 读到已删除绑定的旧内容
+    if (t && c.env.DB) {
+        try {
+            await c.env.DB.prepare("DELETE FROM bound_snapshot_html WHERE token = ?").bind(t).run();
+        } catch { /* ignore */ }
+    }
+    // D1 绑定元数据也删
+    if (c.env.DB) {
+        try {
+            await c.env.DB.prepare("DELETE FROM snapshot_bindings WHERE address = ?").bind(address.toLowerCase()).run();
+        } catch { /* ignore */ }
+    }
     await Promise.allSettled([
         c.env.KV.delete(snapshotBindKey(address)),
         t ? c.env.KV.put(snapshotBindRevKey(t), SNAPSHOT_BIND_DELETED, { expirationTtl: SNAPSHOT_BIND_TOMBSTONE_TTL }) : Promise.resolve(),
@@ -323,7 +416,29 @@ export async function createSnapshotBindingRecord(
         createdAt: now,
     };
     // 重新绑定：先销毁旧绑定，保证旧链接立即失效
-    await deleteSnapshotBinding(c, addr).catch(() => {});
+    // 优先从 D1 读旧 token（无边缘缓存），D1 miss 才回退 KV
+    try {
+        let oldToken: string | null = null;
+        if (c.env.DB) {
+            try {
+                const row = await c.env.DB.prepare(
+                    "SELECT token FROM snapshot_bindings WHERE address = ?"
+                ).bind(addr).first<{ token: string }>();
+                if (row?.token) oldToken = row.token;
+            } catch { /* ignore, fallback to KV */ }
+        }
+        if (!oldToken) {
+            const oldBinding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+            if (oldBinding?.token) oldToken = oldBinding.token;
+        }
+        if (oldToken) {
+            await deleteSnapshotBinding(c, addr, oldToken).catch(() => {});
+        } else {
+            await deleteSnapshotBinding(c, addr).catch(() => {});
+        }
+    } catch {
+        await deleteSnapshotBinding(c, addr).catch(() => {});
+    }
     const expiration = Math.floor(binding.expiresAt / 1000);
     await Promise.all([
         c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), { expiration }),
@@ -332,5 +447,14 @@ export async function createSnapshotBindingRecord(
             buildSnapshotHtml("", `该快照已绑定 ${addr}，等待第一封新邮件到达后显示最新内容。`, "快照已绑定"),
             { expirationTtl: hours * 3600 }),
     ]);
+    // D1 也写一份：refreshBoundSnapshot 优先读 D1（无 30 秒边缘缓存），建完立即发邮件也能找到绑定
+    if (c.env.DB) {
+        try {
+            await c.env.DB.prepare(
+                "INSERT INTO snapshot_bindings (address, token, url, expires_at, created_at) VALUES (?, ?, ?, ?, ?) " +
+                "ON CONFLICT(address) DO UPDATE SET token=excluded.token, url=excluded.url, expires_at=excluded.expires_at, created_at=excluded.created_at"
+            ).bind(addr, token, binding.url, binding.expiresAt, binding.createdAt).run();
+        } catch { /* ignore, KV 为主 */ }
+    }
     return binding;
 }
