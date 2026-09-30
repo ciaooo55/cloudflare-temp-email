@@ -7,10 +7,6 @@ import { useGlobalState } from '../store'
 import { api } from '../api'
 import { getRouterPathWithLang, hashPassword } from '../utils'
 import Turnstile from '../components/Turnstile.vue'
-// Snapshot is imported synchronously (not lazy): its Vite async preload
-// hung in production (blank tab) when the CSS preload link's load event
-// did not fire. 8KB is negligible vs a broken admin tab.
-import Snapshot from './admin/Snapshot.vue'
 
 // Admin tab views are lazy-loaded: each chunk is fetched only when its tab is first opened,
 // keeping the admin first-screen bundle small. (n-tab-pane uses displayDirective="if",
@@ -29,6 +25,7 @@ const DatabaseManager = defineAsyncComponent(() => import('./admin/DatabaseManag
 const Appearance = defineAsyncComponent(() => import('./common/Appearance.vue'));
 const Telegram = defineAsyncComponent(() => import('./admin/Telegram.vue'));
 const Bark = defineAsyncComponent(() => import('./admin/Bark.vue'));
+const Snapshot = defineAsyncComponent(() => import('./admin/Snapshot.vue'));
 const Webhook = defineAsyncComponent(() => import('./admin/Webhook.vue'));
 const MailWebhook = defineAsyncComponent(() => import('./admin/MailWebhook.vue'));
 const WorkerConfig = defineAsyncComponent(() => import('./admin/WorkerConfig.vue'));
