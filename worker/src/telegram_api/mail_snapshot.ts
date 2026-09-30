@@ -139,7 +139,7 @@ export function buildSnapshotHtml(html: string, text: string, subject: string, m
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(String(subject || "邮件快照"))}</title><style>body{max-width:760px;margin:0 auto;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;color:#222;word-wrap:break-word}img{max-width:100%;height:auto}a{color:#1a73e8}</style></head><body>${header}${content}</body></html>`;
 }
 
-export async function createMailSnapshot(c: Context<HonoCustomType>, settings: TelegramSettings | null | undefined, parsedEmailContext: ParsedEmailContext, ttlSeconds: number = DEFAULT_SNAPSHOT_TTL): Promise<string | null> {
+export async function createMailSnapshot(c: Context<HonoCustomType>, settings: TelegramSettings | null | undefined, parsedEmailContext: ParsedEmailContext, ttlSeconds: number = DEFAULT_SNAPSHOT_TTL, address?: string): Promise<string | null> {
     if (!c.env.KV) return null;
     const parsed = parsedEmailContext.parsedEmail;
     if (!parsed || (!parsed.html && !parsed.text)) return null;
@@ -156,7 +156,7 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
     const token = generateSecureHexToken(32);
     await c.env.KV.put(`mailhtml:${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
         sender: (parsed as any)?.sender || "",
-        recipient: (parsedEmailContext as any)?.address || "",
+        recipient: address || (parsedEmailContext as any)?.address || "",
         dateMs: Date.now(),
     }), { expirationTtl: ttlSeconds });
     return `${origin}/m/${token}`;

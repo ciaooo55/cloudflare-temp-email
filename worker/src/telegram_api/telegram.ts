@@ -598,7 +598,7 @@ export async function sendMailNotifications(
             if (bound?.url) {
                 snapshotUrl = bound.url;
             } else {
-                snapshotPromise = createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
+                snapshotPromise = createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl, address);
                 snapshotUrl = await snapshotPromise;
             }
         } catch (error) {
@@ -637,7 +637,7 @@ export async function sendMailNotifications(
         const buttons = buildMiniAppButtons(settings, mailId, msgs.TgViewMailBtnMsg);
         const fullMail = body === undefined ? mail : header + body + footer;
         // 若外层已有快照链接（绑定的固定链接），直接复用，不再新建
-        snapshotPromise ??= snapshotUrl ? Promise.resolve(snapshotUrl) : createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);
+        snapshotPromise ??= snapshotUrl ? Promise.resolve(snapshotUrl) : createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl, address);
         const newSnapshotUrl = await snapshotPromise;
         if (newSnapshotUrl) {
             const info = {
