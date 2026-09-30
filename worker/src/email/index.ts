@@ -4,6 +4,7 @@ import { getJsonSetting, normalizeAddressDomain } from '../utils.ts';
 import { sendMailNotifications } from '../telegram_api/index.ts';
 import { refreshBoundSnapshot } from '../telegram_api/mail_snapshot.ts';
 import { isBlocked } from './black_list.ts';
+import { checkInboundRateLimit } from './inbound_rate_limit.ts';
 import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common.ts';
 import { checkIfJunkMail } from './check_junk.ts';
 import { removeAttachmentIfNeed } from './check_attachment.ts';
@@ -38,6 +39,17 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         message.setReject("Reject from address");
         console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
+    }
+    // inbound rate limit: anti mail-bomb (pair 30/min, sender 99/min, graduated bans)
+    try {
+        const rl = await checkInboundRateLimit(message.from, toAddress, env);
+        if (rl.blocked) {
+            message.setReject("Rate limit exceeded");
+            console.log(`Reject rate-limited message from ${message.from} to ${toAddress}: ${rl.reason}`);
+            return;
+        }
+    } catch (error) {
+        console.error("inbound rate limit check error", error);
     }
     const rawEmail = await new Response(message.raw).text();
     const parsedEmailContext: ParsedEmailContext = {
