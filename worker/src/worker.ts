@@ -8,7 +8,7 @@ import { api as openAuthApi } from './open_api/auth';
 import { api as mailsApi } from './mails_api'
 import { api as adminApi } from './admin_api';
 import { api as apiSendMail } from './mails_api/send_mail_api'
-import { snapshotBindKey, snapshotBindRevKey } from './telegram_api/mail_snapshot';
+import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml } from './telegram_api/mail_snapshot';
 import { api as telegramApi } from './telegram_api'
 
 import i18n from './i18n';
@@ -269,6 +269,12 @@ app.get('/m/:token', async c => {
 		console.error('snapshot fetch failed', error);
 	}
 	if (!html) return c.text('邮件已过期或不存在', 404);
+	// 读取时二次消毒：存量快照可能是旧版消毒器生成的，新版规则在此处同样生效（纵深防御）
+	try {
+		html = sanitizeSnapshotHtml(html);
+	} catch (error) {
+		console.error('snapshot sanitize failed', error);
+	}
 	// 绑定的快照内容随新邮件更新，用短缓存保证及时刷新；一次性快照内容不变，可长缓存抗刷
 	const cacheControl = isBoundSnapshot ? 'public, max-age=30' : 'public, max-age=86400';
 	const response = new Response(html, {

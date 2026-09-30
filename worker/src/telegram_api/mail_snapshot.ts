@@ -87,7 +87,9 @@ function escapeHtml(value: string): string {
 }
 
 // Worker 环境没有 DOM，做正则消毒。快照链接 token 不可猜，但仍需纵深防御。
-function sanitizeSnapshotHtml(html: string): string {
+// 注意：创建时（buildSnapshotHtml）和读取时（/m/:token）都会调用，
+// 存量快照（旧版消毒器生成）也能在读取时被新版规则过滤。
+export function sanitizeSnapshotHtml(html: string): string {
     let content = html;
     // 1. 删除完整危险块（含内容）
     content = content.replace(/<(script|style|iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "");
