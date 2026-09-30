@@ -8,6 +8,31 @@
 
 ## v1.13.0(main)
 
+- fix: |Receiving| Reject and abort immediately when mail storage fails: previously a failed store would still trigger AI parsing, snapshots, and Telegram/Bark/webhook pushes ("ghost pushes"); now a failed store rejects the message with no further actions
+- fix: |Receiving| Mail list API returns 400 for `offset=NaN` (malformed pagination parameter behavior was previously undefined)
+- fix: |Webhook| Webhook custom headers must be a JSON object when saved; invalid configs are no longer written, and a runtime parse failure degrades to empty headers instead of throwing
+- fix: |Telegram| Webhook default route and botId route merged; missing token or malformed JSON returns 400; `/admin/telegram/init` and `status` guard against a missing default token
+- fix: |Telegram| Mail pagination callback now parses the page number from the last underscore, so addresses containing underscores no longer break parsing
+- fix: |Telegram| Mini App signature verification tries the default token and every web-configured bot token (previously only the default token, so opening from another bot was wrongly rejected); falls back to the default token when bot config can't be read
+- fix: |Bark| Push checks the HTTP status — 4xx/5xx are no longer misreported as success; fixed devices being wrongly deleted on save after multi-key devices were split into rows
+- fix: |Snapshot| Snapshot binding domain check now uses the union of the 22 historical receiving domains plus Worker-configured DOMAINS (subdomains supported), so old domains stay bindable after config narrowing
+- fix: |Snapshot| Snapshot key generation unified through a helper so bind/unbind/read use identical key spelling
+- fix: |API| Malformed-JSON guards added to several public JSON endpoints (new_address, open_api/auth, address_auth, s3_attachment, miniapp) — invalid bodies no longer throw 500
+- fix: |Frontend| Date/time now localized to the UI language: Chinese shows "2026/9/30 14:00:00" (24-hour), other languages use their own conventions
+- fix: |Frontend| Top nav tabs no longer wrap or squeeze; they scroll horizontally when overflowing, avoiding truncated labels on narrow screens
+- fix: |Frontend| Worker config page no longer renders numeric `1` as boolean "Yes"; only real booleans show Yes/No, and `HAS_*` counts are treated as "whether set"
+- fix: |Frontend| Send-mail quota inputs show empty with a "not enabled" note when disabled, and refill defaults when re-enabled, avoiding empty submissions
+- fix: |Frontend| Multi-select input hints moved from the dropdown empty state to persistent helper text; webhook/Telegram allowlists handled the same way
+- fix: |Frontend| Telegram bot table and snapshot table gain horizontal scroll and min-widths; long addresses no longer wrap-truncate
+- fix: |Frontend| Telegram `getUpdates` debug URL gets a one-click copy button
+- fix: |Frontend| Global mailbox settings form gains a save button at the bottom — no more scrolling back to the top
+- fix: |Frontend| Mail "HTML" view mode renamed "HTML source" to distinguish it from rich text
+- fix: |Frontend| Appearance page notes that changes apply instantly and are saved in the current browser; Admin page explains the current login method and where to change the password
+- fix: |Frontend| Telegram "Initialize" button now asks for confirmation, stating it re-registers the default bot webhook and rotates the verification secret
+- fix: |Copy| Admin copy de-jargoned: "Worker environment variables" → "service deployment settings", "ENABLE_WEBHOOK env var" → "enable in service deployment settings"; webhook-disabled guidance now points to the admin UI instead of "contact the administrator"; custom SQL examples and schedule tips synced across all four languages
+- fix: |Cleanup| Maintenance page: instant cleanups (normal + raw mails) now ask for "irreversible" confirmation; all 6 cleanup day inputs have min 1 with a "minimum 1 day" hint (no more "0 days means delete everything" ambiguity)
+- test: |Tests| New snapshot-binding domain regression tests: `looo.cloud` still bindable when absent from current DOMAINS, dynamically added DOMAINS bindable, invalid domains return 400
+- refactor: |Simplify| Added `.ts` extensions to 228 Node ESM relative imports across 51 Worker files so unit-test imports no longer fail; removed unreferenced imports; fixed `qucickSetup` → `quickSetup` spelling (with automatic migration of the old sessionStorage value)
 - fix: |Security| Snapshot HTML is now sanitized at serve time too: `/m/` applies the latest sanitizer rules when reading, so existing snapshots (created with the older sanitizer) are equally protected; defense in depth, verified live that bypass payloads are neutralized on read while normal content is preserved
 - fix: |Copy| Fixed missing Chinese labels on the Worker config page: nested i18n label groups (`labels`) were silently skipped by the message builder; config items now show proper labels like "站点访问密码（是否已设置）" and "可用域名"
 - fix: |Copy| Renamed the inner tab under "维护" to "清理维护" to avoid confusion with the top-level "维护" tab

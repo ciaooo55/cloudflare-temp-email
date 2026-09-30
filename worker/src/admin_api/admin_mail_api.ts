@@ -1,6 +1,6 @@
 import { Context } from "hono";
-import { handleMailListQuery } from "../common";
-import { resolveRawEmailRow } from "../gzip";
+import { handleMailListQuery } from '../common.ts';
+import { resolveRawEmailRow } from '../gzip.ts';
 
 export default {
     getMails: async (c: Context<HonoCustomType>) => {

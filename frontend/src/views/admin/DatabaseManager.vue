@@ -1,12 +1,12 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useScopedI18n } from '@/i18n/app'
-import { CleaningServicesFilled } from '@vicons/material'
 
+import { useDialog } from 'naive-ui'
 import { api } from '../../api'
-import { init } from 'vooks/lib/on-fonts-ready';
 
 const message = useMessage()
+const dialog = useDialog()
 const D1_STORAGE_PLAN_CONFIG_KEY = 'd1_storage_plan'
 const dbVersionData = ref({
     need_initialization: false,
@@ -16,6 +16,7 @@ const dbVersionData = ref({
     database_size: null
 })
 const selectedPlan = ref(null)
+const { t } = useScopedI18n('views.admin.DatabaseManager')
 const savedPlan = ref(null)
 const savingPlan = ref(false)
 
@@ -49,7 +50,6 @@ const progressStatus = computed(() => {
     return 'success'
 })
 
-const { t } = useScopedI18n('views.admin.DatabaseManager')
 
 const formatBytes = (bytes) => {
     if (bytes === null || bytes === undefined) return t('unavailable')
@@ -97,27 +97,43 @@ const savePlan = async (plan) => {
 }
 
 const initialization = async () => {
-    try {
-        await api.fetch('/admin/db_initialize', {
-            method: 'POST'
-        });
-        await fetchData();
-        message.success(t('initializationSuccess'));
-    } catch (error) {
-        message.error(error.message || "error");
-    }
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmInit'),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            try {
+                await api.fetch('/admin/db_initialize', {
+                    method: 'POST'
+                });
+                await fetchData();
+                message.success(t('initializationSuccess'));
+            } catch (error) {
+                message.error(error.message || "error");
+            }
+        }
+    })
 }
 
 const migration = async () => {
-    try {
-        await api.fetch('/admin/db_migration', {
-            method: 'POST'
-        });
-        await fetchData();
-        message.success(t('migrationSuccess'));
-    } catch (error) {
-        message.error(error.message || "error");
-    }
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmMigration'),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            try {
+                await api.fetch('/admin/db_migration', {
+                    method: 'POST'
+                });
+                await fetchData();
+                message.success(t('migrationSuccess'));
+            } catch (error) {
+                message.error(error.message || "error");
+            }
+        }
+    })
 }
 
 onMounted(async () => {

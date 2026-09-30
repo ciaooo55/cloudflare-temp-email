@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref } from 'vue';
 import { useScopedI18n } from '@/i18n/app'
 
 import { useGlobalState } from '../../store'

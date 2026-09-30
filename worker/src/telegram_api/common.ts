@@ -1,11 +1,11 @@
 import { Context } from "hono";
 import { Jwt } from "hono/utils/jwt";
-import { validateAddressPayload, verifyAddressToken } from '../address_auth';
-import { CONSTANTS } from "../constants";
-import { getBooleanValue, getIntValue, getJsonSetting } from "../utils";
-import { deleteAddressWithData, newAddress, generateRandomName } from "../common";
-import { LocaleMessages } from "../i18n/type";
-import i18n from '../i18n';
+import { validateAddressPayload, verifyAddressToken } from '../address_auth.ts';
+import { CONSTANTS } from '../constants.ts';
+import { getBooleanValue, getIntValue, getJsonSetting } from '../utils.ts';
+import { deleteAddressWithData, newAddress, generateRandomName } from '../common.ts';
+import { LocaleMessages } from '../i18n/type.ts';
+import i18n from '../i18n/index.ts';
 
 export const tgUserNewAddress = async (
     c: Context<HonoCustomType>, userId: string, address: string,

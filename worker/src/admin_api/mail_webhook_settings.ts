@@ -1,10 +1,10 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
-import { WebhookSettings, RawMailRow } from "../models";
-import { commonParseMail, sendWebhook } from "../common";
-import { resolveRawEmail } from "../gzip";
-import i18n from "../i18n";
-import { getWebhookAttachments } from '../utils/webhook';
+import { CONSTANTS } from '../constants.ts';
+import { WebhookSettings, RawMailRow } from '../models/index.ts';
+import { commonParseMail, sendWebhook } from '../common.ts';
+import { resolveRawEmail } from '../gzip.ts';
+import i18n from '../i18n/index.ts';
+import { getWebhookAttachments } from '../utils/webhook.ts';
 
 async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await c.env.KV.get<WebhookSettings>(
@@ -14,7 +14,23 @@ async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response>
 }
 
 async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const settings = await c.req.json<WebhookSettings>();
+    const msgs = i18n.getMessagesbyContext(c);
+    const settings = await c.req.json<WebhookSettings>().catch(() => null);
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+        return c.text(msgs.InvalidRequestBodyMsg, 400);
+    }
+    // headers 存的是 JSON 字符串：保存时就校验，配错了立刻报错，
+    // 避免之后每封邮件的 webhook 都因解析失败而静默丢失
+    if (typeof settings.headers === "string" && settings.headers.trim()) {
+        try {
+            const parsed = JSON.parse(settings.headers);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                return c.text("headers must be a JSON object", 400);
+            }
+        } catch {
+            return c.text("headers is not valid JSON", 400);
+        }
+    }
     await c.env.KV.put(
         CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY,
         JSON.stringify(settings));

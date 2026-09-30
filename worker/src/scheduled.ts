@@ -1,14 +1,14 @@
 import { Context } from 'hono';
-import { cleanup } from './common'
-import { CONSTANTS } from './constants'
-import { getJsonSetting } from './utils';
-import { CleanupSettings } from './models';
-import { executeCustomSqlCleanup } from './admin_api/cleanup_api';
-import { cleanupStaleRawMails } from './scheduled_raw_mails';
+import { cleanup } from './common.ts'
+import { CONSTANTS } from './constants.ts'
+import { getJsonSetting } from './utils.ts';
+import { CleanupSettings } from './models/index.ts';
+import { executeCustomSqlCleanup } from './admin_api/cleanup_api.ts';
+import { cleanupStaleRawMails } from './scheduled_raw_mails.ts';
 import {
     SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP,
     isTaskDueThisTick, markTaskRun,
-} from './scheduled_tasks';
+} from './scheduled_tasks.ts';
 
 // worker cron 每分钟触发一次（见 wrangler.toml.template [triggers]），
 // 每个任务按自己在网页里配置的间隔执行，间隔全部可在管理端修改。

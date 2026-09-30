@@ -14,8 +14,12 @@ export const MESSAGE_REGISTRY = {
       "zh": "请修改URL和其他设置为您自己的配置"
     },
     "notEnabled": {
-      "en": "Webhook is not enabled for you",
-      "zh": "Webhook 未开启，请联系管理员开启"
+      "en": "Webhook is not enabled",
+      "zh": "Webhook 未开启"
+    },
+    "notEnabledDesc": {
+      "en": "Webhook push is not turned on. Ask your administrator to enable it in the service deployment settings and redeploy.",
+      "zh": "Webhook 推送尚未开启。如需使用，请联系管理员在服务部署设置中开启后重新发布。"
     },
     "presets": {
       "en": "Presets",
@@ -507,6 +511,10 @@ export const MESSAGE_REGISTRY = {
       "en": "Login Method",
       "zh": "登录方式"
     },
+    "adminAccountTip": {
+      "en": "This page shows how you logged in to the admin console. To change the admin password, ask your administrator to update it in the service deployment settings in the Cloudflare dashboard and redeploy.",
+      "zh": "本页显示你进入管理后台的登录方式。如需修改管理密码，请联系管理员在 Cloudflare 控制台的服务部署设置中修改后重新发布。"
+    },
     "loginViaDisabledCheck": {
       "en": "Disabled Password Check",
       "zh": "已禁用密码检查"
@@ -555,7 +563,7 @@ export const MESSAGE_REGISTRY = {
       "en": "OK",
       "zh": "确定"
     },
-    "qucickSetup": {
+    "quickSetup": {
       "en": "Quick Setup",
       "zh": "快速设置"
     },
@@ -719,6 +727,19 @@ export const MESSAGE_REGISTRY = {
       "en": "Bark Push Settings",
       "zh": "Bark 推送设置"
     }
+  ,
+    "confirmTitle": {
+      "en": "Confirm",
+      "zh": "确认操作"
+    },
+    "positiveText": {
+      "en": "Confirm",
+      "zh": "确定"
+    },
+    "negativeText": {
+      "en": "Cancel",
+      "zh": "取消"
+    }
   },
   "views.admin.Snapshot": {
     "actions": {
@@ -868,7 +889,83 @@ export const MESSAGE_REGISTRY = {
     "binding": {
       "en": "Binding...",
       "zh": "绑定中..."
-    }
+    },
+    "confirmTitle": {
+      "en": "Confirm",
+      "zh": "确认操作"
+    },
+    "positiveText": {
+      "en": "Confirm",
+      "zh": "确定"
+    },
+    "negativeText": {
+      "en": "Cancel",
+      "zh": "取消"
+    },
+    "enterAddressFirst": {
+      "en": "Please enter email addresses first, one per line",
+      "zh": "请先输入邮箱地址，每行一个"
+    },
+    "skippedAddresses": {
+      "en": "Skipped addresses:",
+      "zh": "以下地址跳过："
+    },
+    "invalidFormat": {
+      "en": "{addr} (invalid format)",
+      "zh": "{addr} (格式错误)"
+    },
+    "invalidDomain": {
+      "en": "{addr} (domain not allowed)",
+      "zh": "{addr} (域名不在列表中)"
+    },
+    "alreadyBound": {
+      "en": "{addr} (already bound)",
+      "zh": "{addr} (已绑定)"
+    },
+    "unknownError": {
+      "en": "Unknown error",
+      "zh": "未知错误"
+    },
+    "requestFailed": {
+      "en": "Request failed",
+      "zh": "请求失败"
+    },
+    "batchDone": {
+      "en": "Batch bind done: {success} succeeded",
+      "zh": "批量绑定完成：成功 {success} 个"
+    },
+    "batchDoneWithFailed": {
+      "en": "Batch bind done: {success} succeeded, {failed} failed:",
+      "zh": "批量绑定完成：成功 {success} 个，失败 {failed} 个："
+    },
+    "confirmReplace": {
+      "en": "Replace the link? The old link will be invalidated immediately.",
+      "zh": "确定要更换链接吗？旧链接将立即失效。"
+    },
+    "linkReplaced": {
+      "en": "Link replaced, the old link is now invalid",
+      "zh": "链接已更换，旧链接已失效"
+    },
+    "replaceLink": {
+      "en": "Replace link",
+      "zh": "更换链接"
+    },
+    "batchBind": {
+      "en": "Batch bind",
+      "zh": "批量绑定"
+    },
+    "batchBindTip": {
+      "en": "Enter one email address per line. Format, domain and existing bindings are checked automatically.",
+      "zh": "每行输入一个邮箱地址，系统会自动检查格式、域名和是否已绑定。"
+    },
+    "batchPlaceholder": {
+      "en": "e.g.:\ntest1@example.com\ntest2@example.com",
+      "zh": "例如：\ntest1@ciaooo55.us.ci\ntest2@ciaooo55.us.ci"
+    },
+    "clear": {
+      "en": "Clear",
+      "zh": "清空"
+    },
   },
   "views.admin.AiExtractSettings": {
     "allowList": {
@@ -1030,8 +1127,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "你的名称和地址，名称不填写则使用邮箱地址"
     },
     "html": {
-      "en": "HTML",
-      "zh": "HTML"
+      "en": "HTML source",
+      "zh": "HTML 源码"
     },
     "options": {
       "en": "Options",
@@ -1408,6 +1505,26 @@ export const MESSAGE_REGISTRY = {
     "unavailable": {
       "en": "Unavailable",
       "zh": "暂不可用"
+    },
+    "confirmTitle": {
+      "en": "Confirm",
+      "zh": "确认操作"
+    },
+    "confirmInit": {
+      "en": "This will initialize the database structure. Continue?",
+      "zh": "将初始化数据库结构，确定继续吗？"
+    },
+    "confirmMigration": {
+      "en": "This will run the database migration. Continue?",
+      "zh": "将执行数据库迁移，确定继续吗？"
+    },
+    "positiveText": {
+      "en": "Confirm",
+      "zh": "确定"
+    },
+    "negativeText": {
+      "en": "Cancel",
+      "zh": "取消"
     }
   },
   "views.admin.IpBlacklistSettings": {
@@ -1546,12 +1663,28 @@ export const MESSAGE_REGISTRY = {
       "zh": "全局邮件推送 Chat ID 列表"
     },
     "globalMailPushListTip": {
-      "en": "Support chat_id of private chat/group/channel. You can send a message to your bot, then visit this link to see chat_id, https://api.telegram.org/bot<Replace with your BOT TOKEN>/getUpdates",
-      "zh": "支持对话/群组/频道的 Chat ID, 您可以发送一条消息给您的机器人，然后访问此链接来查看 chat_id, https://api.telegram.org/bot<这里替换成您的 BOT TOKEN>/getUpdates"
+      "en": "Supports chat_id of private chat/group/channel. Send a message to your bot first, then fill your BOT TOKEN into the link below and open it to see the chat_id.",
+      "zh": "支持对话/群组/频道的 Chat ID。先给机器人发一条消息，然后把 BOT TOKEN 填入下面的链接并打开，即可看到 chat_id。"
+    },
+    "getUpdatesUrlTemplate": {
+      "en": "https://api.telegram.org/bot<Replace with your BOT TOKEN>/getUpdates",
+      "zh": "https://api.telegram.org/bot<这里替换成您的 BOT TOKEN>/getUpdates"
+    },
+    "copy": {
+      "en": "Copy",
+      "zh": "复制"
+    },
+    "copied": {
+      "en": "Copied",
+      "zh": "已复制"
     },
     "init": {
       "en": "Init",
       "zh": "初始化"
+    },
+    "confirmInit": {
+      "en": "This will re-register the Telegram webhook for the default bot and rotate the webhook secret. The bot will keep working, but do not click this unless the bot stops receiving messages.",
+      "zh": "这会重新注册默认机器人的 Telegram Webhook 并更换校验密钥。机器人会继续工作，但除非机器人收不到消息，否则不要点。"
     },
     "manualInputPrompt": {
       "en": "Type and press Enter to add",
@@ -1653,6 +1786,46 @@ export const MESSAGE_REGISTRY = {
       "en": "Webhook set",
       "zh": "Webhook 已设置"
     },
+    "confirmTitle": {
+      "en": "Confirm",
+      "zh": "确认操作"
+    },
+    "positiveText": {
+      "en": "Confirm",
+      "zh": "确定"
+    },
+    "negativeText": {
+      "en": "Cancel",
+      "zh": "取消"
+    },
+    "botManagementTipExtra": {
+      "en": "One bot per line. Each bot can have its own user ID whitelist and group ID whitelist (comma-separated); leave empty for no restriction.",
+      "zh": "每个机器人一行，可单独设置用户ID白名单和群组ID白名单（逗号分隔），留空表示不限制。"
+    },
+    "userIdWhitelist": {
+      "en": "User ID whitelist",
+      "zh": "用户ID白名单"
+    },
+    "groupIdWhitelist": {
+      "en": "Group ID whitelist",
+      "zh": "群组ID白名单"
+    },
+    "chatIdsPlaceholder": {
+      "en": "e.g. 123456,789012, leave empty for no restriction",
+      "zh": "如：123456,789012，留空不限制"
+    },
+    "groupIdsPlaceholder": {
+      "en": "e.g. -100123456, leave empty for no restriction",
+      "zh": "如：-100123456，留空不限制"
+    },
+    "newChatIdsPlaceholder": {
+      "en": "User ID whitelist (comma-separated, leave empty for no restriction)",
+      "zh": "用户ID白名单（逗号分隔，留空不限制）"
+    },
+    "newGroupIdsPlaceholder": {
+      "en": "Group ID whitelist (comma-separated, leave empty for no restriction)",
+      "zh": "群组ID白名单（逗号分隔，留空不限制）"
+    }
   },
   "views.admin.CreateAccount": {
     "address": {
@@ -1713,6 +1886,10 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.common.Appearance": {
+    "instantTip": {
+      "en": "All settings take effect immediately and are saved automatically in this browser.",
+      "zh": "所有设置即时生效，并自动保存在当前浏览器中。"
+    },
     "autoLoadRemoteImages": {
       "en": "Automatically load external images in mail body",
       "zh": "自动加载邮件正文中的外部图片"
@@ -1935,6 +2112,10 @@ export const MESSAGE_REGISTRY = {
       "en": "This applies to all send channels. Use -1 for unlimited and 0 to block sending.",
       "zh": "对全部发信渠道生效。-1 表示无限，0 表示禁止发送。"
     },
+    "send_mail_limit_disabled_placeholder": {
+      "en": "Not enabled",
+      "zh": "未启用"
+    },
     "send_mail_monthly_limit": {
       "en": "Monthly Limit",
       "zh": "每月额度"
@@ -2016,8 +2197,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "清理成功"
     },
     "cronTip": {
-      "en": "Scheduled cleanup runs automatically in the background; each task follows the schedule set in the Scheduled Tasks tab. Setting 0 days means clear all.",
-      "zh": "定时清理会在后台自动运行，各任务按「定时任务」标签页里设定的时间执行；天数填 0 表示全部清空。"
+      "en": "Scheduled cleanup runs automatically in the background; each task follows the schedule set in the Scheduled Tasks tab. Days must be at least 1.",
+      "zh": "定时清理会在后台自动运行，各任务按「定时任务」标签页里设定的时间执行；天数最小为 1 天。"
     },
     "customSqlCleanup": {
       "en": "Custom SQL Cleanup",
@@ -2100,8 +2281,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "条"
     },
     "sqlPlaceholder": {
-      "en": "e.g. DELETE FROM raw_mails WHERE source GLOB '*{'@'}example.com' AND created_at < datetime('now', '-3 day')",
-      "zh": "例如: DELETE FROM raw_mails WHERE source GLOB '*{'@'}example.com' AND created_at < datetime('now', '-3 day')"
+      "en": "e.g. DELETE FROM mails WHERE created_at < datetime('now', '-30 day')",
+      "zh": "例如: DELETE FROM mails WHERE created_at < datetime('now', '-30 day')"
     },
     "scheduleTab": {
       "en": "Scheduled Tasks",
@@ -2122,6 +2303,22 @@ export const MESSAGE_REGISTRY = {
     "unboundAddressLabel": {
       "en": "Cleanup the unbound address before n days",
       "zh": "清理 n 天前的未绑定用户地址"
+    },
+    "confirmTitle": {
+      "en": "Confirm",
+      "zh": "确认操作"
+    },
+    "confirmCleanup": {
+      "en": "This will permanently delete the selected data and cannot be undone. Continue?",
+      "zh": "将永久删除选中的数据，无法恢复，确定继续吗？"
+    },
+    "positiveText": {
+      "en": "Confirm",
+      "zh": "确定"
+    },
+    "negativeText": {
+      "en": "Cancel",
+      "zh": "取消"
     }
   },
   "views.admin.WorkerConfig": {
@@ -2136,6 +2333,44 @@ export const MESSAGE_REGISTRY = {
     "notSet": {
       "en": "Not set",
       "zh": "未设置"
+    },
+    "readOnlyTip": {
+      "en": "These are the service deployment settings (read-only). To change them, ask your administrator to edit them in the Cloudflare dashboard and redeploy.",
+      "zh": "这里展示的是服务的部署设置（只读）。如需修改，请联系管理员在 Cloudflare 控制台修改后重新发布。"
+    },
+    "descriptions": {
+      "HAS_PASSWORD": { "en": "Whether a site access password is set (visitors must enter it).", "zh": "是否设置了站点访问密码（访客需输入才能访问）。" },
+      "HAS_ADMIN_PASSWORDS": { "en": "Whether an admin password is set.", "zh": "是否设置了管理密码。" },
+      "HAS_JWT_SECRET": { "en": "Whether the login token secret is configured.", "zh": "是否配置了登录令牌密钥。" },
+      "ANNOUNCEMENT": { "en": "Announcement text shown on the site.", "zh": "站点上显示的公告内容。" },
+      "ALWAYS_SHOW_ANNOUNCEMENT": { "en": "Always show the announcement, even when there are no updates.", "zh": "是否总是显示公告（即使没有更新）。" },
+      "PREFIX": { "en": "Default prefix for new addresses.", "zh": "新建邮箱地址的默认前缀。" },
+      "ADDRESS_CHECK_REGEX": { "en": "Validation rule for new address names; non-matching names are rejected.", "zh": "新建地址名称的校验规则，不匹配则拒绝创建。" },
+      "ADDRESS_REGEX": { "en": "Character replacement rule for address names (illegal characters get replaced).", "zh": "地址名称字符替换规则（非法字符会被替换掉）。" },
+      "MIN_ADDRESS_LEN": { "en": "Minimum length of the address name.", "zh": "地址名称最短长度。" },
+      "MAX_ADDRESS_LEN": { "en": "Maximum length of the address name.", "zh": "地址名称最长长度。" },
+      "DEFAULT_DOMAINS": { "en": "Default domains, used first when creating addresses.", "zh": "默认域名，新建地址时优先使用。" },
+      "DOMAINS": { "en": "Available domains (can receive mail and be used for new addresses).", "zh": "可用域名（可收信、可用于新建地址）。" },
+      "ENABLE_CREATE_ADDRESS_SUBDOMAIN_MATCH": { "en": "Allow subdomains of available domains when creating addresses.", "zh": "新建邮箱时允许使用可用域名的子域名。" },
+      "RANDOM_SUBDOMAIN_DOMAINS": { "en": "Domains allowed to generate random subdomains.", "zh": "允许生成随机子域名的域名。" },
+      "RANDOM_SUBDOMAIN_LENGTH": { "en": "Length of generated random subdomains.", "zh": "随机子域名的长度。" },
+      "DOMAIN_LABELS": { "en": "Display labels for domains shown in the UI.", "zh": "域名在界面上显示的标签。" },
+      "NO_LIMIT_SEND_ROLE": { "en": "User roles exempt from sending quota limits.", "zh": "发信不受额度限制的用户角色。" },
+      "ENABLE_USER_CREATE_EMAIL": { "en": "Allow users to create addresses.", "zh": "允许用户新建邮箱。" },
+      "DISABLE_ANONYMOUS_USER_CREATE_EMAIL": { "en": "Forbid anonymous (not logged in) users from creating addresses.", "zh": "禁止匿名（未登录）用户新建邮箱。" },
+      "ENABLE_USER_DELETE_EMAIL": { "en": "Allow users to delete addresses.", "zh": "允许用户删除邮箱。" },
+      "ENABLE_MAIL_READ_STATUS": { "en": "Show read/unread status for mails.", "zh": "显示邮件已读/未读状态。" },
+      "ENABLE_WEBHOOK": { "en": "Push new mails to a webhook URL.", "zh": "新邮件时推送到 Webhook 地址。" },
+      "VERSION": { "en": "Current version.", "zh": "当前版本。" },
+      "DISABLE_SHOW_GITHUB": { "en": "Hide the GitHub link entry.", "zh": "隐藏 GitHub 入口链接。" },
+      "DISABLE_ADMIN_PASSWORD_CHECK": { "en": "Skip the admin password check (reduces security, not recommended).", "zh": "跳过管理密码校验（会降低安全性，不推荐）。" },
+      "ENABLE_CHECK_JUNK_MAIL": { "en": "Enable junk mail detection.", "zh": "启用垃圾邮件检测。" },
+      "JUNK_MAIL_CHECK_LIST": { "en": "Keywords for junk mail detection.", "zh": "垃圾邮件检测关键词名单。" },
+      "JUNK_MAIL_FORCE_PASS_LIST": { "en": "Keywords that always pass junk mail detection.", "zh": "垃圾邮件强制放行关键词名单。" },
+      "REMOVE_EXCEED_SIZE_ATTACHMENT": { "en": "Remove attachments exceeding the size limit.", "zh": "删除超过大小限制的附件。" },
+      "REMOVE_ALL_ATTACHMENT": { "en": "Remove all attachments.", "zh": "删除所有附件。" },
+      "ENABLE_ANOTHER_WORKER": { "en": "Enable collaboration with other Workers.", "zh": "启用与其他 Worker 协同。" },
+      "ANOTHER_WORKER_LIST": { "en": "List of other Workers.", "zh": "其他 Worker 列表。" }
     },
     "labels": {
       "HAS_PASSWORD": { "en": "Site access password set", "zh": "站点访问密码（是否已设置）" },

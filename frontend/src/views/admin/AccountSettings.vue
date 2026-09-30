@@ -31,6 +31,13 @@ const sendMailDailyLimitEnabled = ref(false)
 const sendMailMonthlyLimitEnabled = ref(false)
 const sendMailDailyLimit = ref(DEFAULT_SEND_MAIL_DAILY_LIMIT)
 const sendMailMonthlyLimit = ref(DEFAULT_SEND_MAIL_MONTHLY_LIMIT)
+// 打开开关时若无值，填入默认值，避免空值提交
+const onDailyLimitToggle = (v) => {
+    if (v && sendMailDailyLimit.value == null) sendMailDailyLimit.value = DEFAULT_SEND_MAIL_DAILY_LIMIT
+}
+const onMonthlyLimitToggle = (v) => {
+    if (v && sendMailMonthlyLimit.value == null) sendMailMonthlyLimit.value = DEFAULT_SEND_MAIL_MONTHLY_LIMIT
+}
 const addressCreationSubdomainMatchStatus = ref({
     envConfigured: false,
     envEnabled: false,
@@ -130,10 +137,10 @@ const fetchData = async ({ suppressErrorMessage = false } = {}) => {
         sendMailMonthlyLimitEnabled.value = !!sendMailLimitConfig?.monthlyEnabled
         sendMailDailyLimit.value = sendMailDailyLimitEnabled.value
             ? sendMailLimitConfig.dailyLimit
-            : DEFAULT_SEND_MAIL_DAILY_LIMIT
+            : null
         sendMailMonthlyLimit.value = sendMailMonthlyLimitEnabled.value
             ? sendMailLimitConfig.monthlyLimit
-            : DEFAULT_SEND_MAIL_MONTHLY_LIMIT
+            : null
     } catch (error) {
         if (!suppressErrorMessage) {
             message.error(error.message || "error");
@@ -198,44 +205,24 @@ onMounted(async () => {
                     {{ t('save') }}
                 </n-button>
             </n-flex>
-            <n-form-item-row :label="t('address_block_list')">
+            <n-form-item-row :label="t('address_block_list')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="addressBlockList" filterable multiple tag
                     :placeholder="t('address_block_list_placeholder')">
-                    <template #empty>
-                        <n-text depth="3">
-                            {{ t('manualInputPrompt') }}
-                        </n-text>
-                    </template>
                 </n-select>
             </n-form-item-row>
-            <n-form-item-row :label="t('send_address_block_list')">
+            <n-form-item-row :label="t('send_address_block_list')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="sendAddressBlockList" filterable multiple tag
                     :placeholder="t('address_block_list_placeholder')">
-                    <template #empty>
-                        <n-text depth="3">
-                            {{ t('manualInputPrompt') }}
-                        </n-text>
-                    </template>
                 </n-select>
             </n-form-item-row>
-            <n-form-item-row :label="t('noLimitSendAddressList')">
+            <n-form-item-row :label="t('noLimitSendAddressList')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="noLimitSendAddressList" filterable multiple tag
                     :placeholder="t('noLimitSendAddressList')">
-                    <template #empty>
-                        <n-text depth="3">
-                            {{ t('manualInputPrompt') }}
-                        </n-text>
-                    </template>
                 </n-select>
             </n-form-item-row>
-            <n-form-item-row :label="t('verified_address_list')">
+            <n-form-item-row :label="t('verified_address_list')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="verifiedAddressList" filterable multiple tag
                     :placeholder="t('verified_address_list')">
-                    <template #empty>
-                        <n-text depth="3">
-                            {{ t('manualInputPrompt') }}
-                        </n-text>
-                    </template>
                 </n-select>
             </n-form-item-row>
             <n-form-item-row :label="t('send_mail_limit')">
@@ -243,22 +230,26 @@ onMounted(async () => {
                     <n-flex justify="space-between" align="center">
                         <n-text>{{ t('send_mail_daily_limit') }}</n-text>
                         <n-flex align="center">
-                            <n-switch v-model:value="sendMailDailyLimitEnabled" :round="false" />
+                            <n-switch v-model:value="sendMailDailyLimitEnabled" :round="false"
+                                @update:value="onDailyLimitToggle" />
                             <n-input-number
                                 v-model:value="sendMailDailyLimit"
                                 :disabled="!sendMailDailyLimitEnabled"
                                 :min="-1"
+                                :placeholder="t('send_mail_limit_disabled_placeholder')"
                             />
                         </n-flex>
                     </n-flex>
                     <n-flex justify="space-between" align="center">
                         <n-text>{{ t('send_mail_monthly_limit') }}</n-text>
                         <n-flex align="center">
-                            <n-switch v-model:value="sendMailMonthlyLimitEnabled" :round="false" />
+                            <n-switch v-model:value="sendMailMonthlyLimitEnabled" :round="false"
+                                @update:value="onMonthlyLimitToggle" />
                             <n-input-number
                                 v-model:value="sendMailMonthlyLimit"
                                 :disabled="!sendMailMonthlyLimitEnabled"
                                 :min="-1"
+                                :placeholder="t('send_mail_limit_disabled_placeholder')"
                             />
                         </n-flex>
                     </n-flex>
@@ -267,13 +258,8 @@ onMounted(async () => {
                     </n-text>
                 </n-flex>
             </n-form-item-row>
-            <n-form-item-row :label="t('fromBlockList')">
+            <n-form-item-row :label="t('fromBlockList')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="fromBlockList" filterable multiple tag :placeholder="t('fromBlockList')">
-                    <template #empty>
-                        <n-text depth="3">
-                            {{ t('manualInputPrompt') }}
-                        </n-text>
-                    </template>
                 </n-select>
             </n-form-item-row>
             <n-form-item-row :label="t('block_receive_unknow_address_email')">
@@ -302,6 +288,11 @@ onMounted(async () => {
                     </n-alert>
                 </n-flex>
             </n-form-item-row>
+            <n-flex justify="end" style="margin-top: 12px;">
+                <n-button @click="save" type="primary" :loading="loading">
+                    {{ t('save') }}
+                </n-button>
+            </n-flex>
         </n-card>
     </div>
 

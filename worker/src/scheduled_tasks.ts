@@ -1,4 +1,4 @@
-import type { ScheduledTaskRunInfo } from './models';
+import type { ScheduledTaskRunInfo } from './models/index.ts';
 
 // 定时任务 ID（对应 KV key `scheduled:last_run:<id>`）
 export const SCHEDULED_TASK_RAW_MAILS = 'raw_mails';

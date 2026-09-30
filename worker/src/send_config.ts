@@ -37,7 +37,7 @@
  */
 
 import type { WorkerMailerOptions } from 'worker-mailer';
-import { getJsonObjectValue, normalizeDomain } from './utils';
+import { getJsonObjectValue, normalizeDomain } from './utils.ts';
 
 export type SendChannelRef =
     | { provider: 'cf'; binding?: string }

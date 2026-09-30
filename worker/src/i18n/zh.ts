@@ -1,4 +1,4 @@
-import { LocaleMessages } from "./type";
+import { LocaleMessages } from './type.ts';
 
 const messages: LocaleMessages = {
     InvalidRequestBodyMsg: "无效的请求体",

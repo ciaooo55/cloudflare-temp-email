@@ -1,10 +1,10 @@
 import { Context } from 'hono'
 
-import i18n from '../i18n';
-import { getBooleanValue } from '../utils';
-import { handleMailListQuery, deleteAddressWithData, updateAddressUpdatedAt } from '../common'
-import { resolveRawEmailRow } from '../gzip'
-import { getSendBalanceState } from './send_balance';
+import i18n from '../i18n/index.ts';
+import { getBooleanValue } from '../utils.ts';
+import { handleMailListQuery, deleteAddressWithData, updateAddressUpdatedAt } from '../common.ts'
+import { resolveRawEmailRow } from '../gzip.ts'
+import { getSendBalanceState } from './send_balance.ts';
 
 const listMails = async (c: Context<HonoCustomType>) => {
     const { address } = c.get("jwtPayload")

@@ -1,8 +1,8 @@
 import { Context } from 'hono'
 
-import i18n from '../i18n'
-import { sendAdminInternalMail } from '../email/storage'
-import { handleListQuery } from '../common'
+import i18n from '../i18n/index.ts'
+import { sendAdminInternalMail } from '../email/storage.ts'
+import { handleListQuery } from '../common.ts'
 
 const list = async (c: Context<HonoCustomType>) => {
     const { address, limit, offset } = c.req.query();

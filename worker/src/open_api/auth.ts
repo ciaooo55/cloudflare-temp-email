@@ -1,14 +1,13 @@
 import { Hono } from 'hono'
-import { verifyAddressToken } from '../address_auth';
 
-import utils, { checkCfTurnstile, getPasswords, getAdminPasswords, hashPassword } from '../utils';
-import i18n from '../i18n';
-import { ErrorCode } from '../error_codes';
+import utils, { checkCfTurnstile, getPasswords, getAdminPasswords, hashPassword } from '../utils.ts';
+import i18n from '../i18n/index.ts';
+import { ErrorCode } from '../error_codes.ts';
 
 const api = new Hono<HonoCustomType>()
 
 api.post('/open_api/site_login', async (c) => {
-    const { password, cf_token } = await c.req.json();
+    const { password, cf_token } = await c.req.json().catch(() => ({}));
     const msgs = i18n.getMessagesbyContext(c);
     if (utils.isGlobalTurnstileEnabled(c)) {
         try {
@@ -26,7 +25,7 @@ api.post('/open_api/site_login', async (c) => {
 })
 
 api.post('/open_api/admin_login', async (c) => {
-    const { password, cf_token } = await c.req.json();
+    const { password, cf_token } = await c.req.json().catch(() => ({}));
     const msgs = i18n.getMessagesbyContext(c);
     if (utils.isGlobalTurnstileEnabled(c)) {
         try {

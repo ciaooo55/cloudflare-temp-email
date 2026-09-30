@@ -1,7 +1,7 @@
 import { Context } from 'hono'
 
-import { CONSTANTS } from '../constants'
-import { getJsonSetting, getIntValue, getSplitStringListValue } from '../utils'
+import { CONSTANTS } from '../constants.ts'
+import { getJsonSetting, getIntValue, getSplitStringListValue } from '../utils.ts'
 
 export const ensureDefaultSendBalance = async (
     c: Context<HonoCustomType>,

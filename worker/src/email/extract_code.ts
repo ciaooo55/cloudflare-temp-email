@@ -121,7 +121,7 @@ const VERIFY_CONTEXT = new RegExp([
     '(?:bestätigen|verifizieren)\\s{1,3}sie\\s{1,3}ihre\\s{1,3}(?:e-?mail|konto|identität)|(?:e-?mail|konto)[\\s-]?(?:adresse\\s{1,3})?(?:bestätigung|verifizierung)',
     'v[ée]rifi(?:er|ez)\\s{1,3}votre\\s{1,3}(?:adresse|e-?mail|compte|identit[ée])',
     'verific\\p{L}{0,20}\\s{1,3}(?:(?:tu|su|seu|sua|il\\s{1,3}tuo|la\\s{1,3}tua)\\s{1,3})?(?:correo|e-?mail|cuenta|conta|account|identidad|identidade|identità)',
-].join('|'), 'iu');
+].join('|'), 'iu'); // 注意：不要加 g —— 模块级正则配合 .test() 复用，g 会保留 lastIndex 导致跨邮件误判
 
 const FALLBACK_PATTERNS: RegExp[] = [
     // A code on its own line, including the first line: "Please verify your email.\n\n706215" /

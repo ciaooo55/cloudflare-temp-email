@@ -1,12 +1,11 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
-import { getJsonSetting, saveSetting } from "../utils";
+import { CONSTANTS } from '../constants.ts';
+import { getDomains, getJsonSetting, isDomainOrSubdomain, saveSetting } from '../utils.ts';
 import {
     createSnapshotBindingRecord,
     deleteSnapshotBinding,
-    getSnapshotBinding,
     listSnapshotBindingRecords,
-} from "../telegram_api/mail_snapshot";
+} from '../telegram_api/mail_snapshot.ts';
 
 export type TelegramBotEntry = {
     id: string;
@@ -38,7 +37,7 @@ export type SnapshotSettings = {
     ttlHours: number;
 };
 
-export type { SnapshotBinding } from "../telegram_api/mail_snapshot";
+export type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
 
 export const DEFAULT_BARK_PUSH_URL = "https://bark.ciaooo55.us.ci/push";
 export const DEFAULT_SNAPSHOT_TTL_HOURS = 24;
@@ -212,25 +211,17 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
 
 async function getBark(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await getJsonSetting<BarkSettings>(c, CONSTANTS.BARK_SETTINGS_KEY);
-    const devices = (settings?.devices || []).flatMap(d => {
-        // 网页配置的设备若 keys 含逗号，拆成一行一个
-        const keys = (d.keys || "").split(",").map(k => k.trim()).filter(Boolean);
-        if (keys.length <= 1) {
-            return [{ id: d.id, name: d.name, enabled: d.enabled, maskedKeys: maskBarkKeys(d.keys || "") }];
-        }
-        return keys.map((k, i) => ({
-            id: `${d.id}#${i}`, name: i === 0 ? d.name : `${d.name} ${i + 1}`,
-            enabled: d.enabled, maskedKeys: maskBarkKeys(k),
-        }));
-    });
-    // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏），多个 Key 拆成一行一个
+    // 一个设备一行：id 保持稳定，前端回传编辑时 saveBark 才能按 id 找回旧 keys；
+    // 多个 key 合并脱敏显示（如 ***1111,***2222），不要拆成 id#0/id#1 的多行
+    const devices = (settings?.devices || []).map(d => ({
+        id: d.id, name: d.name, enabled: d.enabled,
+        maskedKeys: maskBarkKeys(d.keys || ""),
+    }));
+    // 若 KV 里没有配置，但系统已有默认配置，则显示默认的（脱敏）
     if (!devices.length && c.env.BARK_DEVICE_KEYS) {
-        const envKeys = c.env.BARK_DEVICE_KEYS.split(",").map(k => k.trim()).filter(Boolean);
-        envKeys.forEach((k, i) => {
-            devices.push({
-                id: `env#${i}`, name: i === 0 ? "系统默认推送" : `系统默认推送 ${i + 1}`,
-                enabled: true, maskedKeys: maskBarkKeys(k),
-            });
+        devices.push({
+            id: "env", name: "系统默认推送",
+            enabled: true, maskedKeys: maskBarkKeys(c.env.BARK_DEVICE_KEYS),
         });
     }
     return c.json({ devices, pushUrl: settings?.pushUrl || DEFAULT_BARK_PUSH_URL });
@@ -259,20 +250,14 @@ async function testBark(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await getJsonSetting<BarkSettings>(c, CONSTANTS.BARK_SETTINGS_KEY);
     const pushUrl = settings?.pushUrl?.trim() || DEFAULT_BARK_PUSH_URL;
     let devices: Array<{ id: string; name: string; enabled: boolean; keys: string }> = [];
-    // 网页配置的设备，拆分多 Key
+    // 网页配置的设备：一个设备一项，keys 保持原样（可含逗号），id 不拆分
     for (const d of (settings?.devices || [])) {
         if (!d.enabled || !d.keys) continue;
-        const keys = d.keys.split(",").map(k => k.trim()).filter(Boolean);
-        keys.forEach((k, i) => {
-            devices.push({ id: keys.length > 1 ? `${d.id}#${i}` : d.id, name: d.name, enabled: true, keys: k });
-        });
+        devices.push({ id: d.id, name: d.name, enabled: true, keys: d.keys });
     }
-    // 系统默认配置（环境变量），多个 Key 拆成一行一个
+    // 系统默认配置（环境变量）
     if (c.env.BARK_DEVICE_KEYS) {
-        const envKeys = c.env.BARK_DEVICE_KEYS.split(",").map(k => k.trim()).filter(Boolean);
-        envKeys.forEach((k, i) => {
-            devices.push({ id: `env#${i}`, name: "系统默认推送", enabled: true, keys: k });
-        });
+        devices.push({ id: "env", name: "系统默认推送", enabled: true, keys: c.env.BARK_DEVICE_KEYS });
     }
     if (deviceId) {
         const one = devices.find(d => d.id === deviceId);
@@ -300,7 +285,12 @@ async function testBark(c: Context<HonoCustomType>): Promise<Response> {
 
 async function getSnapshot(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await getJsonSetting<SnapshotSettings>(c, CONSTANTS.SNAPSHOT_SETTINGS_KEY);
-    return c.json({ ttlHours: settings?.ttlHours || DEFAULT_SNAPSHOT_TTL_HOURS });
+    return c.json({
+        ttlHours: settings?.ttlHours || DEFAULT_SNAPSHOT_TTL_HOURS,
+        // 快照绑定允许的域名：历史 22 个收信域名 + Worker 配置的 DOMAINS 的并集，
+        // 前端从这里取，不再各自硬编码
+        allowedDomains: getSnapshotAllowedDomains(c),
+    });
 }
 
 async function saveSnapshot(c: Context<HonoCustomType>): Promise<Response> {
@@ -340,14 +330,16 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
     // 只要域名在允许列表中即可绑定（任意地址都能收到发到本 Worker 的邮件，不要求地址已存在）
     const domain = (addr.split("@")[1] || "").toLowerCase();
-    const domainOk = SNAPSHOT_ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith("." + d));
+    const allowedDomains = getSnapshotAllowedDomains(c);
+    const domainOk = allowedDomains.some(d => isDomainOrSubdomain(domain, d));
     if (!domainOk) return c.json({ error: `域名 ${domain} 不在允许列表中` }, 400);
     const binding = await createSnapshotBindingRecord(c, addr, hours, origin);
     return c.json({ success: true, binding });
 }
 
-// 快照绑定允许的域名（与前端一致，支持子域名）
-const SNAPSHOT_ALLOWED_DOMAINS = [
+// 快照绑定允许的域名：历史收信域名（与线上行为一致，支持子域名）
+// 加上 Worker 配置的 DOMAINS，取并集，避免配置新增域名后无法绑定
+const SNAPSHOT_LEGACY_DOMAINS = [
     'bbb99.us.ci', 'ca555.de5.net', 'ciaoo.de5.net', 'free555.de5.net',
     'free55.de5.net', 'free5.us.ci', 'kkk88.ccwu.cc', 'yyy22.de5.net',
     '1111122222.dpdns.org', 'ciaooo11.ccwu.cc', 'ciaooo22.ccwu.cc', 'ciaooo33.us.ci',
@@ -355,6 +347,14 @@ const SNAPSHOT_ALLOWED_DOMAINS = [
     'ciaooo66.ccwu.cc', 'ciaooo77.us.ci', 'ciaooo88.ccwu.cc', 'looo.cloud',
     'ciaooo66.dpdns.org', 'ciaooo77.dpdns.org',
 ];
+
+function getSnapshotAllowedDomains(c: Context<HonoCustomType>): string[] {
+    const set = new Set<string>();
+    for (const d of SNAPSHOT_LEGACY_DOMAINS) set.add(d.toLowerCase());
+    for (const d of getDomains(c)) set.add(d.toLowerCase());
+    return [...set];
+}
+
 
 async function invalidateSnapshotBinding(c: Context<HonoCustomType>): Promise<Response> {
     const address = c.req.param("address") || "";

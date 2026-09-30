@@ -1,15 +1,15 @@
 import { Context } from 'hono'
 
-import i18n from '../i18n'
-import { deleteSetting, getJsonSetting, saveSetting } from '../utils'
-import { getAddressCreationSettings, getAddressCreationSubdomainMatchStatus } from '../common'
-import { CONSTANTS } from '../constants'
+import i18n from '../i18n/index.ts'
+import { deleteSetting, getJsonSetting, saveSetting } from '../utils.ts'
+import { getAddressCreationSettings, getAddressCreationSubdomainMatchStatus } from '../common.ts'
+import { CONSTANTS } from '../constants.ts'
 import {
     getSendMailLimitConfig,
     getSendMailLimitConfigToSave,
     validateSendMailLimitConfig
-} from '../mails_api/send_mail_limit_utils'
-import { EmailRuleSettings } from '../models'
+} from '../mails_api/send_mail_limit_utils.ts'
+import { EmailRuleSettings } from '../models/index.ts'
 
 const normalizeAddressCreationSettingsUpdate = (
     value: unknown

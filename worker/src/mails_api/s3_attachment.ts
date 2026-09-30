@@ -37,7 +37,7 @@ const getS3Client = (c: Context<HonoCustomType>) => {
 export default {
     getSignedGetUrl: async (c: Context<HonoCustomType>) => {
         const { address } = c.get("jwtPayload")
-        const { key } = await c.req.json()
+        const { key } = await c.req.json().catch(() => ({}))
         const client = getS3Client(c);
         const url = await getSignedUrl(
             client,
@@ -51,7 +51,7 @@ export default {
     },
     getSignedPutUrl: async (c: Context<HonoCustomType>) => {
         const { address } = c.get("jwtPayload")
-        const { key } = await c.req.json()
+        const { key } = await c.req.json().catch(() => ({}))
         const client = getS3Client(c);
         const url = await getSignedUrl(
             client,
@@ -83,7 +83,7 @@ export default {
     },
     deleteKey: async (c: Context<HonoCustomType>) => {
         const { address } = c.get("jwtPayload")
-        const { key } = await c.req.json()
+        const { key } = await c.req.json().catch(() => ({}))
         const client = getS3Client(c);
         await client.send(
             new DeleteObjectCommand({

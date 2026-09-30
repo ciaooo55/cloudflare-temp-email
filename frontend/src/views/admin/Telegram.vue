@@ -4,8 +4,6 @@ import { useScopedI18n } from '@/i18n/app'
 import { useDialog } from 'naive-ui'
 
 // @ts-ignore
-import { useGlobalState } from '../../store'
-// @ts-ignore
 import { api } from '../../api'
 // @ts-ignore
 const message = useMessage()
@@ -27,15 +25,32 @@ const fetchStatus = async () => {
     }
 }
 
-const init = async () => {
+const copyText = async (text: string) => {
     try {
-        await api.fetch(`/admin/telegram/init`, {
-            method: 'POST',
-        })
-        message.success(t('successTip'))
-    } catch (error) {
-        message.error((error as Error).message || "error");
+        await navigator.clipboard.writeText(text)
+        message.success(t('copied'))
+    } catch {
+        message.warning(text)
     }
+}
+
+const init = async () => {
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmInit'),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            try {
+                await api.fetch(`/admin/telegram/init`, {
+                    method: 'POST',
+                })
+                message.success(t('successTip'))
+            } catch (error) {
+                message.error((error as Error).message || "error");
+            }
+        }
+    })
 }
 
 type BotItem = {
@@ -123,10 +138,10 @@ const toggleBot = async (bot: BotItem) => {
 
 const deleteBot = async (bot: BotItem) => {
     dialog.warning({
-        title: '确认操作',
+        title: t('confirmTitle'),
         content: t('confirmDelete'),
-        positiveText: '确定',
-        negativeText: '取消',
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
         onPositiveClick: async () => {
             try {
                 await api.fetch(`/admin/notify/telegram_bots/${bot.id}`, { method: 'DELETE' })
@@ -246,33 +261,34 @@ onMounted(async () => {
                 </n-button>
             </n-flex>
             <n-card :bordered="false" embedded :title="t('botManagement')" style="margin-top: 12px;">
-                <n-text depth="3" style="font-size: 12px;">{{ t('botManagementTip') }}<br />每个机器人一行，可单独设置用户ID白名单和群组ID白名单（逗号分隔），留空表示不限制。</n-text>
-                <n-table :bordered="false" style="margin-top: 8px;">
+                <n-text depth="3" style="font-size: 12px;">{{ t('botManagementTip') }}<br />{{ t('botManagementTipExtra') }}</n-text>
+                <div style="overflow-x: auto; margin-top: 8px;">
+                <n-table :bordered="false" style="min-width: 880px;">
                     <thead>
                         <tr>
-                            <th>{{ t('botName') }}</th>
-                            <th>{{ t('botToken') }}</th>
-                            <th>用户ID白名单</th>
-                            <th>群组ID白名单</th>
-                            <th>{{ t('enabled') }}</th>
-                            <th>{{ t('actions') }}</th>
+                            <th style="white-space: nowrap;">{{ t('botName') }}</th>
+                            <th style="white-space: nowrap;">{{ t('botToken') }}</th>
+                            <th style="white-space: nowrap;">{{ t('userIdWhitelist') }}</th>
+                            <th style="white-space: nowrap;">{{ t('groupIdWhitelist') }}</th>
+                            <th style="white-space: nowrap;">{{ t('enabled') }}</th>
+                            <th style="white-space: nowrap;">{{ t('actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="bot in bots" :key="bot.id">
-                            <td>{{ bot.name }}</td>
-                            <td><n-text code>{{ bot.maskedToken }}</n-text></td>
+                            <td style="white-space: nowrap;">{{ bot.name }}</td>
+                            <td><n-text code style="white-space: nowrap;">{{ bot.maskedToken }}</n-text></td>
                             <td>
-                                <n-input v-model:value="bot.allowedChatIds" placeholder="如：123456,789012，留空不限制"
-                                    style="width: 180px;" size="small" @change="saveBotWhitelist(bot)" />
+                                <n-input v-model:value="bot.allowedChatIds" :placeholder="t('chatIdsPlaceholder')"
+                                    style="min-width: 200px;" size="small" @change="saveBotWhitelist(bot)" />
                             </td>
                             <td>
-                                <n-input v-model:value="bot.allowedGroupIds" placeholder="如：-100123456，留空不限制"
-                                    style="width: 180px;" size="small" @change="saveBotWhitelist(bot)" />
+                                <n-input v-model:value="bot.allowedGroupIds" :placeholder="t('groupIdsPlaceholder')"
+                                    style="min-width: 200px;" size="small" @change="saveBotWhitelist(bot)" />
                             </td>
                             <td><n-switch v-model:value="bot.enabled" @update:value="toggleBot(bot)" :round="false" /></td>
                             <td>
-                                <n-flex>
+                                <n-flex :wrap="false">
                                     <n-button size="small" @click="openTestModal(bot)">{{ t('test') }}</n-button>
                                     <n-button size="small" @click="setBotWebhook(bot)">{{ t('setWebhook') }}</n-button>
                                     <n-button v-if="bot.id !== 'env'" size="small" type="error" ghost @click="deleteBot(bot)">{{ t('delete') }}</n-button>
@@ -284,14 +300,15 @@ onMounted(async () => {
                         </tr>
                     </tbody>
                 </n-table>
+                </div>
                 <n-flex style="margin-top: 12px;" vertical>
                     <n-flex>
                         <n-input v-model:value="newBotName" :placeholder="t('namePlaceholder')" style="width: 200px;" />
                         <n-input v-model:value="newBotToken" :placeholder="t('tokenPlaceholder')" style="flex: 1;" show-password-on="click" type="password" />
                     </n-flex>
                     <n-flex>
-                        <n-input v-model:value="newBotChatIds" placeholder="用户ID白名单（逗号分隔，留空不限制）" style="flex: 1;" />
-                        <n-input v-model:value="newBotGroupIds" placeholder="群组ID白名单（逗号分隔，留空不限制）" style="flex: 1;" />
+                        <n-input v-model:value="newBotChatIds" :placeholder="t('newChatIdsPlaceholder')" style="flex: 1;" />
+                        <n-input v-model:value="newBotGroupIds" :placeholder="t('newGroupIdsPlaceholder')" style="flex: 1;" />
                         <n-button type="primary" @click="addBot">{{ t('add') }}</n-button>
                     </n-flex>
                 </n-flex>
@@ -306,18 +323,13 @@ onMounted(async () => {
                 </template>
             </n-modal>
             <n-card :bordered="false" embedded>
-                <n-form-item-row :label="t('enableTelegramAllowList')">
+                <n-form-item-row :label="t('enableTelegramAllowList')" :feedback="t('manualInputPrompt')">
                     <n-input-group>
                         <n-checkbox v-model:checked="settings.enableAllowList" style="width: 20%;">
                             {{ t('enable') }}
                         </n-checkbox>
                         <n-select v-model:value="settings.allowList" filterable multiple tag style="width: 80%;"
                             :placeholder="t('telegramAllowList')">
-                            <template #empty>
-                                <n-text depth="3">
-                                    {{ t('manualInputPrompt') }}
-                                </n-text>
-                            </template>
                         </n-select>
                     </n-input-group>
                 </n-form-item-row>
@@ -329,17 +341,16 @@ onMounted(async () => {
                         </n-checkbox>
                         <n-select v-model:value="settings.globalMailPushList" filterable multiple tag
                             style="width: 80%;" :placeholder="t('globalMailPushList')">
-                            <template #empty>
-                                <n-text depth="3">
-                                    {{ t('manualInputPrompt') }}
-                                </n-text>
-                            </template>
                         </n-select>
                     </n-input-group>
                     <template #feedback>
                         <n-text depth="3">
                             {{ t('globalMailPushListTip') }}
                         </n-text>
+                        <n-flex align="center" style="margin-top: 4px;">
+                            <n-text code style="word-break: break-all;">{{ t('getUpdatesUrlTemplate') }}</n-text>
+                            <n-button size="tiny" @click="copyText(t('getUpdatesUrlTemplate'))">{{ t('copy') }}</n-button>
+                        </n-flex>
                     </template>
                 </n-form-item-row>
                 <br />

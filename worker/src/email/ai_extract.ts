@@ -6,21 +6,21 @@
  * authentication links, service links, and subscription management links.
  */
 
-import { commonParseMail } from "../common";
+import { commonParseMail } from '../common.ts';
 import {
     AI_EXTRACT_PROMPT,
     callCustomAiExtract as callCustomAiEndpoint,
     resolveCustomAiConfig as resolveCustomAiEndpointConfig,
     type CustomAiConfig,
     type CustomAiWebSettings,
-} from "./custom_ai";
-import { extractCode, joinSubjectAndBody } from "./extract_code";
-import { ExtractMode, resolveExtractMode } from "./extract_mode";
-import { getBooleanValue, getJsonSetting } from "../utils";
-import { CONSTANTS } from "../constants";
+} from './custom_ai.ts';
+import { extractCode, joinSubjectAndBody } from './extract_code.ts';
+import { ExtractMode, resolveExtractMode } from './extract_mode.ts';
+import { getBooleanValue, getJsonSetting } from '../utils.ts';
+import { CONSTANTS } from '../constants.ts';
 import { Context } from "hono";
-import type { AiExtractSettings } from "../admin_api/ai_extract_settings";
-import type { ExtractResult } from "../models";
+import type { AiExtractSettings } from '../admin_api/ai_extract_settings.ts';
+import type { ExtractResult } from '../models/index.ts';
 
 // AI Prompt for email analysis
 

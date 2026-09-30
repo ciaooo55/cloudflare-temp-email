@@ -1,4 +1,4 @@
-import { getPathWithLocale } from '../i18n/utils'
+import { getPathWithLocale, getStoredLocale, FALLBACK_LOCALE } from '../i18n/utils'
 
 export const hashPassword = async (password: string) => {
     // user crypto to hash password
@@ -30,9 +30,25 @@ export const utcToLocalDate = (utcDate: string | null | undefined, useUTCDate: b
         // if invalid date string
         if (isNaN(date.getTime())) return utcDateString;
 
-        return date.toLocaleString();
+        return formatLocalDateTime(date);
     } catch (e) {
         console.error(e);
     }
     return utcDateString;
+}
+
+// 按当前界面语言格式化日期时间（中文：2026/9/30 14:00:00；英文：9/30/2026, 2:00:00 PM）
+const DATE_LOCALE_MAP: Record<string, string> = {
+    zh: 'zh-CN',
+    en: 'en-US',
+    es: 'es-ES',
+    de: 'de-DE',
+    ja: 'ja-JP',
+    ptBR: 'pt-BR',
+};
+
+export const formatLocalDateTime = (date: Date): string => {
+    const stored = getStoredLocale();
+    const lang = stored || FALLBACK_LOCALE;
+    return date.toLocaleString(DATE_LOCALE_MAP[lang] || 'zh-CN');
 }

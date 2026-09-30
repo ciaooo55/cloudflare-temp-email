@@ -1,7 +1,7 @@
 import { Context} from "hono";
-import { CONSTANTS} from "../constants";
-import { getJsonSetting, saveSetting} from "../utils";
-import { AI_EXTRACT_PROMPT, callCustomAiExtract, resolveCustomAiConfig} from "../email/custom_ai";
+import { CONSTANTS} from '../constants.ts';
+import { getJsonSetting, saveSetting} from '../utils.ts';
+import { AI_EXTRACT_PROMPT, callCustomAiExtract, resolveCustomAiConfig} from '../email/custom_ai.ts';
 
 export type AiExtractSettings = {
 enableAllowList: boolean;

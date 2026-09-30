@@ -1,16 +1,16 @@
 import { Context } from "hono";
 
-import { getJsonSetting, normalizeAddressDomain } from "../utils";
-import { sendMailNotifications } from "../telegram_api";
-import { refreshBoundSnapshot } from "../telegram_api/mail_snapshot";
-import { isBlocked } from "./black_list";
-import { triggerWebhook, triggerAnotherWorker, commonParseMail } from "../common";
-import { check_if_junk_mail } from "./check_junk";
-import { remove_attachment_if_need } from "./check_attachment";
-import { extractEmailInfo } from "./ai_extract";
-import { EmailRuleSettings } from "../models";
-import { CONSTANTS } from "../constants";
-import { storeRawMail } from "./storage";
+import { getJsonSetting, normalizeAddressDomain } from '../utils.ts';
+import { sendMailNotifications } from '../telegram_api/index.ts';
+import { refreshBoundSnapshot } from '../telegram_api/mail_snapshot.ts';
+import { isBlocked } from './black_list.ts';
+import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common.ts';
+import { check_if_junk_mail } from './check_junk.ts';
+import { remove_attachment_if_need } from './check_attachment.ts';
+import { extractEmailInfo } from './ai_extract.ts';
+import { EmailRuleSettings } from '../models/index.ts';
+import { CONSTANTS } from '../constants.ts';
+import { storeRawMail } from './storage.ts';
 
 
 async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Promise<string> {
@@ -84,18 +84,22 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     const message_id = message.headers.get("Message-ID");
     // save email
-    const storedMailId = await storeRawMail(
-        env, message.from, toAddress, message_id, parsedEmailContext.rawEmail
-    ).then(({ success, meta }) => {
+    let storedMailId: number | undefined;
+    try {
+        const { success, meta } = await storeRawMail(
+            env, message.from, toAddress, message_id, parsedEmailContext.rawEmail
+        );
         if (!success) {
             message.setReject(`Failed save message to ${toAddress}`);
             console.error(`Failed save message from ${message.from} to ${toAddress}`);
+            return;
         }
-        return success ? meta.last_row_id : undefined;
-    }).catch((error) => {
+        storedMailId = meta.last_row_id;
+    } catch (error) {
         console.error("save email error", error);
-        return undefined;
-    });
+        message.setReject(`Failed save message to ${toAddress}`);
+        return;
+    }
 
     // AI email content extraction
     const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);

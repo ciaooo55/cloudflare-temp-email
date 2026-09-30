@@ -1,8 +1,8 @@
 import { Context } from 'hono';
 
-import utils from '../utils';
-import { CONSTANTS } from '../constants';
-import { isS3Enabled } from '../mails_api/s3_attachment';
+import utils from '../utils.ts';
+import { CONSTANTS } from '../constants.ts';
+import { isS3Enabled } from '../mails_api/s3_attachment.ts';
 
 export default {
     getConfig: async (c: Context<HonoCustomType>) => {

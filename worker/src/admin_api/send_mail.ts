@@ -1,9 +1,9 @@
 import { Context } from "hono";
-import { isSendMailBindingEnabled } from "../common";
-import i18n from "../i18n";
-import { sendMail } from "../mails_api/send_mail_api";
-import { ensureSendMailLimit, increaseSendMailLimitCount } from "../mails_api/send_mail_limit_utils";
-import { getMailDomain } from "../utils";
+import { isSendMailBindingEnabled } from '../common.ts';
+import i18n from '../i18n/index.ts';
+import { sendMail } from '../mails_api/send_mail_api.ts';
+import { ensureSendMailLimit, increaseSendMailLimitCount } from '../mails_api/send_mail_limit_utils.ts';
+import { getMailDomain } from '../utils.ts';
 
 const getAdminSendMailErrorMessage = (
     msgs: ReturnType<typeof i18n.getMessagesbyContext>,

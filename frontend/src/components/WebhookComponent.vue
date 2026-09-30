@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, h } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
 import type { DropdownOption } from 'naive-ui'
 
@@ -257,7 +257,7 @@ onMounted(async () => {
                 </n-form-item-row>
             </div>
         </n-card>
-        <n-result v-else status="404" :title="t('notEnabled')" />
+        <n-result v-else status="404" :title="t('notEnabled')" :description="t('notEnabledDesc')" />
         <n-modal v-model:show="showTestModal" preset="card" :title="t('test')"
             style="width: min(420px, calc(100vw - 32px))" :mask-closable="!testing"
             :close-on-esc="!testing" :closable="!testing">

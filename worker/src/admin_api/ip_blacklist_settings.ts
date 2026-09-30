@@ -1,8 +1,8 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
-import { getJsonSetting, saveSetting } from "../utils";
-import { IpBlacklistSettings } from "../ip_blacklist";
-import i18n from "../i18n";
+import { CONSTANTS } from '../constants.ts';
+import { getJsonSetting, saveSetting } from '../utils.ts';
+import { IpBlacklistSettings } from '../ip_blacklist.ts';
+import i18n from '../i18n/index.ts';
 
 /**
  * Get IP blacklist settings from database

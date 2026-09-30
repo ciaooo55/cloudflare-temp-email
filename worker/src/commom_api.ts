@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 
-import utils from './utils';
-import { CONSTANTS } from './constants';
-import { isS3Enabled } from './mails_api/s3_attachment';
-import { isAnySendMailEnabled } from './common';
-import { getWebhookAttachment } from './open_api/webhook_attachment';
+import utils from './utils.ts';
+import { CONSTANTS } from './constants.ts';
+import { isS3Enabled } from './mails_api/s3_attachment.ts';
+import { isAnySendMailEnabled } from './common.ts';
+import { getWebhookAttachment } from './open_api/webhook_attachment.ts';
 
 const api = new Hono<HonoCustomType>
 

@@ -1,22 +1,22 @@
 import { Context, Hono } from 'hono'
 import { cors } from 'hono/cors';
 import { Jwt } from 'hono/utils/jwt'
-import { addressJwtAuth } from './address_auth';
+import { addressJwtAuth } from './address_auth.ts';
 
-import { api as commonApi } from './commom_api';
-import { api as openAuthApi } from './open_api/auth';
-import { api as mailsApi } from './mails_api'
-import { api as adminApi } from './admin_api';
-import { api as apiSendMail } from './mails_api/send_mail_api'
-import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml } from './telegram_api/mail_snapshot';
-import { api as telegramApi } from './telegram_api'
+import { api as commonApi } from './commom_api.ts';
+import { api as openAuthApi } from './open_api/auth.ts';
+import { api as mailsApi } from './mails_api/index.ts'
+import { api as adminApi } from './admin_api/index.ts';
+import { api as apiSendMail } from './mails_api/send_mail_api.ts'
+import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml } from './telegram_api/mail_snapshot.ts';
+import { api as telegramApi } from './telegram_api/index.ts'
 
-import i18n from './i18n';
-import { ErrorCode } from './error_codes';
-import { email } from './email';
-import { scheduled } from './scheduled';
-import { getPasswords, getBooleanValue, getDomains, checkIsAdmin, getEnvStringList } from './utils';
-import { checkAccessControl } from './ip_blacklist';
+import i18n from './i18n/index.ts';
+import { ErrorCode } from './error_codes.ts';
+import { email } from './email/index.ts';
+import { scheduled } from './scheduled.ts';
+import { getPasswords, getBooleanValue, getDomains, checkIsAdmin, getEnvStringList } from './utils.ts';
+import { checkAccessControl } from './ip_blacklist.ts';
 
 const API_PATHS = [
 	"/api/",
@@ -245,13 +245,13 @@ app.get('/m/:token', async c => {
 	let isBoundSnapshot = false;
 	if (c.env.KV) {
 		try {
-			const boundAddr = await c.env.KV.get(`snapshot-bindrev:${token}`);
+			const boundAddr = await c.env.KV.get(snapshotBindRevKey(token));
 			if (boundAddr) {
-				const binding = await c.env.KV.get<{ expiresAt: number }>(`snapshot-bind:${boundAddr.toLowerCase()}`, "json");
+				const binding = await c.env.KV.get<{ expiresAt: number }>(snapshotBindKey(boundAddr), "json");
 				if (!binding || binding.expiresAt <= Date.now()) {
 					await Promise.allSettled([
-						c.env.KV.delete(`snapshot-bindrev:${token}`),
-						c.env.KV.delete(`snapshot-bind:${boundAddr.toLowerCase()}`),
+						c.env.KV.delete(snapshotBindRevKey(token)),
+						c.env.KV.delete(snapshotBindKey(boundAddr)),
 						c.env.KV.delete(`mailhtml:${token}`),
 					]);
 					return c.text('该快照绑定已到期', 404);
@@ -270,10 +270,12 @@ app.get('/m/:token', async c => {
 	}
 	if (!html) return c.text('邮件已过期或不存在', 404);
 	// 读取时二次消毒：存量快照可能是旧版消毒器生成的，新版规则在此处同样生效（纵深防御）
+	// 消毒失败则拒绝展示：fail-open 会直接返回未消毒的原始 HTML
 	try {
 		html = sanitizeSnapshotHtml(html);
 	} catch (error) {
 		console.error('snapshot sanitize failed', error);
+		return c.text('邮件快照处理失败', 500);
 	}
 	// 绑定的快照内容随新邮件更新，用短缓存保证及时刷新；一次性快照内容不变，可长缓存抗刷
 	const cacheControl = isBoundSnapshot ? 'public, max-age=30' : 'public, max-age=86400';

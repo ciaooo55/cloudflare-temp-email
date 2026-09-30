@@ -1,6 +1,6 @@
 import { addressParser } from "postal-mime";
 
-import { CONSTANTS } from "../constants";
+import { CONSTANTS } from '../constants.ts';
 
 const parseSenderAddresses = (headers: Headers): string[] => {
     try {

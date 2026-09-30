@@ -1,6 +1,6 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
-import utils from "../utils";
+import { CONSTANTS } from '../constants.ts';
+import utils from '../utils.ts';
 
 const DB_INIT_QUERIES = `
 CREATE TABLE IF NOT EXISTS raw_mails (

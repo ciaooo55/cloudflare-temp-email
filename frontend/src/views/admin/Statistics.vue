@@ -1,5 +1,5 @@
 <script setup>
-import { ref, h, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useScopedI18n } from '@/i18n/app'
 import { User, UserCheck, MailBulk } from '@vicons/fa'
 import { SendOutlined } from '@vicons/material'

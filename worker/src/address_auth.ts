@@ -2,7 +2,7 @@ import { Context, Next } from 'hono';
 import { jwt } from 'hono/jwt';
 import { Jwt } from 'hono/utils/jwt';
 
-import i18n from './i18n';
+import i18n from './i18n/index.ts';
 
 export const validateAddressPayload = async (
     c: Context<HonoCustomType>,

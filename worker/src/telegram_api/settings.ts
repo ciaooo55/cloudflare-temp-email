@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
+import { CONSTANTS } from '../constants.ts';
 
 export class TelegramSettings {
     enableAllowList: boolean;

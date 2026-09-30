@@ -1,15 +1,15 @@
 import { Context } from 'hono';
 
-import { resolveRawEmail } from '../gzip';
-import { RawMailRow } from '../models';
-import { getBooleanValue } from '../utils';
-import i18n from '../i18n';
+import { resolveRawEmail } from '../gzip.ts';
+import { RawMailRow } from '../models/index.ts';
+import { getBooleanValue } from '../utils.ts';
+import i18n from '../i18n/index.ts';
 
-import { commonParseMail } from '../common';
+import { commonParseMail } from '../common.ts';
 import {
     WEBHOOK_ATTACHMENT_TTL_SECONDS, SAFE_INLINE_IMAGE_TYPES,
     decodeBase32, getSigningKey, getSignaturePayload
-} from '../utils/webhook';
+} from '../utils/webhook.ts';
 
 export const getWebhookAttachment = async (
     c: Context<HonoCustomType>

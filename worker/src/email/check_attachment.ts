@@ -1,5 +1,5 @@
-import { getBooleanValue } from "../utils";
-import { commonParseMail } from "../common";
+import { getBooleanValue } from '../utils.ts';
+import { commonParseMail } from '../common.ts';
 import { createMimeMessage } from "mimetext";
 
 export const remove_attachment_if_need = async (

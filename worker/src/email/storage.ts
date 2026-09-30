@@ -1,8 +1,8 @@
 import { Context } from "hono";
 import { createMimeMessage } from "mimetext";
 
-import { compressText } from "../gzip";
-import { getBooleanValue } from "../utils";
+import { compressText } from '../gzip.ts';
+import { getBooleanValue } from '../utils.ts';
 
 let rawMailTableColumns: Set<string> | undefined;
 

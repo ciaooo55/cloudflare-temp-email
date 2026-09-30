@@ -188,4 +188,9 @@ onMounted(async () => {
 .n-data-table {
   min-width: 700px;
 }
+
+/* 小屏允许表格横向滚动，避免撑破布局 */
+:deep(.n-data-table-wrapper) {
+  overflow-x: auto;
+}
 </style>

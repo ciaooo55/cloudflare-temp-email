@@ -1,18 +1,18 @@
 import { Context, Hono } from 'hono'
-import { verifyAddressToken } from '../address_auth';
+import { verifyAddressToken } from '../address_auth.ts';
 import { createMimeMessage } from 'mimetext';
 import { Resend } from 'resend';
 import { WorkerMailer, WorkerMailerOptions } from 'worker-mailer';
 
-import i18n from '../i18n';
-import { LocaleMessages } from "../i18n/type";
-import { CONSTANTS } from '../constants'
-import { getJsonSetting, getDomains, getBooleanValue, getJsonObjectValue, getDomainMapValue, getMailDomain, includesDomain } from '../utils';
-import { GeoData } from '../models'
-import { handleListQuery, isSendMailBindingEnabled, updateAddressUpdatedAt } from '../common'
-import { getSendBalanceState, requestSendMailAccess } from './send_balance';
-import { ensureSendMailLimit, increaseSendMailLimitCount } from './send_mail_limit_utils';
-import { getDomainRoute, resolveSendChannels, ResolvedSendChannel } from '../send_config';
+import i18n from '../i18n/index.ts';
+import { LocaleMessages } from '../i18n/type.ts';
+import { CONSTANTS } from '../constants.ts'
+import { getJsonSetting, getDomains, getBooleanValue, getJsonObjectValue, getDomainMapValue, getMailDomain, includesDomain } from '../utils.ts';
+import { GeoData } from '../models/index.ts'
+import { handleListQuery, isSendMailBindingEnabled, updateAddressUpdatedAt } from '../common.ts'
+import { getSendBalanceState, requestSendMailAccess } from './send_balance.ts';
+import { ensureSendMailLimit, increaseSendMailLimitCount } from './send_mail_limit_utils.ts';
+import { getDomainRoute, resolveSendChannels } from '../send_config.ts';
 
 
 export const api = new Hono<HonoCustomType>()

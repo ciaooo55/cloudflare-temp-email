@@ -3,27 +3,27 @@ import { Context } from "hono";
 import { Telegraf, Context as TgContext, Markup } from "telegraf";
 import { callbackQuery } from "telegraf/filters";
 
-import { CONSTANTS } from "../constants";
-import { getBooleanValue, getDomains, getJsonObjectValue, getMailDomain, trimLower } from '../utils';
-import { TelegramSettings } from "./settings";
-import { sendTelegramAttachments } from "./tg_file_upload";
-import { resolvePushConfig } from "../send_config";
-import { getWebPushConfig, getSnapshotTtlSeconds, DEFAULT_BARK_PUSH_URL } from "../admin_api/notify_settings";
-import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress, unbindTelegramByAddress } from "./common";
-import { commonParseMail } from "../common";
-import { mailBody } from "./mail_body";
-import { mailMessageParts } from "./mail_message";
+import { CONSTANTS } from '../constants.ts';
+import { getBooleanValue, getDomains, getJsonObjectValue, getMailDomain, trimLower } from '../utils.ts';
+import { TelegramSettings } from './settings.ts';
+import { sendTelegramAttachments } from './tg_file_upload.ts';
+import { resolvePushConfig } from '../send_config.ts';
+import { getWebPushConfig, getSnapshotTtlSeconds, DEFAULT_BARK_PUSH_URL } from '../admin_api/notify_settings.ts';
+import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress } from './common.ts';
+import { commonParseMail } from '../common.ts';
+import { mailBody } from './mail_body.ts';
+import { mailMessageParts } from './mail_message.ts';
 import {
     buildCompactMailMessage,
     createMailSnapshot,
     extractVerificationCodeWithSubject,
     getSnapshotBinding,
-} from "./mail_snapshot";
-import { resolveRawEmail } from "../gzip";
+} from './mail_snapshot.ts';
+import { resolveRawEmail } from '../gzip.ts';
 import { UserFromGetMe } from "telegraf/types";
-import i18n from "../i18n";
-import { LocaleMessages } from "../i18n/type";
-import type { ExtractResult, RawMailRow } from "../models";
+import i18n from '../i18n/index.ts';
+import { LocaleMessages } from '../i18n/type.ts';
+import type { ExtractResult, RawMailRow } from '../models/index.ts';
 
 
 // Helper to get messages by userId
@@ -139,6 +139,22 @@ export const getTelegramCommands = (c: Context<HonoCustomType>) => {
     return getBooleanValue(c.env.TG_ALLOW_USER_LANG)
         ? COMMANDS
         : COMMANDS.filter(cmd => cmd.command !== "lang");
+}
+
+// Mini App "查看邮件" webApp 按钮：两处构造逻辑原本完全重复，抽成 helper
+const buildMiniAppButtons = (
+    settings: TelegramSettings | null | undefined,
+    mailId: string | number | undefined | null,
+    viewMailMsg: string,
+) => {
+    const buttons = [];
+    if (settings?.miniAppUrl && mailId) {
+        const url = new URL(settings.miniAppUrl);
+        url.pathname = "/telegram_mail";
+        url.searchParams.set("mail_id", String(mailId));
+        buttons.push(Markup.button.webApp(viewMailMsg, url.toString()));
+    }
+    return buttons;
 }
 
 export function newTelegramBot(c: Context<HonoCustomType>, token: string): Telegraf {
@@ -376,13 +392,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
             ? await parseMail(msgs, { rawEmail: raw }, queryAddress, created_at, false, mailRow?.metadata)
             : { mail: msgs.TgNoMoreMailsMsg };
         const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
-        const miniAppButtons = []
-        if (settings?.miniAppUrl && settings?.miniAppUrl?.length > 0 && mailId) {
-            const url = new URL(settings.miniAppUrl);
-            url.pathname = "/telegram_mail"
-            url.searchParams.set("mail_id", mailId);
-            miniAppButtons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
-        }
+        const miniAppButtons = buildMiniAppButtons(settings, mailId, msgs.TgViewMailBtnMsg);
         if (edit) {
             return await ctx.editMessageText(mail || msgs.TgNoMailMsg,
                 {
@@ -420,9 +430,17 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         // Use ctx.callbackQuery.data
         try {
             const data = ctx.callbackQuery.data;
-            if (data && data.startsWith("mail_") && data.split("_").length === 3) {
-                const [_, queryAddress, mailIndex] = data.split("_");
-                await queryMail(ctx, queryAddress, parseInt(mailIndex), true);
+            if (data && data.startsWith("mail_")) {
+                // 地址里可能含下划线：从最后一个下划线切出页码
+                const rest = data.slice("mail_".length);
+                const sep = rest.lastIndexOf("_");
+                if (sep > 0) {
+                    const queryAddress = rest.slice(0, sep);
+                    const mailIndex = parseInt(rest.slice(sep + 1), 10);
+                    if (queryAddress && !Number.isNaN(mailIndex)) {
+                        await queryMail(ctx, queryAddress, mailIndex, true);
+                    }
+                }
             }
         }
         catch (e) {
@@ -509,7 +527,10 @@ async function sendBarkPush(env: Bindings, mail: {
             params.set("url", mail.snapshotUrl);
         }
         const base = (pushUrl || DEFAULT_BARK_PUSH_URL).replace(/\/+$/, "").replace(/\/push$/, "");
-        await fetch(`${base}/push?${params}`, { signal: AbortSignal.timeout(15000) });
+        const res = await fetch(`${base}/push?${params}`, { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) {
+            console.error(`bark push failed: HTTP ${res.status}`);
+        }
     } catch (error) {
         console.error("bark push failed", error);
     }
@@ -613,13 +634,7 @@ export async function sendMailNotifications(
         const { mail, header, body, footer } = await parseMail(msgs, parsedEmailContext, address, createdAt, isGlobalPush, aiExtract);
         if (!mail) return;
         const attachments = parsedEmailContext.parsedEmail?.attachments || [];
-        const buttons = [];
-        if (settings?.miniAppUrl && mailId) {
-            const url = new URL(settings.miniAppUrl);
-            url.pathname = "/telegram_mail"
-            url.searchParams.set("mail_id", mailId);
-            buttons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
-        }
+        const buttons = buildMiniAppButtons(settings, mailId, msgs.TgViewMailBtnMsg);
         const fullMail = body === undefined ? mail : header + body + footer;
         // 若外层已有快照链接（绑定的固定链接），直接复用，不再新建
         snapshotPromise ??= snapshotUrl ? Promise.resolve(snapshotUrl) : createMailSnapshot(c, settings, parsedEmailContext, snapshotTtl);

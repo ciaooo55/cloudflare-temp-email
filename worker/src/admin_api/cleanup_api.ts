@@ -1,13 +1,13 @@
 import { Context } from 'hono';
 
-import { cleanup } from '../common';
-import { CONSTANTS } from '../constants';
-import { getJsonSetting, saveSetting } from '../utils';
-import { CleanupSettings, CustomSqlCleanup, ScheduledTaskRunInfo } from '../models';
-import { getTaskRunInfo, markTaskRun, SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP } from '../scheduled_tasks';
-import { cleanupStaleRawMails } from '../scheduled_raw_mails';
-import i18n from '../i18n';
-import { LocaleMessages } from '../i18n/type';
+import { cleanup } from '../common.ts';
+import { CONSTANTS } from '../constants.ts';
+import { getJsonSetting, saveSetting } from '../utils.ts';
+import { CleanupSettings, CustomSqlCleanup, ScheduledTaskRunInfo } from '../models/index.ts';
+import { getTaskRunInfo, markTaskRun, SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP } from '../scheduled_tasks.ts';
+import { cleanupStaleRawMails } from '../scheduled_raw_mails.ts';
+import i18n from '../i18n/index.ts';
+import { LocaleMessages } from '../i18n/type.ts';
 
 // SQL validation error types
 type SqlValidationError = 'empty' | 'too_long' | 'not_delete' | 'multiple_statements' | 'has_comments';

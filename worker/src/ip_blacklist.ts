@@ -1,6 +1,6 @@
 import { Context } from 'hono';
-import { getJsonSetting } from './utils';
-import { CONSTANTS } from './constants';
+import { getJsonSetting } from './utils.ts';
+import { CONSTANTS } from './constants.ts';
 
 /**
  * IP Blacklist Settings stored in database

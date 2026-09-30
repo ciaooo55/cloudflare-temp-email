@@ -116,7 +116,7 @@ onMounted(async () => {
       </template>
     </n-modal>
     <n-tabs v-if="showAdminPage" type="card" v-model:value="adminTab" :placement="globalTabplacement">
-      <n-tab-pane name="qucickSetup" :tab="t('qucickSetup')">
+      <n-tab-pane name="quickSetup" :tab="t('quickSetup')">
         <n-tabs key="quick-setup-tabs" type="bar" justify-content="center" animated>
           <n-tab-pane name="database" :tab="t('database')">
             <DatabaseManager />
@@ -203,8 +203,11 @@ onMounted(async () => {
       </n-tab-pane>
       <n-tab-pane name="adminAccount" :tab="t('adminAccount')">
         <div style="display: flex; justify-content: center; padding: 20px;">
-          <n-card style="width: 600px;">
+          <n-card style="width: 100%; max-width: 600px;">
             <n-space vertical>
+              <n-alert type="info" :bordered="false">
+                {{ t('adminAccountTip') }}
+              </n-alert>
               <n-text strong>{{ t('loginMethod') }}</n-text>
               <n-text>{{ currentLoginMethod }}</n-text>
               <n-divider v-if="isAdminPasswordLogin" />
@@ -234,5 +237,11 @@ onMounted(async () => {
 .n-pagination {
   margin-top: 10px;
   margin-bottom: 10px;
+}
+
+/* 顶部导航标签不换行、不挤压截断，超宽时横向滚动 */
+:deep(.n-tabs-tab) {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 </style>

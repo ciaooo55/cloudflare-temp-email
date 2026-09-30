@@ -2,12 +2,12 @@ import { Context } from 'hono';
 import { Jwt } from 'hono/utils/jwt'
 import { WorkerMailerOptions } from 'worker-mailer';
 
-import { getBooleanValue, getDomains, getStringArray, getStringValue, getIntValue, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword, getJsonObjectValue, getRandomSubdomainDomains, getDomainMapValue, isDomainOrSubdomain, normalizeDomains, trimLower } from './utils';
-import { unbindTelegramByAddress } from './telegram_api/common';
-import { CONSTANTS } from './constants';
-import { AddressCreationSettings, AdminWebhookSettings, ExtractResult, WebhookMail, WebhookSettings } from './models';
-import i18n from './i18n';
-import { formatWebhookBody, getWebhookAttachments } from './utils/webhook';
+import { getBooleanValue, getDomains, getStringArray, getStringValue, getIntValue, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword, getJsonObjectValue, getRandomSubdomainDomains, getDomainMapValue, isDomainOrSubdomain, normalizeDomains, trimLower } from './utils.ts';
+import { unbindTelegramByAddress } from './telegram_api/common.ts';
+import { CONSTANTS } from './constants.ts';
+import { AddressCreationSettings, AdminWebhookSettings, ExtractResult, WebhookMail, WebhookSettings } from './models/index.ts';
+import i18n from './i18n/index.ts';
+import { formatWebhookBody, getWebhookAttachments } from './utils/webhook.ts';
 
 const DEFAULT_NAME_REGEX = /[^a-z0-9]/g;
 const DEFAULT_RANDOM_SUBDOMAIN_LENGTH = 8;
@@ -687,12 +687,14 @@ export const handleMailListQuery = async (
     offset: string | number | undefined | null,
     orderBy?: string
 ): Promise<Response> => {
-    const { resolveRawEmailList } = await import('./gzip');
+    const { resolveRawEmailList } = await import('./gzip.ts');
     const msgs = i18n.getMessagesbyContext(c);
     if (typeof limit === "string") limit = parseInt(limit);
     if (typeof offset === "string") offset = parseInt(offset);
     if (!limit || limit < 0 || limit > 100) return c.text(msgs.InvalidLimitMsg, 400);
-    if (offset == null || offset == undefined || offset < 0) return c.text(msgs.InvalidOffsetMsg, 400);
+    // parseInt("abc") 得到 NaN：NaN == null 与 NaN < 0 都为 false，
+    // 不加 Number.isNaN 会绕过校验传给 D1 bind 导致 500
+    if (offset == null || offset == undefined || Number.isNaN(offset) || offset < 0) return c.text(msgs.InvalidOffsetMsg, 400);
     const orderClause = orderBy || 'id desc';
     const resultsQuery = `${query} order by ${orderClause} limit ? offset ?`;
     const { results } = await c.env.DB.prepare(resultsQuery).bind(
@@ -836,7 +838,15 @@ export async function sendWebhook(
     // send webhook with manual redirect handling (max 3 hops, each re-validated)
     // to prevent redirect-based SSRF to internal addresses
     const body = formatWebhookBody(settings.body, formatMap);
-    const headers = JSON.parse(settings.headers);
+    let headers: Record<string, string> = {};
+    try {
+        const parsed = JSON.parse(settings.headers);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            headers = parsed;
+        }
+    } catch {
+        console.error("invalid webhook headers JSON, using empty headers");
+    }
     let currentUrl = settings.url;
     const maxRedirects = 3;
     for (let hop = 0; hop <= maxRedirects; hop++) {

@@ -1,9 +1,9 @@
 import { Context } from 'hono'
 
-import i18n from '../i18n';
-import { getBooleanValue, getJsonSetting, checkCfTurnstile } from '../utils';
-import { newAddress, getAddressPrefix, generateRandomName } from '../common'
-import { CONSTANTS } from '../constants'
+import i18n from '../i18n/index.ts';
+import { getBooleanValue, getJsonSetting, checkCfTurnstile } from '../utils.ts';
+import { newAddress, getAddressPrefix, generateRandomName } from '../common.ts'
+import { CONSTANTS } from '../constants.ts'
 
 const createNewAddress = async (c: Context<HonoCustomType>) => {
     const msgs = i18n.getMessagesbyContext(c);
@@ -19,7 +19,7 @@ const createNewAddress = async (c: Context<HonoCustomType>) => {
     }
 
     // eslint-disable-next-line prefer-const
-    let { name, domain, cf_token, enableRandomSubdomain } = await c.req.json();
+    let { name, domain, cf_token, enableRandomSubdomain } = await c.req.json().catch(() => ({}));
     // check cf turnstile
     try {
         await checkCfTurnstile(c, cf_token);

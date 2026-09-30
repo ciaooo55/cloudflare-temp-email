@@ -1,13 +1,16 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useDialog } from 'naive-ui'
 import { useScopedI18n } from '@/i18n/app'
 import { CleaningServicesFilled, AddFilled, DeleteFilled } from '@vicons/material'
+import { formatLocalDateTime } from '../../utils'
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
 const { loading } = useGlobalState()
 const message = useMessage()
+const dialog = useDialog()
 const cleanupModel = ref({
     enableMailsAutoCleanup: false,
     cleanMailsDays: 30,
@@ -33,15 +36,23 @@ const scheduledStatus = ref({ rawMails: null, autoCleanup: null })
 const { t } = useScopedI18n('views.admin.Maintenance')
 
 const cleanup = async (cleanType, cleanDays) => {
-    try {
-        await api.fetch('/admin/cleanup', {
-            method: 'POST',
-            body: JSON.stringify({ cleanType, cleanDays })
-        });
-        message.success(t('cleanupSuccess'));
-    } catch (error) {
-        message.error(error.message || "error");
-    }
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmCleanup'),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            try {
+                await api.fetch('/admin/cleanup', {
+                    method: 'POST',
+                    body: JSON.stringify({ cleanType, cleanDays })
+                });
+                message.success(t('cleanupSuccess'));
+            } catch (error) {
+                message.error(error.message || "error");
+            }
+        }
+    })
 }
 
 const addCustomSql = () => {
@@ -71,21 +82,29 @@ const fetchScheduledStatus = async () => {
 
 const formatLastRun = (info) => {
     if (!info || !info.at) return t('neverRun');
-    const d = new Date(info.at).toLocaleString();
+    const d = formatLocalDateTime(new Date(info.at));
     return info.affected != null ? `${d} (${t('rawMailsDeleted')} ${info.affected} ${t('rows')})` : d;
 }
 
 const cleanupRawMailsNow = async () => {
-    try {
-        const res = await api.fetch('/admin/cleanup_raw_mails', {
-            method: 'POST',
-            body: JSON.stringify({ minutes: cleanupModel.value.cleanRawMailsMinutes })
-        });
-        message.success(`${t('cleanupSuccess')} (${t('rawMailsDeleted')} ${res?.deleted ?? 0} ${t('rows')})`);
-        await fetchScheduledStatus();
-    } catch (error) {
-        message.error(error.message || "error");
-    }
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmCleanup'),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            try {
+                const res = await api.fetch('/admin/cleanup_raw_mails', {
+                    method: 'POST',
+                    body: JSON.stringify({ minutes: cleanupModel.value.cleanRawMailsMinutes })
+                });
+                message.success(`${t('cleanupSuccess')} (${t('rawMailsDeleted')} ${res?.deleted ?? 0} ${t('rows')})`);
+                await fetchScheduledStatus();
+            } catch (error) {
+                message.error(error.message || "error");
+            }
+        }
+    })
 }
 
 const fetchData = async () => {
@@ -185,7 +204,7 @@ onMounted(async () => {
                             <n-checkbox v-model:checked="cleanupModel.enableMailsAutoCleanup">
                                 {{ t('autoCleanup') }}
                             </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanMailsDays" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanMailsDays" :min="1" :placeholder="t('tip')" />
                             <n-button @click="cleanup('mails', cleanupModel.cleanMailsDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
@@ -197,7 +216,7 @@ onMounted(async () => {
                             <n-checkbox v-model:checked="cleanupModel.enableUnknowMailsAutoCleanup">
                                 {{ t('autoCleanup') }}
                             </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanUnknowMailsDays" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanUnknowMailsDays" :min="1" :placeholder="t('tip')" />
                             <n-button @click="cleanup('mails_unknow', cleanupModel.cleanUnknowMailsDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
@@ -209,7 +228,7 @@ onMounted(async () => {
                             <n-checkbox v-model:checked="cleanupModel.enableSendBoxAutoCleanup">
                                 {{ t('autoCleanup') }}
                             </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanSendBoxDays" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanSendBoxDays" :min="1" :placeholder="t('tip')" />
                             <n-button @click="cleanup('sendbox', cleanupModel.cleanSendBoxDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
@@ -221,7 +240,7 @@ onMounted(async () => {
                             <n-checkbox v-model:checked="cleanupModel.enableAddressAutoCleanup">
                                 {{ t('autoCleanup') }}
                             </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanAddressDays" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanAddressDays" :min="1" :placeholder="t('tip')" />
                             <n-button @click="cleanup('addressCreated', cleanupModel.cleanAddressDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
@@ -233,7 +252,7 @@ onMounted(async () => {
                             <n-checkbox v-model:checked="cleanupModel.enableInactiveAddressAutoCleanup">
                                 {{ t('autoCleanup') }}
                             </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanInactiveAddressDays" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanInactiveAddressDays" :min="1" :placeholder="t('tip')" />
                             <n-button @click="cleanup('inactiveAddress', cleanupModel.cleanInactiveAddressDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
@@ -245,7 +264,7 @@ onMounted(async () => {
                             <n-checkbox v-model:checked="cleanupModel.enableEmptyAddressAutoCleanup">
                                 {{ t('autoCleanup') }}
                             </n-checkbox>
-                            <n-input-number v-model:value="cleanupModel.cleanEmptyAddressDays" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanEmptyAddressDays" :min="1" :placeholder="t('tip')" />
                             <n-button @click="cleanup('emptyAddress', cleanupModel.cleanEmptyAddressDays)">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />

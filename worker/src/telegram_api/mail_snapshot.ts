@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import type { TelegramSettings } from "./settings";
+import type { TelegramSettings } from './settings.ts';
 
 export const DEFAULT_SNAPSHOT_TTL = 86400; // 默认 24h，可在管理后台修改
 
@@ -97,14 +97,17 @@ export function sanitizeSnapshotHtml(html: string): string {
     //    meta 一并处理，防止 meta refresh 钓鱼跳转（CSP 拦不住 meta refresh）
     content = content.replace(/<(script|style|iframe|object|embed|form|svg|math|meta|link|base)\b[^>]*>?/gi, "");
     // 3. 删除事件属性，兼容 <svg/onload=...> 这类斜杠分隔写法
+    // eslint-disable-next-line no-useless-escape
     content = content.replace(/[\s\/]on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
     // 4. 中和 javascript:/vbscript:/data:text/html（含数字实体混淆）
     const deobfuscate = (s: string) => s
         .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
         .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    // eslint-disable-next-line no-useless-escape
     content = content.replace(/[\s\/](href|src)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, (m, attr, val) => {
         const quote = (val[0] === '"' || val[0] === "'") ? val[0] : "";
         const inner = quote ? val.slice(1, -1) : val;
+        // eslint-disable-next-line no-control-regex -- 故意剥离控制字符，中和混淆
         const norm = deobfuscate(inner).replace(/[\s\x00-\x1f]+/g, "").toLowerCase();
         if (norm.startsWith("javascript:") || norm.startsWith("vbscript:") || norm.startsWith("data:text/html")) {
             return ` ${attr}="#"`;

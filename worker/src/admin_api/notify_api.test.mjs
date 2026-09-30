@@ -258,19 +258,45 @@ test("快照 TTL: 默认24h，可网页修改", async () => {
 });
 
 // ---------- 固定快照绑定（经 admin API） ----------
+test("快照绑定: 历史域名即使不在 DOMAINS 里也能绑（回归 22 域名）", async () => {
+    const kv = makeKv(), db = makeDb();
+    // DOMAINS 只配了 example.com，但 looo.cloud 是历史收信域名，必须仍可绑定
+    const r = await bodyOf(await notifyApi.createSnapshotBinding(
+        makeCtx({ kv, db, body: { address: "u@looo.cloud", durationHours: 24 }, envExtra: { DOMAINS: JSON.stringify(["example.com"]) } })));
+    assert.equal(r.status, 200);
+    assert.equal(r.data.success, true);
+    assert.equal(r.data.binding.address, "u@looo.cloud");
+
+    // getSnapshot 返回的 allowedDomains 必须包含历史域名
+    const s = await bodyOf(await notifyApi.getSnapshot(
+        makeCtx({ kv, db, envExtra: { DOMAINS: JSON.stringify(["example.com"]) } })));
+    assert.ok(s.data.allowedDomains.includes("looo.cloud"));
+    assert.ok(s.data.allowedDomains.includes("example.com"));
+
+    // 完全不在列表里的域名仍拒绝
+    const bad = await bodyOf(await notifyApi.createSnapshotBinding(
+        makeCtx({ kv, db, body: { address: "u@evil.example", durationHours: 24 }, envExtra: { DOMAINS: JSON.stringify(["example.com"]) } })));
+    assert.equal(bad.status, 400);
+});
+
 test("快照绑定: 创建/列表/重绑/失效全流程", async () => {
     const kv = makeKv(), db = makeDb(["u@example.com"]);
-    // 地址不存在拒绝
-    let r = await bodyOf(await notifyApi.createSnapshotBinding(
-        makeCtx({ kv, db, body: { address: "ghost@example.com", durationHours: 24 } })));
-    assert.equal(r.status, 400);
+    const domEnv = { envExtra: { DOMAINS: JSON.stringify(["example.com"]) } };
+    // 地址不必已存在：只要域名在允许列表即可绑定（与前端批量绑定一致）
+    {
+        const kv2 = makeKv(), db2 = makeDb();
+        const r2 = await bodyOf(await notifyApi.createSnapshotBinding(
+            makeCtx({ kv: kv2, db: db2, body: { address: "ghost@example.com", durationHours: 24 }, ...domEnv })));
+        assert.equal(r2.status, 200);
+        assert.equal(r2.data.success, true);
+    }
     // 非法地址拒绝
-    r = await bodyOf(await notifyApi.createSnapshotBinding(
-        makeCtx({ kv, db, body: { address: "not-an-email", durationHours: 24 } })));
+    let r = await bodyOf(await notifyApi.createSnapshotBinding(
+        makeCtx({ kv, db, body: { address: "not-an-email", durationHours: 24 }, ...domEnv })));
     assert.equal(r.status, 400);
 
     r = await bodyOf(await notifyApi.createSnapshotBinding(
-        makeCtx({ kv, db, body: { address: "U@Example.com", durationHours: 48 } })));
+        makeCtx({ kv, db, body: { address: "U@Example.com", durationHours: 48 }, ...domEnv })));
     assert.equal(r.data.success, true);
     assert.equal(r.data.binding.address, "u@example.com");
     const url1 = r.data.binding.url;
@@ -289,7 +315,7 @@ test("快照绑定: 创建/列表/重绑/失效全流程", async () => {
 
     // 重绑：旧 URL 立即失效
     r = await bodyOf(await notifyApi.createSnapshotBinding(
-        makeCtx({ kv, db, body: { address: "u@example.com", durationHours: 72 } })));
+        makeCtx({ kv, db, body: { address: "u@example.com", durationHours: 72 }, ...domEnv })));
     const token2 = r.data.binding.url.split("/m/")[1];
     assert.notEqual(token2, token1);
     assert.equal(kv.store.get(`mailhtml:${token1}`), undefined, "旧快照应删除");

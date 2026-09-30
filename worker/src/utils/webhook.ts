@@ -1,4 +1,4 @@
-import type { RawMailRow, WebhookMail } from '../models';
+import type { RawMailRow, WebhookMail } from '../models/index.ts';
 
 export const WEBHOOK_ATTACHMENT_TTL_SECONDS = 24 * 60 * 60;
 export const SAFE_INLINE_IMAGE_TYPES = new Set([

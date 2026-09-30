@@ -1,9 +1,9 @@
 import { Context } from 'hono'
 import { Jwt } from 'hono/utils/jwt'
 
-import i18n from '../i18n'
-import { getBooleanValue } from '../utils'
-import { newAddress, handleListQuery } from '../common'
+import i18n from '../i18n/index.ts'
+import { getBooleanValue } from '../utils.ts'
+import { newAddress, handleListQuery } from '../common.ts'
 
 const listAddresses = async (c: Context<HonoCustomType>) => {
     const { limit, offset, query, sort_by, sort_order } = c.req.query();

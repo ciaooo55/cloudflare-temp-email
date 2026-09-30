@@ -69,13 +69,14 @@ export const useGlobalState = createGlobalState(
             content: "",
         });
         const showAuth = ref(false);
-        const showAddressCredential = ref(false);
         const showAdminAuth = ref(false);
         const auth = useStorage('auth', '');
         const adminAuth = useStorage('adminAuth', '');
         const jwt = useStorage('jwt', '');
         const addressPassword = useSessionStorage('addressPassword', '');
         const adminTab = useSessionStorage('adminTab', "account");
+        // 兼容旧版本拼写错误的 tab 名（qucickSetup → quickSetup），避免老用户打开后 tab 定位到不存在的面板
+        if (adminTab.value === "qucickSetup") adminTab.value = "quickSetup";
         const adminMailTabAddress = ref("");
         const adminSendBoxTabAddress = ref("");
         const mailboxSplitSize = useStorage('mailboxSplitSize', 0.25);
@@ -106,7 +107,6 @@ export const useGlobalState = createGlobalState(
             announcement,
             openSettings,
             showAuth,
-            showAddressCredential,
             auth,
             jwt,
             adminAuth,

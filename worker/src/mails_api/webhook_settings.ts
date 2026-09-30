@@ -1,10 +1,10 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
-import { AdminWebhookSettings, WebhookSettings, RawMailRow } from "../models";
-import { commonParseMail, isValidWebhookUrl, sendWebhook } from "../common";
-import { resolveRawEmail } from "../gzip";
-import { getWebhookAttachments } from '../utils/webhook';
-import i18n from "../i18n";
+import { CONSTANTS } from '../constants.ts';
+import { AdminWebhookSettings, WebhookSettings, RawMailRow } from '../models/index.ts';
+import { commonParseMail, isValidWebhookUrl, sendWebhook } from '../common.ts';
+import { resolveRawEmail } from '../gzip.ts';
+import { getWebhookAttachments } from '../utils/webhook.ts';
+import i18n from '../i18n/index.ts';
 
 
 async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {

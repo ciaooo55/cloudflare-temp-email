@@ -1,14 +1,45 @@
 import { Context } from "hono";
-import { verifyAddressToken } from '../address_auth';
-import { CONSTANTS } from "../constants";
-import { bindTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress } from "./common";
-import { checkCfTurnstile, checkIsAdmin, getBooleanValue } from "../utils";
-import { resolveRawEmailRow } from "../gzip";
-import { TelegramSettings } from "./settings";
-import i18n from "../i18n";
+import { verifyAddressToken } from '../address_auth.ts';
+import { CONSTANTS } from '../constants.ts';
+import { bindTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress } from './common.ts';
+import { checkCfTurnstile, checkIsAdmin, getBooleanValue, getJsonSetting } from '../utils.ts';
+import { resolveRawEmailRow } from '../gzip.ts';
+import { TelegramSettings } from './settings.ts';
+import type { TelegramBotEntry } from '../admin_api/notify_settings.ts';
+import i18n from '../i18n/index.ts';
 
 const encoder = new TextEncoder();
 const TG_AUTH_TIMEOUT = 300;
+
+// 用单个 bot token 校验 initData 的 HMAC
+const verifyInitDataHash = async (
+    dataToCheck: string, hash: string, token: string
+): Promise<boolean> => {
+    const cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode("WebAppData"),
+        { name: "HMAC", hash: { name: "SHA-256" } },
+        false,
+        ["sign"]
+    );
+    const secretKeyBuffer = await crypto.subtle.sign(
+        "HMAC", cryptoKey, encoder.encode(token)
+    );
+    const secretKey = await crypto.subtle.importKey(
+        "raw",
+        secretKeyBuffer,
+        { name: "HMAC", hash: { name: "SHA-256" } },
+        false,
+        ["sign", "verify"]
+    );
+    const calcHmac = await crypto.subtle.sign(
+        "HMAC", secretKey, encoder.encode(dataToCheck)
+    );
+    const calcHash = Array.from(new Uint8Array(calcHmac))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    return calcHash === hash;
+};
 
 const checkTelegramAuth = async (
     c: Context<HonoCustomType>, initData: string
@@ -28,30 +59,26 @@ const checkTelegramAuth = async (
         throw Error("Invalid initData");
     }
     const { id: userId } = JSON.parse(user);
-    const cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        encoder.encode("WebAppData"),
-        { name: "HMAC", hash: { name: "SHA-256" } },
-        false,
-        ["sign"]
-    );
-    const secretKeyBuffer = await crypto.subtle.sign(
-        "HMAC", cryptoKey, encoder.encode(c.env.TELEGRAM_BOT_TOKEN)
-    );
-    const secretKey = await crypto.subtle.importKey(
-        "raw",
-        secretKeyBuffer,
-        { name: "HMAC", hash: { name: "SHA-256" } },
-        false,
-        ["sign", "verify"]
-    );
-    const calcHmac = await crypto.subtle.sign(
-        "HMAC", secretKey, encoder.encode(dataToCheck)
-    );
-    const calcHash = Array.from(new Uint8Array(calcHmac))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-    if (calcHash != hash) {
+    // Mini App 可能从任一已配置的机器人打开：逐个尝试所有 bot token 验签，
+    // 之前只用默认 TELEGRAM_BOT_TOKEN，从网页配置的其他机器人打开会被误判
+    const candidates: string[] = [];
+    if (c.env.TELEGRAM_BOT_TOKEN) candidates.push(c.env.TELEGRAM_BOT_TOKEN);
+    try {
+        const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
+        for (const b of bots) {
+            if (b.token && !candidates.includes(b.token)) candidates.push(b.token);
+        }
+    } catch {
+        // 读不到网页机器人配置就只用默认 token
+    }
+    let verified = false;
+    for (const token of candidates) {
+        if (await verifyInitDataHash(dataToCheck, hash, token)) {
+            verified = true;
+            break;
+        }
+    }
+    if (!verified) {
         throw Error("Invalid initData");
     }
     if (typeof userId === "number") {
@@ -61,7 +88,7 @@ const checkTelegramAuth = async (
 }
 
 async function getTelegramBindAddress(c: Context<HonoCustomType>): Promise<Response> {
-    const { initData } = await c.req.json();
+    const { initData } = await c.req.json().catch(() => ({}));
     try {
         const userId = await checkTelegramAuth(c, initData);
         // get the address list from the KV
@@ -84,7 +111,7 @@ async function getTelegramBindAddress(c: Context<HonoCustomType>): Promise<Respo
 }
 
 async function newTelegramAddress(c: Context<HonoCustomType>): Promise<Response> {
-    const { initData, address, cf_token, enableRandomSubdomain } = await c.req.json();
+    const { initData, address, cf_token, enableRandomSubdomain } = await c.req.json().catch(() => ({}));
     const msgs = i18n.getMessagesbyContext(c);
     // check cf turnstile
     try {
@@ -110,7 +137,7 @@ async function newTelegramAddress(c: Context<HonoCustomType>): Promise<Response>
 }
 
 async function bindAddress(c: Context<HonoCustomType>): Promise<Response> {
-    const { initData, jwt } = await c.req.json();
+    const { initData, jwt } = await c.req.json().catch(() => ({}));
     const msgs = i18n.getMessagesbyContext(c);
     try {
         const userId = await checkTelegramAuth(c, initData);
@@ -123,7 +150,7 @@ async function bindAddress(c: Context<HonoCustomType>): Promise<Response> {
 }
 
 async function unbindAddress(c: Context<HonoCustomType>): Promise<Response> {
-    const { initData, address } = await c.req.json();
+    const { initData, address } = await c.req.json().catch(() => ({}));
     try {
         const userId = await checkTelegramAuth(c, initData);
         await unbindTelegramAddress(c, userId, address);
@@ -135,7 +162,7 @@ async function unbindAddress(c: Context<HonoCustomType>): Promise<Response> {
 }
 
 async function getMail(c: Context<HonoCustomType>): Promise<Response> {
-    const { initData, mailId } = await c.req.json();
+    const { initData, mailId } = await c.req.json().catch(() => ({}));
     const msgs = i18n.getMessagesbyContext(c);
     try {
         if (checkIsAdmin(c)) {

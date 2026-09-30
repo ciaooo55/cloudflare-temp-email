@@ -76,10 +76,10 @@ const addDevice = async () => {
 
 const deleteDevice = async (device: DeviceItem) => {
     dialog.warning({
-        title: '确认操作',
+        title: t('confirmTitle'),
         content: t('confirmDelete'),
-        positiveText: '确定',
-        negativeText: '取消',
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
         onPositiveClick: async () => {
             try {
                 const rest = devices.value.filter(d => d.id !== device.id)

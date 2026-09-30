@@ -1,6 +1,6 @@
 import { Context } from "hono";
-import { CONSTANTS } from "../constants";
-import { AdminWebhookSettings } from "../models";
+import { CONSTANTS } from '../constants.ts';
+import { AdminWebhookSettings } from '../models/index.ts';
 
 async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
     const settings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");

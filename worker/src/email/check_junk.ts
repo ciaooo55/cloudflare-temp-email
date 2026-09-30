@@ -1,6 +1,6 @@
-import { getBooleanValue, getStringArray } from "../utils";
-import { commonParseMail } from "../common";
-import { isJunkMailByHeaders } from "./junk_mail_policy";
+import { getBooleanValue, getStringArray } from '../utils.ts';
+import { commonParseMail } from '../common.ts';
+import { isJunkMailByHeaders } from './junk_mail_policy.ts';
 
 export const check_if_junk_mail = async (
     env: Bindings, address: string,

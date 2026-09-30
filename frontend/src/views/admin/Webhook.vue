@@ -3,8 +3,6 @@ import { onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
 
 // @ts-ignore
-import { useGlobalState } from '../../store'
-// @ts-ignore
 import { api } from '../../api'
 // @ts-ignore
 const message = useMessage()
@@ -63,14 +61,9 @@ onMounted(async () => {
             <n-form-item-row :label="t('enableAllowList')">
                 <n-switch v-model:value="webhookSettings.enableAllowList" :round="false" />
             </n-form-item-row>
-            <n-form-item-row :label="t('webhookAllowList')">
+            <n-form-item-row :label="t('webhookAllowList')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="webhookSettings.allowList" filterable multiple tag
                     :placeholder="t('webhookAllowList')">
-                    <template #empty>
-                        <n-text depth="3">
-                            {{ t('manualInputPrompt') }}
-                        </n-text>
-                    </template>
                 </n-select>
             </n-form-item-row>
         </n-card>

@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { getSetting, saveSetting } from "../utils";
+import { getSetting, saveSetting } from '../utils.ts';
 
 const CONFIG_KEY_PREFIX = "admin-config:";
 const CONFIG_KEY_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;

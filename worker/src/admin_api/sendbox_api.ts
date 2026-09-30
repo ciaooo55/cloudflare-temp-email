@@ -1,6 +1,6 @@
 import { Context } from 'hono'
 
-import { handleListQuery } from '../common'
+import { handleListQuery } from '../common.ts'
 
 const list = async (c: Context<HonoCustomType>) => {
     const { address, limit, offset } = c.req.query();
