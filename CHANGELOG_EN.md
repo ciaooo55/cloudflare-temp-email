@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |Security| Snapshot HTML is now sanitized at serve time too: `/m/` applies the latest sanitizer rules when reading, so existing snapshots (created with the older sanitizer) are equally protected; defense in depth, verified live that bypass payloads are neutralized on read while normal content is preserved
 - fix: |Copy| Fixed missing Chinese labels on the Worker config page: nested i18n label groups (`labels`) were silently skipped by the message builder; config items now show proper labels like "站点访问密码（是否已设置）" and "可用域名"
 - fix: |Copy| Renamed the inner tab under "维护" to "清理维护" to avoid confusion with the top-level "维护" tab
 - fix: |Security| Telegram webhook now returns 400 instead of 500 on malformed JSON (previously an uncaught parse exception)
