@@ -244,6 +244,139 @@ const quickDurations = computed(() => [
 
 onMounted(fetchAll)
 </script>
+
 <template>
-    <div>SCRIPT TEST - if you see this, the script setup works</div>
+    <div class="center">
+        <n-card :bordered="false" embedded :title="t('title')" style="max-width: 900px; overflow: auto;">
+            <n-form-item-row :label="t('ttlHours')">
+                <n-input-group>
+                    <n-input-number v-model:value="ttlHours" :min="1" :max="8760" style="width: 200px;" />
+                    <button class="snap-btn snap-btn-primary" @click="saveTtl">{{ t('save') }}</button>
+                </n-input-group>
+                <template #feedback>
+                    <n-text depth="3" style="font-size: 12px;">{{ t('ttlTip') }}</n-text>
+                </template>
+            </n-form-item-row>
+
+            <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; color: #666; font-size: 14px; font-weight: 500;">
+                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
+                <span>{{ t('bindings') }}</span>
+                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
+            </div>
+            <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
+            <div style="overflow-x: auto;">
+            <n-table :bordered="false" style="margin-top: 8px; min-width: 720px;">
+                <thead>
+                    <tr>
+                        <th style="white-space: nowrap;">{{ t('address') }}</th>
+                        <th>{{ t('snapshotUrl') }}</th>
+                        <th style="white-space: nowrap;">{{ t('expiresAt') }}</th>
+                        <th style="white-space: nowrap;">{{ t('actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="b in bindings" :key="b.address">
+                        <td style="white-space: nowrap;">{{ b.address }}</td>
+                        <td>
+                            <a :href="b.url" target="_blank" style="font-size: 12px; word-break: break-all;">{{ b.url }}</a>
+                            <div><n-text depth="3" style="font-size: 12px;">{{ t('createdAt') }}: {{ fmtTime(b.createdAt) }}</n-text></div>
+                        </td>
+                        <td style="white-space: nowrap;">
+                            <div>{{ fmtTime(b.expiresAt) }}</div>
+                            <div><n-text depth="3" style="font-size: 12px;">{{ remainText(b.expiresAt) }}</n-text></div>
+                        </td>
+                        <td>
+                            <n-flex vertical>
+                                <button class="snap-btn snap-btn-small" @click="copyUrl(b.url)">{{ t('copy') }}</button>
+                                <button class="snap-btn snap-btn-small" @click="replaceBinding(b)">{{ t('replaceLink') }}</button>
+                                <button class="snap-btn snap-btn-small snap-btn-danger" @click="invalidate(b)">{{ t('invalidate') }}</button>
+                            </n-flex>
+                        </td>
+                    </tr>
+                    <tr v-if="!bindings.length">
+                        <td colspan="4"><n-text depth="3">{{ t('noBindings') }}</n-text></td>
+                    </tr>
+                </tbody>
+            </n-table>
+            </div>
+            <n-flex style="margin-top: 12px;" align="center">
+                <n-input v-model:value="newAddress" :placeholder="t('addressPlaceholder')" style="width: 260px;" />
+                <n-select v-model:value="newDuration" :options="quickDurations" style="width: 160px;" />
+                <n-input-number v-model:value="newDuration" :min="1" :max="8760" :placeholder="t('durationPlaceholder')"
+                    style="width: 140px;" />
+                <button class="snap-btn snap-btn-primary" @click="addBinding">{{ t('bind') }}</button>
+            </n-flex>
+            <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
+
+            <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; color: #666; font-size: 14px; font-weight: 500;">
+                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
+                <span>{{ t('batchBind') }}</span>
+                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
+            </div>
+            <n-text depth="3" style="font-size: 12px;">{{ t('batchBindTip') }}</n-text>
+            <n-input v-model:value="batchInput" type="textarea" :rows="5"
+                :placeholder="t('batchPlaceholder')"
+                style="margin-top: 8px; font-family: monospace;" />
+            <n-flex style="margin-top: 8px;" align="center">
+                <button class="snap-btn snap-btn-primary" :disabled="batchBinding" @click="batchBind">{{ batchBinding ? t('binding') : t('batchBind') }}</button>
+                <button class="snap-btn" @click="batchInput = ''">{{ t('clear') }}</button>
+            </n-flex>
+        </n-card>
+    </div>
 </template>
+
+<style scoped>
+.snap-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid #d9d9d9;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1.5;
+}
+.snap-btn:hover {
+    border-color: #18a058;
+    color: #18a058;
+}
+.snap-btn-primary {
+    background: #18a058;
+    border-color: #18a058;
+    color: #fff;
+}
+.snap-btn-primary:hover {
+    background: #0c7a43;
+    border-color: #0c7a43;
+    color: #fff;
+}
+.snap-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.snap-btn-small {
+    padding: 2px 10px;
+    font-size: 12px;
+}
+.snap-btn-danger {
+    color: #d03050;
+    border-color: #d03050;
+}
+.snap-btn-danger:hover {
+    background: #d03050;
+    color: #fff;
+}
+</style>
+
+
+<style scoped>
+.center {
+    display: flex;
+    text-align: left;
+    place-items: center;
+    justify-content: center;
+}
+</style>
