@@ -135,22 +135,14 @@ const getOpenSettings = async (message, notification) => {
 }
 
 const adminShowAddressCredential = async (id) => {
-    try {
-        const { jwt: addressCredential } = await apiFetch(`/admin/show_password/${id}`);
-        return addressCredential;
-    } catch (error) {
-        throw error;
-    }
+    const { jwt: addressCredential } = await apiFetch(`/admin/show_password/${id}`);
+    return addressCredential;
 }
 
 const adminDeleteAddress = async (id) => {
-    try {
-        await apiFetch(`/admin/delete_address/${id}`, {
-            method: 'DELETE'
-        });
-    } catch (error) {
-        throw error;
-    }
+    await apiFetch(`/admin/delete_address/${id}`, {
+        method: 'DELETE'
+    });
 }
 
 export const api = {
