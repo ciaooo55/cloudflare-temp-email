@@ -8,7 +8,7 @@
 
 ## v1.13.0(main)
 
-- fix: |快照| 快照管理页改为同步导入：线上 Vite 异步预加载时 CSS link 的 load 事件未触发导致整个标签页空白；现 Snapshot 直接并入 Admin 包，不再走异步 chunk 加载
+- fix: |快照| 快照管理页空白：Vue I18n 把消息文本中未转义的 `@`（如 `address@example.com`、`@BotFather`）解析为 linked-message 语法，运行时消息编译抛 `SyntaxError: 10` 导致组件渲染崩溃；现将所有语言消息中的 `@` 转义为 `{'@'}` 字面量
 - fix: |快照| 绑定列表 API 返回值加数组校验，非数组时保持空列表，避免模板 `bindings.length` 抛错导致页面空白
 
 - fix: |收信| 邮件入库失败时立即拒收并中断流程：之前入库失败仍会继续触发 AI 解析、快照、TG/Bark/Webhook 推送，产生"幽灵推送"；现入库失败直接拒收，不再产生任何后续动作

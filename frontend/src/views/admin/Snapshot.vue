@@ -258,11 +258,7 @@ onMounted(fetchAll)
                 </template>
             </n-form-item-row>
 
-            <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; color: #666; font-size: 14px; font-weight: 500;">
-                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
-                <span>{{ t('bindings') }}</span>
-                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
-            </div>
+            <n-divider>{{ t('bindings') }}</n-divider>
             <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
             <div style="overflow-x: auto;">
             <n-table :bordered="false" style="margin-top: 8px; min-width: 720px;">
@@ -309,11 +305,8 @@ onMounted(fetchAll)
             </n-flex>
             <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
 
-            <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; color: #666; font-size: 14px; font-weight: 500;">
-                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
-                <span>{{ t('batchBind') }}</span>
-                <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
-            </div>
+            <n-divider>{{ t('batchBind') }}
+</n-divider>
             <n-text depth="3" style="font-size: 12px;">{{ t('batchBindTip') }}</n-text>
             <n-input v-model:value="batchInput" type="textarea" :rows="5"
                 :placeholder="t('batchPlaceholder')"
