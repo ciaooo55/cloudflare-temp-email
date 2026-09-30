@@ -192,19 +192,15 @@ export async function refreshBoundSnapshot(
     const addr = address.toLowerCase();
     let binding: SnapshotBinding | null = null;
     try {
-        binding = await c.env.KV.get<SnapshotBinding>(`snapshot-bind:${addr}`, "json");
+        binding = await c.env.KV.get<SnapshotBinding>(`snapshot-bind:${addr}`, { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
     } catch {
         return null;
     }
     if (!binding) return null;
     if (binding.expiresAt <= Date.now()) {
-        // 过期：清理绑定与快照
+        // 过期：清理绑定与快照（反向索引留删除标记，各 PoP 的旧链接直接 404）
         try {
-            await Promise.allSettled([
-                c.env.KV.delete(`snapshot-bind:${addr}`),
-                c.env.KV.delete(`snapshot-bindrev:${binding.token}`),
-                c.env.KV.delete(`mailhtml:${binding.token}`),
-            ]);
+            await deleteSnapshotBinding(c, addr, binding.token);
         } catch { /* ignore */ }
         return null;
     }
@@ -217,7 +213,7 @@ export async function refreshBoundSnapshot(
             buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || ""),
             { expirationTtl: remainingSec }
         );
-        // 内容已更新，清除边缘缓存保证及时刷新（否则 30 秒内看到的还是旧邮件）
+        // 内容已更新，清除边缘缓存保证及时刷新（否则 10 秒内看到的还是旧邮件）
         if (binding.url) {
             try {
                 await caches.default.delete(new Request(binding.url, { method: 'GET' }));
@@ -232,12 +228,23 @@ export async function refreshBoundSnapshot(
 
 export const snapshotBindKey = (address: string) => `snapshot-bind:${address.toLowerCase()}`;
 export const snapshotBindRevKey = (token: string) => `snapshot-bindrev:${token}`;
+/**
+ * 绑定删除标记：deleteSnapshotBinding 不再直接删除反向索引，而是写入该标记（短 TTL）。
+ * 原因：/m/:token 路由按 PoP 独立缓存页面，删除时的 caches.default.delete() 到不了
+ * 用户所在的 PoP；若反向索引直接消失，路由会把“已删除的绑定 token”当成一次性快照，
+ * 继续 serving 边缘缓存里的旧页面。保留删除标记后，各 PoP 看到标记一律直接 404。
+ */
+export const SNAPSHOT_BIND_DELETED = "__deleted__";
+export const SNAPSHOT_BIND_TOMBSTONE_TTL = 120;
+/** 快照相关 KV 读取的边缘缓存 TTL（秒）：KV.get 默认边缘缓存 60 秒，
+ * 会导致更换链接/新邮件最多延迟 60 秒才可见；取文档允许的最小值 30。 */
+export const SNAPSHOT_KV_EDGE_TTL = 30;
 
 /** 读取邮箱的固定快照绑定；过期则清理并返回 null */
 export async function getSnapshotBinding(c: Context<HonoCustomType>, address: string): Promise<SnapshotBinding | null> {
     if (!c.env.KV) return null;
     try {
-        const binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), "json");
+        const binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         if (!binding) return null;
         if (binding.expiresAt <= Date.now()) {
             await deleteSnapshotBinding(c, address, binding.token).catch(() => {});
@@ -249,25 +256,26 @@ export async function getSnapshotBinding(c: Context<HonoCustomType>, address: st
     }
 }
 
-/** 删除绑定：正向绑定 + 反向索引 + 快照 HTML 全部删除 */
+/** 删除绑定：正向绑定 + 快照 HTML 删除，反向索引写入删除标记（短 TTL，见上）。
+ * 更换/失效链接后，旧 token 在各 PoP 一律 404，不会再命中边缘缓存里的旧页面。 */
 export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address: string, token?: string): Promise<void> {
     if (!c.env.KV) return;
     // 需要 binding.url 来清除边缘缓存：token 直传时先经反向索引找到地址再读 binding
     let binding: SnapshotBinding | null = null;
     if (token) {
         try {
-            const addr = await c.env.KV.get(snapshotBindRevKey(token));
-            if (addr) binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), "json");
+            const addr = await c.env.KV.get(snapshotBindRevKey(token), { cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+            if (addr && addr !== SNAPSHOT_BIND_DELETED) binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         } catch { /* ignore */ }
     } else {
         try {
-            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), "json");
+            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         } catch { /* ignore */ }
     }
     const t = token || binding?.token;
     await Promise.allSettled([
         c.env.KV.delete(snapshotBindKey(address)),
-        t ? c.env.KV.delete(snapshotBindRevKey(t)) : Promise.resolve(),
+        t ? c.env.KV.put(snapshotBindRevKey(t), SNAPSHOT_BIND_DELETED, { expirationTtl: SNAPSHOT_BIND_TOMBSTONE_TTL }) : Promise.resolve(),
         t ? c.env.KV.delete(`mailhtml:${t}`) : Promise.resolve(),
     ]);
     // 清除边缘缓存，保证旧链接立即失效（防刷缓存不影响删除语义）

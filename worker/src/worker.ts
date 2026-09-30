@@ -8,7 +8,7 @@ import { api as openAuthApi } from './open_api/auth.ts';
 import { api as mailsApi } from './mails_api/index.ts'
 import { api as adminApi } from './admin_api/index.ts';
 import { api as apiSendMail } from './mails_api/send_mail_api.ts'
-import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml } from './telegram_api/mail_snapshot.ts';
+import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml, deleteSnapshotBinding, SNAPSHOT_BIND_DELETED, SNAPSHOT_KV_EDGE_TTL } from './telegram_api/mail_snapshot.ts';
 import { api as telegramApi } from './telegram_api/index.ts'
 
 import i18n from './i18n/index.ts';
@@ -237,23 +237,25 @@ app.get('/m/:token', async c => {
 	// 注意：请求仍会进入 Worker（按正常请求计费）；Cache API 按 PoP 独立缓存
 	const cache = caches.default;
 	const cacheKey = new Request(c.req.url, { method: 'GET' });
-	try {
-		const cached = await cache.match(cacheKey);
-		if (cached) return cached;
-	} catch { /* cache miss, continue */ }
-	// 快照-邮箱绑定：绑定过期后快照链接失效
+	// 先校验绑定有效性，再查边缘缓存：
+	// 更换/失效链接后旧链接必须立即 404，不能继续 serving 边缘缓存里的旧页面。
+	// 注意 caches.default 按 PoP 独立，删除时的 purge 到不了用户所在的 PoP，
+	// 所以必须在 serve 缓存之前先确认绑定仍然有效。
 	let isBoundSnapshot = false;
 	if (c.env.KV) {
 		try {
-			const boundAddr = await c.env.KV.get(snapshotBindRevKey(token));
+			const boundAddr = await c.env.KV.get(snapshotBindRevKey(token), { cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+			if (boundAddr === SNAPSHOT_BIND_DELETED) {
+				// 链接已被更换/失效/删除：直接 404，并清掉本 PoP 可能残留的旧缓存。
+				// 注意不能 fallback 到查缓存，否则各 PoP 边缘缓存里的旧页面会被继续 serving。
+				try { await cache.delete(cacheKey); } catch { /* ignore */ }
+				return c.text('该快照链接已失效', 404);
+			}
 			if (boundAddr) {
-				const binding = await c.env.KV.get<{ expiresAt: number }>(snapshotBindKey(boundAddr), "json");
+				const binding = await c.env.KV.get<{ expiresAt: number }>(snapshotBindKey(boundAddr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
 				if (!binding || binding.expiresAt <= Date.now()) {
-					await Promise.allSettled([
-						c.env.KV.delete(snapshotBindRevKey(token)),
-						c.env.KV.delete(snapshotBindKey(boundAddr)),
-						c.env.KV.delete(`mailhtml:${token}`),
-					]);
+					await deleteSnapshotBinding(c, boundAddr, token).catch(() => {});
+					try { await cache.delete(cacheKey); } catch { /* ignore */ }
 					return c.text('该快照绑定已到期', 404);
 				}
 				isBoundSnapshot = true;
@@ -262,9 +264,14 @@ app.get('/m/:token', async c => {
 			console.error('snapshot binding check failed', error);
 		}
 	}
+	try {
+		const cached = await cache.match(cacheKey);
+		if (cached) return cached;
+	} catch { /* cache miss, continue */ }
+	// 快照-邮箱绑定：绑定过期后快照链接失效（有效性已在上面校验，这里只读内容）
 	let html: string | null = null;
 	try {
-		html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`) : null;
+		html = c.env.KV ? await c.env.KV.get(`mailhtml:${token}`, { cacheTtl: SNAPSHOT_KV_EDGE_TTL }) : null;
 	} catch (error) {
 		console.error('snapshot fetch failed', error);
 	}
@@ -278,7 +285,9 @@ app.get('/m/:token', async c => {
 		return c.text('邮件快照处理失败', 500);
 	}
 	// 绑定的快照内容随新邮件更新，用短缓存保证及时刷新；一次性快照内容不变，可长缓存抗刷
-	const cacheControl = isBoundSnapshot ? 'public, max-age=30' : 'public, max-age=86400';
+	// 注意：caches.default 按 PoP 独立，新邮件写入时的 purge 到不了用户所在的 PoP，
+	// 这里的 max-age 就是用户能看到旧内容的最长延迟
+	const cacheControl = isBoundSnapshot ? 'public, max-age=10' : 'public, max-age=86400';
 	const response = new Response(html, {
 		headers: {
 			'Content-Type': 'text/html;charset=utf-8',

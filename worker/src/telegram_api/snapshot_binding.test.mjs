@@ -10,6 +10,9 @@ import {
     refreshBoundSnapshot,
     snapshotBindKey,
     snapshotBindRevKey,
+    SNAPSHOT_KV_EDGE_TTL,
+    SNAPSHOT_BIND_DELETED,
+    SNAPSHOT_BIND_TOMBSTONE_TTL,
 } from "./mail_snapshot.ts";
 
 function makeKv() {
@@ -20,7 +23,8 @@ function makeKv() {
             const e = store.get(key);
             if (!e) return null;
             if (e.expiresAtMs && e.expiresAtMs <= Date.now()) { store.delete(key); return null; }
-            if (type === "json") return JSON.parse(e.value);
+            const t = typeof type === "object" && type !== null ? type.type : type;
+            if (t === "json") return JSON.parse(e.value);
             return e.value;
         },
         async put(key, value, opts = {}) {
@@ -76,7 +80,7 @@ test("rebinding the same address kills the old URL", async () => {
     assert.notEqual(b1.token, b2.token);
 
     // 旧 token 的三处全部删除
-    assert.equal(await kv.get(snapshotBindRevKey(b1.token)), null);
+    assert.equal(await kv.get(snapshotBindRevKey(b1.token)), SNAPSHOT_BIND_DELETED);
     assert.equal(kv.store.get(`mailhtml:${b1.token}`), undefined);
     // 正向绑定指向新 token
     const cur = await kv.get(snapshotBindKey("a@example.com"), "json");
@@ -96,7 +100,7 @@ test("expired binding is cleaned on read and returns null", async () => {
 
     assert.equal(await getSnapshotBinding(c, "a@example.com"), null);
     assert.equal(await kv.get(snapshotBindKey("a@example.com"), "json"), null);
-    assert.equal(await kv.get(snapshotBindRevKey(b.token)), null);
+    assert.equal(await kv.get(snapshotBindRevKey(b.token)), SNAPSHOT_BIND_DELETED);
     assert.equal(kv.store.get(`mailhtml:${b.token}`), undefined);
 });
 
@@ -106,8 +110,24 @@ test("deleteSnapshotBinding removes binding, reverse index and html", async () =
     const b = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
     await deleteSnapshotBinding(c, "a@example.com");
     assert.equal(await kv.get(snapshotBindKey("a@example.com"), "json"), null);
-    assert.equal(await kv.get(snapshotBindRevKey(b.token)), null);
+    assert.equal(await kv.get(snapshotBindRevKey(b.token)), SNAPSHOT_BIND_DELETED);
     assert.equal(kv.store.get(`mailhtml:${b.token}`), undefined);
+});
+
+test("delete tombstone has short ttl and does not block rebinding", async () => {
+    const kv = makeKv();
+    const c = ctx(kv);
+    const b1 = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
+    await deleteSnapshotBinding(c, "a@example.com");
+    // 删除标记是短 TTL，不是永久残留
+    const tomb = kv.store.get(snapshotBindRevKey(b1.token));
+    assert.equal(tomb.value, SNAPSHOT_BIND_DELETED);
+    assert.equal(tomb.ttl, SNAPSHOT_BIND_TOMBSTONE_TTL);
+    // 同一地址重新绑定不受旧 token 删除标记影响
+    const b2 = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
+    assert.notEqual(b1.token, b2.token);
+    assert.equal(await kv.get(snapshotBindRevKey(b2.token)), "a@example.com");
+    assert.equal((await getSnapshotBinding(c, "a@example.com")).token, b2.token);
 });
 
 test("listSnapshotBindingRecords skips and cleans expired bindings", async () => {
@@ -124,7 +144,7 @@ test("listSnapshotBindingRecords skips and cleans expired bindings", async () =>
     assert.equal(list[0].token, good.token);
     // 过期项被顺手清理
     assert.equal(await kv.get(snapshotBindKey("bad@example.com"), "json"), null);
-    assert.equal(await kv.get(snapshotBindRevKey(bad.token)), null);
+    assert.equal(await kv.get(snapshotBindRevKey(bad.token)), SNAPSHOT_BIND_DELETED);
 });
 
 test("createMailSnapshot honors a custom ttl", async () => {
@@ -141,4 +161,41 @@ test("createMailSnapshot defaults to 24h", async () => {
     const token = url.split("/m/")[1];
     assert.equal(kv.store.get(`mailhtml:${token}`).ttl, DEFAULT_SNAPSHOT_TTL);
     assert.equal(DEFAULT_SNAPSHOT_TTL, 86400);
+});
+
+test("snapshot KV reads use short edge cache ttl (prompt refresh/invalidation)", async () => {
+    // KV.get 默认边缘缓存 60 秒会导致更换链接/新邮件延迟可见；
+    // 快照热路径读取必须带 cacheTtl（文档最小 30），否则回归旧延迟。
+    assert.equal(SNAPSHOT_KV_EDGE_TTL, 30);
+    const seen = [];
+    const base = (() => {
+        const kv = (function makeKv() {
+            const store = new Map();
+            return {
+                store,
+                async get(key, type) {
+                    seen.push([key, type]);
+                    const e = store.get(key);
+                    if (!e) return null;
+                    const t = typeof type === "object" && type !== null ? type.type : type;
+                    if (t === "json") return JSON.parse(e.value);
+                    return e.value;
+                },
+                async put(key, value, opts = {}) { store.set(key, { value, opts }); },
+                async delete(key) { store.delete(key); },
+            };
+        })();
+        return kv;
+    })();
+    const c = { env: { KV: base }, executionCtx: { waitUntil() {} } };
+    const b = await createSnapshotBindingRecord(c, "ttl@example.com", 24, "https://snap.example.com");
+    await refreshBoundSnapshot(c, "ttl@example.com", { parsedEmail: { html: "<p>new</p>", text: "t", subject: "s" } });
+    await getSnapshotBinding(c, "ttl@example.com");
+    await deleteSnapshotBinding(c, "ttl@example.com", b.token);
+    const reads = seen.filter(([k]) => k.startsWith("snapshot-bind:") || k.startsWith("snapshot-bindrev:"));
+    assert.ok(reads.length > 0, "expected snapshot KV reads");
+    for (const [key, type] of reads) {
+        assert.equal(typeof type, "object", `KV.get(${key}) should pass options object`);
+        assert.equal(type.cacheTtl, SNAPSHOT_KV_EDGE_TTL, `KV.get(${key}) cacheTtl`);
+    }
 });

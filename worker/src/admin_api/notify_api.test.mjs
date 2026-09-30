@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, afterEach } from "node:test";
 import notifyApi, { getSnapshotTtlSeconds, getWebPushConfig, DEFAULT_BARK_PUSH_URL } from "./notify_settings.ts";
-import { createSnapshotBindingRecord, refreshBoundSnapshot, getSnapshotBinding } from "../telegram_api/mail_snapshot.ts";
+import { createSnapshotBindingRecord, refreshBoundSnapshot, getSnapshotBinding, SNAPSHOT_BIND_DELETED } from "../telegram_api/mail_snapshot.ts";
 
 // ---------- mock 基础设施 ----------
 function makeKv() {
@@ -12,7 +12,8 @@ function makeKv() {
             const e = store.get(key);
             if (!e) return null;
             if (e.expiresAtMs && e.expiresAtMs <= Date.now()) { store.delete(key); return null; }
-            if (type === "json") return JSON.parse(e.value);
+            const t = typeof type === "object" && type !== null ? type.type : type;
+            if (t === "json") return JSON.parse(e.value);
             return e.value;
         },
         async put(key, value, opts = {}) {
@@ -339,6 +340,6 @@ test("快照绑定: 到期后读取自动清理", async () => {
     kv.store.get("snapshot-bind:u@example.com").value = JSON.stringify(stored);
     assert.equal(await getSnapshotBinding(makeCtx({ kv, db }), "u@example.com"), null);
     assert.equal(kv.store.get("snapshot-bind:u@example.com"), undefined);
-    assert.equal(kv.store.get(`snapshot-bindrev:${b.token}`), undefined);
+    assert.equal(kv.store.get(`snapshot-bindrev:${b.token}`).value, SNAPSHOT_BIND_DELETED);
     assert.equal(kv.store.get(`mailhtml:${b.token}`), undefined);
 });
