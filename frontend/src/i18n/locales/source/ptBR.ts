@@ -172,7 +172,7 @@ export const ptBRMessages = {
   "components.MailContentRenderer.forward": "Encaminhar",
   "views.admin.AccountSettings.forward_address": "Endereço de encaminhamento",
   "views.admin.AccountSettings.forward_address_required": "O endereço de encaminhamento é obrigatório",
-  "views.admin.AccountSettings.forward_placeholder": "forward@example.com",
+  "views.admin.AccountSettings.forward_placeholder": "forward{'@'}example.com",
   "components.MailContentRenderer.fullscreen": "Tela cheia",
   "views.admin.Telegram.globalMailPushList": "Lista global de chat ID para envio de e-mails",
   "views.common.Appearance.globalTabplacement": "Posição global das abas",

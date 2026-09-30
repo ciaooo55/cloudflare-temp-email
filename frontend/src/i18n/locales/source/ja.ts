@@ -172,7 +172,7 @@ export const jaMessages = {
   "components.MailContentRenderer.forward": "転送",
   "views.admin.AccountSettings.forward_address": "転送先アドレス",
   "views.admin.AccountSettings.forward_address_required": "転送先アドレスは必須です",
-  "views.admin.AccountSettings.forward_placeholder": "forward@example.com",
+  "views.admin.AccountSettings.forward_placeholder": "forward{'@'}example.com",
   "components.MailContentRenderer.fullscreen": "全画面",
   "views.admin.Telegram.globalMailPushList": "グローバルメール通知 Chat ID 一覧",
   "views.common.Appearance.globalTabplacement": "全体タブ位置",

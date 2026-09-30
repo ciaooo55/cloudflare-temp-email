@@ -751,8 +751,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "邮箱地址"
     },
     "addressPlaceholder": {
-      "en": "address@example.com",
-      "zh": "address@example.com"
+      "en": "address{'@'}example.com",
+      "zh": "address{'@'}example.com"
     },
     "bind": {
       "en": "Bind",
@@ -851,8 +851,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "批量绑定"
     },
     "batchPlaceholder": {
-      "en": "One email per line, e.g.:\ntest@ciaooo55.us.ci\nhello@bbb99.us.ci",
-      "zh": "每行一个邮箱地址，例如：\ntest@ciaooo55.us.ci\nhello@bbb99.us.ci"
+      "en": "One email per line, e.g.:\ntest{'@'}ciaooo55.us.ci\nhello{'@'}bbb99.us.ci",
+      "zh": "每行一个邮箱地址，例如：\ntest{'@'}ciaooo55.us.ci\nhello{'@'}bbb99.us.ci"
     },
     "batchBind": {
       "en": "Bind All",
@@ -959,8 +959,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "每行输入一个邮箱地址，系统会自动检查格式、域名和是否已绑定。"
     },
     "batchPlaceholder": {
-      "en": "e.g.:\ntest1@example.com\ntest2@example.com",
-      "zh": "例如：\ntest1@ciaooo55.us.ci\ntest2@ciaooo55.us.ci"
+      "en": "e.g.:\ntest1{'@'}example.com\ntest2{'@'}example.com",
+      "zh": "例如：\ntest1{'@'}ciaooo55.us.ci\ntest2{'@'}ciaooo55.us.ci"
     },
     "clear": {
       "en": "Clear",
@@ -1763,8 +1763,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "Chat ID"
     },
     "testChatIdTip": {
-      "en": "Your Telegram user/chat ID (get it from @userinfobot). Leave blank to only verify the token.",
-      "zh": "你的 Telegram 用户/对话 ID（可从 @userinfobot 获取）。留空则只验证 Token 有效性。"
+      "en": "Your Telegram user/chat ID (get it from {'@'}userinfobot). Leave blank to only verify the token.",
+      "zh": "你的 Telegram 用户/对话 ID（可从 {'@'}userinfobot 获取）。留空则只验证 Token 有效性。"
     },
     "testFail": {
       "en": "Test failed: ",
@@ -1779,8 +1779,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "Token 有效"
     },
     "tokenPlaceholder": {
-      "en": "Bot token from @BotFather",
-      "zh": "从 @BotFather 获取的机器人 Token"
+      "en": "Bot token from {'@'}BotFather",
+      "zh": "从 {'@'}BotFather 获取的机器人 Token"
     },
     "webhookOk": {
       "en": "Webhook set",
@@ -2045,8 +2045,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "转发地址不能为空"
     },
     "forward_placeholder": {
-      "en": "forward@example.com",
-      "zh": "forward@example.com"
+      "en": "forward{'@'}example.com",
+      "zh": "forward{'@'}example.com"
     },
     "forwarding_rule_warning": {
       "en": "Each rule will run independently. Forward address needs to be a verified address.",

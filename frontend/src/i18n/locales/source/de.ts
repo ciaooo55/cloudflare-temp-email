@@ -172,7 +172,7 @@ export const deMessages = {
   "components.MailContentRenderer.forward": "Weiterleiten",
   "views.admin.AccountSettings.forward_address": "Weiterleitungsadresse",
   "views.admin.AccountSettings.forward_address_required": "Eine Weiterleitungsadresse ist erforderlich",
-  "views.admin.AccountSettings.forward_placeholder": "forward@example.com",
+  "views.admin.AccountSettings.forward_placeholder": "forward{'@'}example.com",
   "components.MailContentRenderer.fullscreen": "Vollbild",
   "views.admin.Telegram.globalMailPushList": "Globale Mail-Push-Chat-ID-Liste",
   "views.common.Appearance.globalTabplacement": "Globale Tab-Position",

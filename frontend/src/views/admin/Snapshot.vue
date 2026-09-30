@@ -248,14 +248,15 @@ onMounted(fetchAll)
 <template>
     <div class="center">
         <n-card :bordered="false" embedded :title="t('title')" style="max-width: 900px; overflow: auto;">
-            <div style="margin-bottom: 12px;">
-                <label style="display: block; margin-bottom: 6px; font-size: 14px;">{{ t('ttlHours') }}</label>
+            <n-form-item-row :label="t('ttlHours')">
                 <n-input-group>
                     <n-input-number v-model:value="ttlHours" :min="1" :max="8760" style="width: 200px;" />
-                    <button class="snap-btn snap-btn-primary" @click="saveTtl">{{ t('save') }}</button>
+                    <n-button type="primary" @click="saveTtl">{{ t('save') }}</n-button>
                 </n-input-group>
-                <div style="font-size: 12px; color: #999; margin-top: 4px;">{{ t('ttlTip') }}</div>
-            </div>
+                <template #feedback>
+                    <n-text depth="3" style="font-size: 12px;">{{ t('ttlTip') }}</n-text>
+                </template>
+            </n-form-item-row>
 
             <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; color: #666; font-size: 14px; font-weight: 500;">
                 <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
@@ -286,9 +287,10 @@ onMounted(fetchAll)
                         </td>
                         <td>
                             <n-flex vertical>
-                                <button class="snap-btn snap-btn-small" @click="copyUrl(b.url)">{{ t('copy') }}</button>
-                                <button class="snap-btn snap-btn-small" @click="replaceBinding(b)">{{ t('replaceLink') }}</button>
-                                <button class="snap-btn snap-btn-small snap-btn-danger" @click="invalidate(b)">{{ t('invalidate') }}</button>
+                                <n-button size="small" @click="copyUrl(b.url)">{{ t('copy') }}</n-button>
+                                <n-button size="small" @click="replaceBinding(b)">{{ t('replaceLink') }}
+</n-button>
+                                <n-button size="small" type="error" ghost @click="invalidate(b)">{{ t('invalidate') }}</n-button>
                             </n-flex>
                         </td>
                     </tr>
@@ -303,7 +305,7 @@ onMounted(fetchAll)
                 <n-select v-model:value="newDuration" :options="quickDurations" style="width: 160px;" />
                 <n-input-number v-model:value="newDuration" :min="1" :max="8760" :placeholder="t('durationPlaceholder')"
                     style="width: 140px;" />
-                <button class="snap-btn snap-btn-primary" @click="addBinding">{{ t('bind') }}</button>
+                <n-button type="primary" @click="addBinding">{{ t('bind') }}</n-button>
             </n-flex>
             <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
 
@@ -317,57 +319,16 @@ onMounted(fetchAll)
                 :placeholder="t('batchPlaceholder')"
                 style="margin-top: 8px; font-family: monospace;" />
             <n-flex style="margin-top: 8px;" align="center">
-                <button class="snap-btn snap-btn-primary" :disabled="batchBinding" @click="batchBind">{{ batchBinding ? t('binding') : t('batchBind') }}</button>
-                <button class="snap-btn" @click="batchInput = ''">{{ t('clear') }}</button>
+                <n-button type="primary" :loading="batchBinding" @click="batchBind">{{ t('batchBind') }}
+</n-button>
+                <n-button @click="batchInput = ''">{{ t('clear') }}
+</n-button>
             </n-flex>
         </n-card>
     </div>
 </template>
 
 <style scoped>
-.snap-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 16px;
-    font-size: 14px;
-    border-radius: 6px;
-    border: 1px solid #d9d9d9;
-    background: #fff;
-    cursor: pointer;
-    transition: all 0.2s;
-    line-height: 1.5;
-}
-.snap-btn:hover {
-    border-color: #18a058;
-    color: #18a058;
-}
-.snap-btn-primary {
-    background: #18a058;
-    border-color: #18a058;
-    color: #fff;
-}
-.snap-btn-primary:hover {
-    background: #0c7a43;
-    border-color: #0c7a43;
-    color: #fff;
-}
-.snap-btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-.snap-btn-small {
-    padding: 2px 10px;
-    font-size: 12px;
-}
-.snap-btn-danger {
-    color: #d03050;
-    border-color: #d03050;
-}
-.snap-btn-danger:hover {
-    background: #d03050;
-    color: #fff;
-}
 .center {
     display: flex;
     text-align: left;
@@ -375,6 +336,3 @@ onMounted(fetchAll)
     justify-content: center;
 }
 </style>
-
-
-
