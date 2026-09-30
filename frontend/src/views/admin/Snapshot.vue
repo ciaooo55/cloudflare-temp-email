@@ -248,15 +248,14 @@ onMounted(fetchAll)
 <template>
     <div class="center">
         <n-card :bordered="false" embedded :title="t('title')" style="max-width: 900px; overflow: auto;">
-            <n-form-item-row :label="t('ttlHours')">
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; margin-bottom: 6px; font-size: 14px;">{{ t('ttlHours') }}</label>
                 <n-input-group>
                     <n-input-number v-model:value="ttlHours" :min="1" :max="8760" style="width: 200px;" />
                     <button class="snap-btn snap-btn-primary" @click="saveTtl">{{ t('save') }}</button>
                 </n-input-group>
-                <template #feedback>
-                    <n-text depth="3" style="font-size: 12px;">{{ t('ttlTip') }}</n-text>
-                </template>
-            </n-form-item-row>
+                <div style="font-size: 12px; color: #999; margin-top: 4px;">{{ t('ttlTip') }}</div>
+            </div>
 
             <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; color: #666; font-size: 14px; font-weight: 500;">
                 <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
@@ -369,10 +368,6 @@ onMounted(fetchAll)
     background: #d03050;
     color: #fff;
 }
-</style>
-
-
-<style scoped>
 .center {
     display: flex;
     text-align: left;
@@ -380,3 +375,6 @@ onMounted(fetchAll)
     justify-content: center;
 }
 </style>
+
+
+
