@@ -11,9 +11,6 @@ importers:
       '@fingerprintjs/fingerprintjs':
         specifier: ^5.2.0
         version: 5.2.0
-      '@simplewebauthn/browser':
-        specifier: ^13.3.0
-        version: 13.3.0
       '@unhead/vue':
         specifier: ^2.1.17
         version: 2.1.17(vue@3.5.42(typescript@5.4.5))
@@ -1433,8 +1430,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@simplewebauthn/browser@13.3.0':
-    resolution: {integrity: sha512-BE/UWv6FOToAdVk0EokzkqQQDOWtNydYlY6+OrmiZ5SCNmb41VehttboTetUM3T/fr6EAFYVXjz4My2wg230rQ==}
 
   '@sindresorhus/is@7.2.0':
     resolution: {integrity: sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw==}
@@ -4510,7 +4505,6 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.63.2':
     optional: true
 
-  '@simplewebauthn/browser@13.3.0': {}
 
   '@sindresorhus/is@7.2.0': {}
 
