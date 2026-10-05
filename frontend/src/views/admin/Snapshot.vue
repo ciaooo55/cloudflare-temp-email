@@ -36,8 +36,16 @@ const batchInput = ref('')
 const batchBinding = ref(false)
 // 批量绑定独立的有效期选择
 const batchDuration = ref(168)
-// 表格多选
+// 表格多选（跨页：存的是全部选中地址，不限当前页）
 const checkedAddrs = ref<string[]>([])
+// 分页：每页 10 个
+const page = ref(1)
+const pageSize = 10
+const pagedBindings = computed(() => {
+    const start = (page.value - 1) * pageSize
+    return bindings.value.slice(start, start + pageSize)
+})
+const pageCount = computed(() => Math.max(1, Math.ceil(bindings.value.length / pageSize)))
 // 批量操作栏的有效期选择（更换链接 / 调整有效期共用）
 const batchOpDuration = ref(168)
 const batchOpLoading = ref(false)
@@ -120,10 +128,11 @@ const toggleOne = (addr: string, checked: boolean) => {
     }
     checkedAddrs.value = [...set]
 }
-// 绑定列表变化时清理已不存在的选中项
+// 绑定列表变化时清理已不存在的选中项，并修正越界页码
 const pruneChecked = () => {
     const set = new Set(bindings.value.map(b => b.address.toLowerCase()))
     checkedAddrs.value = checkedAddrs.value.filter(a => set.has(a.toLowerCase()))
+    if (page.value > pageCount.value) page.value = pageCount.value
 }
 
 const addBinding = async () => {
@@ -200,7 +209,7 @@ const formatCopyDate = (ts: number): string => {
 }
 
 const bindingCopyText = (b: Binding): string =>
-    `邮箱：${b.address}\n查看邮件：${b.url}\n有效期：${formatCopyDate(b.expiresAt)}`
+    `邮箱：${b.address} 查看邮件：${b.url} 有效期：${formatCopyDate(b.expiresAt)}`
 
 // 单个邮箱复制信息
 const copyBindingInfo = (b: Binding) => copyText(bindingCopyText(b))
@@ -211,13 +220,13 @@ const copySelected = () => {
     const set = new Set(checkedAddrs.value.map(a => a.toLowerCase()))
     const selected = bindings.value.filter(b => set.has(b.address.toLowerCase()))
     if (!selected.length) return
-    copyText(selected.map(bindingCopyText).join('\n\n'))
+    copyText(selected.map(bindingCopyText).join('\n'))
 }
 
 // 一键复制全部绑定信息
 const copyAll = () => {
     if (!bindings.value.length) return
-    copyText(bindings.value.map(bindingCopyText).join('\n\n'))
+    copyText(bindings.value.map(bindingCopyText).join('\n'))
 }
 
 // 批量绑定：每行一个邮箱
@@ -507,7 +516,7 @@ onMounted(fetchAll)
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="b in bindings" :key="b.address">
+                    <tr v-for="b in pagedBindings" :key="b.address">
                         <td><n-checkbox :checked="checkedAddrs.includes(b.address)" @update:checked="(v: boolean) => toggleOne(b.address, v)" /></td>
                         <td style="white-space: nowrap;">{{ b.address }}</td>
                         <td>
@@ -534,6 +543,9 @@ onMounted(fetchAll)
                 </tbody>
             </n-table>
             </div>
+            <n-flex v-if="bindings.length > pageSize" justify="end" style="margin-top: 8px;">
+                <n-pagination v-model:page="page" :page-count="pageCount" :page-size="pageSize" :item-count="bindings.length" show-quick-jumper />
+            </n-flex>
             <n-flex style="margin-top: 12px;" align="center">
                 <n-input v-model:value="newAddress" :placeholder="t('addressPlaceholder')" style="width: 260px;" />
                 <n-select v-model:value="newDuration" :options="quickDurations" style="width: 160px;" />

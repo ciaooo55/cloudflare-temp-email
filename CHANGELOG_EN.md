@@ -8,7 +8,7 @@
 
 ## v1.13.0(main)
 
-- feat: |Snapshots| One-click copy for binding info: per-row "Copy info" button, "Copy selected" in the batch toolbar, and "Copy all" at the top-right of the binding list; format is email / view-mail URL / expiry (YYYY年MM月DD日HH时mm分, permanent bindings show "Permanent"), blocks separated by blank lines
+- feat: |Snapshots| One-click copy for binding info: per-row "Copy info" button, "Copy selected" in the batch toolbar, and "Copy all" at the top-right of the binding list; one line per binding (email / view-mail URL / expiry as YYYY年MM月DD日HH时mm分, permanent shows "Permanent"); list paginated at 10 per page with cross-page select-all
 
 - feat: |Snapshots| Batch operations for bindings: multi-select in the binding list with batch replace-links, batch extend-expiry (keeps the URL), and batch delete; single and batch binding now offer a "Permanent" duration option (no KV expiration, never auto-expires)
 - refactor: |Cleanup| Removed dead code: never-called duplicate `parseJsonLenient` in `ai_extract.ts` (the real one lives in `custom_ai.ts`), and 4 unused naive-ui imports in `AccountSettings.vue`
