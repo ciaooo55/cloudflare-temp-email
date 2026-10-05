@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
-import { useMessage, useDialog } from 'naive-ui'
+import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import { formatLocalDateTime } from '../../utils'
 // @ts-ignore
 import { api } from '../../api'
@@ -31,28 +31,43 @@ const boundCacheTtlOptions = computed(() =>
 )
 const bindings = ref<Binding[]>([])
 const newAddress = ref('')
-const newDuration = ref(168)
 const batchInput = ref('')
 const batchBinding = ref(false)
-// 批量绑定独立的有效期选择
-const batchDuration = ref(168)
-// 表格多选（跨页：存的是全部选中地址，不限当前页）
-const checkedAddrs = ref<string[]>([])
-// 分页：每页 10 个
-const page = ref(1)
-const pageSize = 10
-const pagedBindings = computed(() => {
-    const start = (page.value - 1) * pageSize
-    return bindings.value.slice(start, start + pageSize)
-})
-const pageCount = computed(() => Math.max(1, Math.ceil(bindings.value.length / pageSize)))
-// 批量操作栏的有效期选择（更换链接 / 调整有效期共用）
+
+// 有效期选择器：预设（含永久）+ 自定义小时数
+function useDurationPicker(defaultValue = 168) {
+    const preset = ref<number | 'custom'>(defaultValue)
+    const custom = ref<number | null>(null)
+    const value = computed(() =>
+        preset.value === 'custom' ? (custom.value || defaultValue) : (preset.value as number)
+    )
+    return { preset, custom, value }
+}
+const newDur = useDurationPicker(168)
+const batchDur = useDurationPicker(168)
+// 批量操作栏的有效期：预设即可
 const batchOpDuration = ref(168)
 const batchOpLoading = ref(false)
 
 // 永久有效哨兵：与后端 SNAPSHOT_BINDING_PERMANENT_MS 对应
 const PERMANENT_MS = 4102444800000
 const isPermanent = (expiresAt: number) => expiresAt >= PERMANENT_MS
+
+// 表格：搜索 + 多选（n-data-table 内置跨页多选）+ 分页
+const searchKw = ref('')
+const checkedRowKeys = ref<string[]>([])
+const tablePage = ref(1)
+const filteredBindings = computed(() => {
+    const kw = searchKw.value.trim().toLowerCase()
+    if (!kw) return bindings.value
+    return bindings.value.filter(b => b.address.toLowerCase().includes(kw))
+})
+watch(searchKw, () => { tablePage.value = 1 })
+// 绑定列表变化时清理已不存在的选中项
+const pruneChecked = () => {
+    const set = new Set(bindings.value.map(b => b.address))
+    checkedRowKeys.value = checkedRowKeys.value.filter(a => set.has(a))
+}
 
 // 允许绑定的域名：从后端 /admin/notify/snapshot 取，唯一来源是 Worker 配置的 DOMAINS
 const allowedDomains = ref<string[]>([]);
@@ -75,7 +90,7 @@ const fetchAll = async () => {
         allowedDomains.value = Array.isArray(s.allowedDomains) ? s.allowedDomains : []
         const b = await api.fetch(`/admin/notify/snapshot_bindings`)
         // Defensive: if the API ever returns non-array (null/error shape),
-        // keep [] so the template's `bindings.length` never throws (blank tab).
+        // keep [] so the template never throws (blank tab).
         bindings.value = Array.isArray(b) ? b : []
         pruneChecked()
     } catch (error) {
@@ -100,39 +115,84 @@ const saveSettings = async () => {
 }
 
 const fmtTime = (ts: number) => formatLocalDateTime(new Date(ts))
-const remainText = (ts: number) => {
-    if (isPermanent(ts)) return t('permanent')
-    const ms = ts - Date.now()
-    if (ms <= 0) return t('expired')
-    const h = Math.floor(ms / 3600000)
-    if (h < 24) return t('remainHours', { h })
-    return t('remainDays', { d: Math.floor(h / 24) })
+
+// 到期状态徽章
+const expiryTag = (row: Binding) => {
+    if (isPermanent(row.expiresAt)) {
+        return h(NTag, { size: 'small', type: 'success', bordered: false }, { default: () => t('permanent') })
+    }
+    const ms = row.expiresAt - Date.now()
+    if (ms <= 0) {
+        return h(NTag, { size: 'small', type: 'error', bordered: false }, { default: () => t('expired') })
+    }
+    const h_ = Math.floor(ms / 3600000)
+    if (h_ < 24) {
+        return h(NTag, { size: 'small', type: 'warning', bordered: false }, { default: () => t('remainHours', { h: h_ }) })
+    }
+    return h('span', { style: 'font-size: 12px; opacity: 0.6;' },
+        t('remainDays', { d: Math.floor(h_ / 24) }))
 }
 
-// 多选：全选 / 半选状态
-const allChecked = computed(() =>
-    bindings.value.length > 0 && checkedAddrs.value.length === bindings.value.length
-)
-const indeterminate = computed(() =>
-    checkedAddrs.value.length > 0 && checkedAddrs.value.length < bindings.value.length
-)
-const toggleAll = (checked: boolean) => {
-    checkedAddrs.value = checked ? bindings.value.map(b => b.address) : []
-}
-const toggleOne = (addr: string, checked: boolean) => {
-    const set = new Set(checkedAddrs.value)
-    if (checked) {
-        set.add(addr)
+const columns = computed(() => [
+    { type: 'selection' as const },
+    {
+        title: t('address'),
+        key: 'address',
+        ellipsis: { tooltip: true },
+        minWidth: 180,
+    },
+    {
+        title: t('snapshotUrl'),
+        key: 'url',
+        minWidth: 220,
+        render: (row: Binding) =>
+            h('a', { href: row.url, target: '_blank', style: 'font-size: 12px; word-break: break-all;' }, row.url),
+    },
+    {
+        title: t('expiresAt'),
+        key: 'expiresAt',
+        width: 170,
+        render: (row: Binding) =>
+            h(NSpace, { vertical: true, size: 2 }, {
+                default: () => [
+                    isPermanent(row.expiresAt)
+                        ? h('span', { style: 'font-size: 13px;' }, '—')
+                        : h('span', { style: 'font-size: 13px;' }, fmtTime(row.expiresAt)),
+                    expiryTag(row),
+                ],
+            }),
+    },
+    {
+        title: t('actions'),
+        key: 'actions',
+        width: 210,
+        render: (row: Binding) =>
+            h(NSpace, { size: 4 }, {
+                default: () => [
+                    h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => copyBindingInfo(row) },
+                        { default: () => t('copyInfo') }),
+                    h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => replaceBinding(row) },
+                        { default: () => t('replaceLink') }),
+                    h(NButton, { size: 'small', text: true, type: 'error', onClick: () => invalidate(row) },
+                        { default: () => t('invalidate') }),
+                ],
+            }),
+    },
+])
+
+// 选中行的完整绑定对象（保持列表顺序）
+const selectedBindings = computed(() => {
+    const set = new Set(checkedRowKeys.value)
+    return bindings.value.filter(b => set.has(b.address))
+})
+
+const upsertBinding = (b: Binding) => {
+    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase())
+    if (idx >= 0) {
+        bindings.value[idx] = b
     } else {
-        set.delete(addr)
+        bindings.value.unshift(b)
     }
-    checkedAddrs.value = [...set]
-}
-// 绑定列表变化时清理已不存在的选中项，并修正越界页码
-const pruneChecked = () => {
-    const set = new Set(bindings.value.map(b => b.address.toLowerCase()))
-    checkedAddrs.value = checkedAddrs.value.filter(a => set.has(a.toLowerCase()))
-    if (page.value > pageCount.value) page.value = pageCount.value
 }
 
 const addBinding = async () => {
@@ -143,20 +203,14 @@ const addBinding = async () => {
     try {
         const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
             method: 'POST',
-            body: JSON.stringify({ address: newAddress.value, durationHours: newDuration.value }),
+            body: JSON.stringify({ address: newAddress.value, durationHours: newDur.value }),
         })
         if (res.binding) {
             message.success(t('successTip'))
             newAddress.value = '';
             // Optimistic update: KV.list is eventually consistent, so add the new
             // binding directly instead of waiting for fetchAll to see it
-            const b = res.binding;
-            const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase());
-            if (idx >= 0) {
-                bindings.value[idx] = b;
-            } else {
-                bindings.value.unshift(b);
-            }
+            upsertBinding(res.binding);
         } else {
             message.error(res.error || "error");
         }
@@ -176,19 +230,16 @@ const invalidate = async (b: Binding) => {
                 await api.fetch(`/admin/notify/snapshot_bindings/${encodeURIComponent(b.address)}`, { method: 'DELETE' })
                 message.success(t('successTip'))
                 // Optimistic update: remove from list immediately (KV.list is eventually consistent)
-                const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase());
+                const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address.toLowerCase());
                 if (idx >= 0) {
                     bindings.value.splice(idx, 1);
+                    pruneChecked();
                 }
             } catch (error) {
                 message.error((error as Error).message || "error");
             }
         }
     })
-}
-
-const copyUrl = async (url: string) => {
-    await copyText(url)
 }
 
 const copyText = async (text: string) => {
@@ -199,6 +250,7 @@ const copyText = async (text: string) => {
         message.warning(text)
     }
 }
+const copyUrl = async (url: string) => copyText(url)
 
 // 复制用的有效期格式：2026年10月5日14时30分，永久绑定显示“永久有效”
 const formatCopyDate = (ts: number): string => {
@@ -216,11 +268,8 @@ const copyBindingInfo = (b: Binding) => copyText(bindingCopyText(b))
 
 // 复制选中的绑定信息
 const copySelected = () => {
-    if (!checkedAddrs.value.length) return
-    const set = new Set(checkedAddrs.value.map(a => a.toLowerCase()))
-    const selected = bindings.value.filter(b => set.has(b.address.toLowerCase()))
-    if (!selected.length) return
-    copyText(selected.map(bindingCopyText).join('\n'))
+    if (!selectedBindings.value.length) return
+    copyText(selectedBindings.value.map(bindingCopyText).join('\n'))
 }
 
 // 一键复制全部绑定信息
@@ -266,7 +315,7 @@ const batchBind = async () => {
         try {
             const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                 method: 'POST',
-                body: JSON.stringify({ address: addr, durationHours: batchDuration.value }),
+                body: JSON.stringify({ address: addr, durationHours: batchDur.value }),
             });
             if (res.binding) {
                 success++;
@@ -291,14 +340,7 @@ const batchBind = async () => {
     if (success > 0) {
         batchInput.value = '';
         // Optimistic update: KV.list is eventually consistent, add new bindings directly
-        for (const b of newBindings) {
-            const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase());
-            if (idx >= 0) {
-                bindings.value[idx] = b;
-            } else {
-                bindings.value.unshift(b);
-            }
-        }
+        for (const b of newBindings) upsertBinding(b);
     }
 }
 
@@ -313,17 +355,12 @@ const replaceBinding = async (b: Binding) => {
             try {
                 const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                     method: 'POST',
-                    body: JSON.stringify({ address: b.address, durationHours: newDuration.value }),
+                    body: JSON.stringify({ address: b.address, durationHours: newDur.value }),
                 });
                 if (res.binding) {
                     message.success(t('linkReplaced'));
                     // Optimistic update: replace the binding in place
-                    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase());
-                    if (idx >= 0) {
-                        bindings.value[idx] = res.binding;
-                    } else {
-                        bindings.value.unshift(res.binding);
-                    }
+                    upsertBinding(res.binding);
                 } else {
                     message.error(res.error || "error");
                 }
@@ -336,7 +373,7 @@ const replaceBinding = async (b: Binding) => {
 
 // 批量删除选中绑定
 const batchDelete = async () => {
-    const addrs = [...checkedAddrs.value]
+    const addrs = [...checkedRowKeys.value]
     if (!addrs.length) return
     dialog.warning({
         title: t('confirmTitle'),
@@ -359,7 +396,7 @@ const batchDelete = async () => {
                 // 乐观更新：从列表移除
                 const delSet = new Set(addrs.map(a => a.toLowerCase()))
                 bindings.value = bindings.value.filter(b => !delSet.has(b.address.toLowerCase()))
-                checkedAddrs.value = []
+                checkedRowKeys.value = []
             } catch (error) {
                 message.error((error as Error).message || "error")
             } finally {
@@ -371,7 +408,7 @@ const batchDelete = async () => {
 
 // 批量调整有效期：只改到期时间，不换链接
 const batchExtend = async () => {
-    const addrs = [...checkedAddrs.value]
+    const addrs = [...checkedRowKeys.value]
     if (!addrs.length) return
     dialog.warning({
         title: t('confirmTitle'),
@@ -392,11 +429,8 @@ const batchExtend = async () => {
                     message.success(t('batchOpDone', { success: res.updated || 0, failed: 0 }))
                 }
                 // 乐观更新：用返回的新绑定替换
-                for (const b of (res.bindings || [])) {
-                    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase())
-                    if (idx >= 0) bindings.value[idx] = b
-                }
-                checkedAddrs.value = []
+                for (const b of (res.bindings || [])) upsertBinding(b);
+                checkedRowKeys.value = []
             } catch (error) {
                 message.error((error as Error).message || "error")
             } finally {
@@ -408,7 +442,7 @@ const batchExtend = async () => {
 
 // 批量更换链接：生成新 token，旧链接立即失效
 const batchReplace = async () => {
-    const addrs = [...checkedAddrs.value]
+    const addrs = [...checkedRowKeys.value]
     if (!addrs.length) return
     dialog.warning({
         title: t('confirmTitle'),
@@ -428,15 +462,8 @@ const batchReplace = async () => {
                 } else {
                     message.success(t('batchOpDone', { success: res.replaced || 0, failed: 0 }))
                 }
-                for (const b of (res.bindings || [])) {
-                    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase())
-                    if (idx >= 0) {
-                        bindings.value[idx] = b
-                    } else {
-                        bindings.value.unshift(b)
-                    }
-                }
-                checkedAddrs.value = []
+                for (const b of (res.bindings || [])) upsertBinding(b);
+                checkedRowKeys.value = []
             } catch (error) {
                 message.error((error as Error).message || "error")
             } finally {
@@ -454,6 +481,12 @@ const quickDurations = computed(() => [
     { label: t('permanent'), value: 0 },
 ])
 
+// 有效期下拉选项：预设 + 自定义
+const durationOptions = computed(() => [
+    ...quickDurations.value,
+    { label: t('custom'), value: 'custom' as const },
+])
+
 const durationLabel = (v: number) => {
     const opt = quickDurations.value.find(o => o.value === v)
     return opt ? opt.label : `${v} ${t('hours')}`
@@ -464,7 +497,7 @@ onMounted(fetchAll)
 
 <template>
     <div class="center">
-        <n-card :bordered="false" embedded :title="t('title')" style="max-width: 900px; overflow: auto;">
+        <n-card :bordered="false" embedded :title="t('title')" style="max-width: 980px; overflow: auto;">
             <n-form-item-row :label="t('ttlHours')">
                 <n-input-group>
                     <n-input-number v-model:value="ttlHours" :min="1" :max="8760" style="width: 200px;" />
@@ -488,85 +521,62 @@ onMounted(fetchAll)
             </n-form-item-row>
 
             <n-divider>{{ t('bindings') }}</n-divider>
-            <n-flex justify="space-between" align="center">
-                <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
+            <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
+
+            <!-- 工具栏：搜索 + 复制全部 -->
+            <n-flex justify="space-between" align="center" style="margin: 12px 0 8px;">
+                <n-input v-model:value="searchKw" :placeholder="t('searchPlaceholder')" clearable style="width: 260px;" />
                 <n-button v-if="bindings.length" size="small" @click="copyAll">{{ t('copyAll') }}</n-button>
             </n-flex>
-            <!-- 批量操作栏：选中后出现 -->
-            <n-flex v-if="checkedAddrs.length" align="center" style="margin-top: 8px; padding: 8px 12px; background: rgba(127, 127, 127, 0.08); border-radius: 6px;">
-                <n-text strong>{{ t('selectedCount', { n: checkedAddrs.length }) }}</n-text>
-                <n-select v-model:value="batchOpDuration" :options="quickDurations" style="width: 150px;" />
-                <n-button size="small" @click="copySelected">{{ t('copySelected') }}</n-button>
-                <n-button size="small" :loading="batchOpLoading" @click="batchExtend">{{ t('batchExtend') }}</n-button>
-                <n-button size="small" :loading="batchOpLoading" @click="batchReplace">{{ t('batchReplace') }}</n-button>
-                <n-button size="small" type="error" ghost :loading="batchOpLoading" @click="batchDelete">{{ t('batchDelete') }}</n-button>
-                <n-button size="small" quaternary @click="checkedAddrs = []">{{ t('cancelSelection') }}</n-button>
+
+            <n-data-table v-model:checked-row-keys="checkedRowKeys" v-model:page="tablePage" :columns="columns"
+                :data="filteredBindings" :row-key="(row: Binding) => row.address"
+                :pagination="{ pageSize: 10 }" :bordered="false" />
+
+            <!-- 批量操作栏：常驻，未选中时禁用 -->
+            <n-flex align="center" style="margin-top: 12px; padding: 10px 12px; background: rgba(127, 127, 127, 0.07); border-radius: 8px;">
+                <n-tag type="info" :bordered="false">{{ t('selectedCount', { n: checkedRowKeys.length }) }}</n-tag>
+                <n-select v-model:value="batchOpDuration" :options="quickDurations" style="width: 140px;"
+                    :disabled="!checkedRowKeys.length" />
+                <n-button size="small" :disabled="!checkedRowKeys.length" @click="copySelected">{{ t('copySelected') }}</n-button>
+                <n-button size="small" :disabled="!checkedRowKeys.length" :loading="batchOpLoading" @click="batchExtend">{{ t('batchExtend') }}</n-button>
+                <n-button size="small" :disabled="!checkedRowKeys.length" :loading="batchOpLoading" @click="batchReplace">{{ t('batchReplace') }}</n-button>
+                <n-button size="small" type="error" ghost :disabled="!checkedRowKeys.length" :loading="batchOpLoading" @click="batchDelete">{{ t('batchDelete') }}</n-button>
             </n-flex>
-            <div style="overflow-x: auto;">
-            <n-table :bordered="false" style="margin-top: 8px; min-width: 760px;">
-                <thead>
-                    <tr>
-                        <th style="width: 36px; white-space: nowrap;">
-                            <n-checkbox :checked="allChecked" :indeterminate="indeterminate" @update:checked="toggleAll" />
-                        </th>
-                        <th style="white-space: nowrap;">{{ t('address') }}</th>
-                        <th>{{ t('snapshotUrl') }}</th>
-                        <th style="white-space: nowrap;">{{ t('expiresAt') }}</th>
-                        <th style="white-space: nowrap;">{{ t('actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="b in pagedBindings" :key="b.address">
-                        <td><n-checkbox :checked="checkedAddrs.includes(b.address)" @update:checked="(v: boolean) => toggleOne(b.address, v)" /></td>
-                        <td style="white-space: nowrap;">{{ b.address }}</td>
-                        <td>
-                            <a :href="b.url" target="_blank" style="font-size: 12px; word-break: break-all;">{{ b.url }}</a>
-                            <div><n-text depth="3" style="font-size: 12px;">{{ t('createdAt') }}: {{ fmtTime(b.createdAt) }}</n-text></div>
-                        </td>
-                        <td style="white-space: nowrap;">
-                            <div>{{ fmtTime(b.expiresAt) }}</div>
-                            <div><n-text depth="3" style="font-size: 12px;">{{ remainText(b.expiresAt) }}</n-text></div>
-                        </td>
-                        <td>
-                            <n-flex vertical>
-                                <n-button size="small" @click="copyUrl(b.url)">{{ t('copy') }}</n-button>
-                                <n-button size="small" @click="copyBindingInfo(b)">{{ t('copyInfo') }}</n-button>
-                                <n-button size="small" @click="replaceBinding(b)">{{ t('replaceLink') }}
-</n-button>
-                                <n-button size="small" type="error" ghost @click="invalidate(b)">{{ t('invalidate') }}</n-button>
-                            </n-flex>
-                        </td>
-                    </tr>
-                    <tr v-if="!bindings.length">
-                        <td colspan="5"><n-text depth="3">{{ t('noBindings') }}</n-text></td>
-                    </tr>
-                </tbody>
-            </n-table>
-            </div>
-            <n-flex v-if="bindings.length > pageSize" justify="end" style="margin-top: 8px;">
-                <n-pagination v-model:page="page" :page-count="pageCount" :page-size="pageSize" :item-count="bindings.length" show-quick-jumper />
-            </n-flex>
-            <n-flex style="margin-top: 12px;" align="center">
-                <n-input v-model:value="newAddress" :placeholder="t('addressPlaceholder')" style="width: 260px;" />
-                <n-select v-model:value="newDuration" :options="quickDurations" style="width: 160px;" />
-                <n-input-number v-model:value="newDuration" :min="1" :max="8760" :placeholder="t('durationPlaceholder')"
-                    :disabled="newDuration === 0" style="width: 140px;" />
-                <n-button type="primary" @click="addBinding">{{ t('bind') }}</n-button>
-            </n-flex>
+
+            <n-divider>{{ t('addBinding') }}</n-divider>
+            <n-form inline :show-feedback="false">
+                <n-form-item :label="t('address')">
+                    <n-input v-model:value="newAddress" :placeholder="t('addressPlaceholder')" style="width: 240px;" />
+                </n-form-item>
+                <n-form-item :label="t('duration')">
+                    <n-flex align="center">
+                        <n-select v-model:value="newDur.preset" :options="durationOptions" style="width: 150px;" />
+                        <n-input-number v-if="newDur.preset === 'custom'" v-model:value="newDur.custom"
+                            :min="1" :max="8760" :placeholder="t('durationPlaceholder')" style="width: 120px;" />
+                    </n-flex>
+                </n-form-item>
+                <n-form-item>
+                    <n-button type="primary" @click="addBinding">{{ t('bind') }}</n-button>
+                </n-form-item>
+            </n-form>
             <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
 
-            <n-divider>{{ t('batchBind') }}
-</n-divider>
+            <n-divider>{{ t('batchBind') }}</n-divider>
             <n-text depth="3" style="font-size: 12px;">{{ t('batchBindTip') }}</n-text>
             <n-input v-model:value="batchInput" type="textarea" :rows="5"
                 :placeholder="t('batchPlaceholder')"
                 style="margin-top: 8px; font-family: monospace;" />
             <n-flex style="margin-top: 8px;" align="center">
-                <n-select v-model:value="batchDuration" :options="quickDurations" style="width: 160px;" />
-                <n-button type="primary" :loading="batchBinding" @click="batchBind">{{ t('batchBind') }}
-</n-button>
-                <n-button @click="batchInput = ''">{{ t('clear') }}
-</n-button>
+                <n-form-item :label="t('duration')" :show-feedback="false">
+                    <n-flex align="center">
+                        <n-select v-model:value="batchDur.preset" :options="durationOptions" style="width: 150px;" />
+                        <n-input-number v-if="batchDur.preset === 'custom'" v-model:value="batchDur.custom"
+                            :min="1" :max="8760" :placeholder="t('durationPlaceholder')" style="width: 120px;" />
+                    </n-flex>
+                </n-form-item>
+                <n-button type="primary" :loading="batchBinding" @click="batchBind">{{ t('batchBind') }}</n-button>
+                <n-button @click="batchInput = ''">{{ t('clear') }}</n-button>
             </n-flex>
         </n-card>
     </div>

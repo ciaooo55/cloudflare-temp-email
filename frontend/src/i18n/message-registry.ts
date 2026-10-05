@@ -958,6 +958,22 @@ export const MESSAGE_REGISTRY = {
       "en": "Copy all",
       "zh": "复制全部"
     },
+    "searchPlaceholder": {
+      "en": "Search email address",
+      "zh": "搜索邮箱地址"
+    },
+    "addBinding": {
+      "en": "Add binding",
+      "zh": "添加绑定"
+    },
+    "duration": {
+      "en": "Duration",
+      "zh": "有效期"
+    },
+    "custom": {
+      "en": "Custom",
+      "zh": "自定义"
+    },
   },
   "views.admin.AiExtractSettings": {
     "allowList": {
