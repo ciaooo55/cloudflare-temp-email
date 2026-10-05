@@ -6,6 +6,7 @@ import {
     deleteSnapshotBinding,
     listSnapshotBindingRecords,
     snapshotBindKey,
+    updateSnapshotBindingExpiry,
 } from '../telegram_api/mail_snapshot.ts';
 import type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
 
@@ -347,7 +348,9 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     const { address, durationHours } = await c.req.json<{ address?: string; durationHours?: number }>();
     const addr = (address || "").trim().toLowerCase();
     if (!addr || !addr.includes("@")) return c.json({ error: "请填写有效的邮箱地址" }, 400);
-    const hours = Math.max(1, Math.min(24 * 365, Math.floor(Number(durationHours) || 168)));
+    // durationHours <= 0 表示永久有效；缺省 168 小时；上限 365 天
+    const raw = Number(durationHours);
+    const hours = Number.isFinite(raw) && raw <= 0 ? 0 : Math.max(1, Math.min(24 * 365, Math.floor(raw) || 168));
     if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
     const origin = snapshotOrigin(c);
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
@@ -390,6 +393,88 @@ async function invalidateSnapshotBinding(c: Context<HonoCustomType>): Promise<Re
     } catch { /* ignore */ }
     await deleteSnapshotBinding(c, addr, token);
     return c.json({ success: true });
+}
+
+/** 批量删除绑定 */
+async function batchDeleteSnapshotBindings(c: Context<HonoCustomType>): Promise<Response> {
+    const { addresses } = await c.req.json<{ addresses?: string[] }>();
+    const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
+    if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
+    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    let deleted = 0;
+    const failed: string[] = [];
+    for (const addr of list) {
+        try {
+            let token: string | undefined;
+            try {
+                const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+                token = b?.token;
+            } catch { /* ignore */ }
+            await deleteSnapshotBinding(c, addr, token);
+            deleted++;
+        } catch {
+            failed.push(addr);
+        }
+    }
+    return c.json({ success: true, deleted, failed });
+}
+
+/** 批量调整有效期：只改 expiresAt，不更换链接；durationHours <= 0 为永久有效 */
+async function batchExtendSnapshotBindings(c: Context<HonoCustomType>): Promise<Response> {
+    const { addresses, durationHours } = await c.req.json<{ addresses?: string[]; durationHours?: number }>();
+    const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
+    if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
+    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    const raw = Number(durationHours);
+    const hours = Number.isFinite(raw) && raw <= 0 ? 0 : Math.max(1, Math.min(24 * 365, Math.floor(raw) || 168));
+    let updated = 0;
+    const failed: string[] = [];
+    const bindings: SnapshotBinding[] = [];
+    for (const addr of list) {
+        try {
+            const b = await updateSnapshotBindingExpiry(c, addr, hours);
+            if (b) {
+                updated++;
+                bindings.push(b);
+            } else {
+                failed.push(addr);
+            }
+        } catch {
+            failed.push(addr);
+        }
+    }
+    return c.json({ success: true, updated, failed, bindings });
+}
+
+/** 批量更换链接：为每个地址生成新 token（旧链接立即失效） */
+async function batchReplaceSnapshotBindings(c: Context<HonoCustomType>): Promise<Response> {
+    const { addresses, durationHours } = await c.req.json<{ addresses?: string[]; durationHours?: number }>();
+    const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
+    if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
+    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    const raw = Number(durationHours);
+    const hours = Number.isFinite(raw) && raw <= 0 ? 0 : Math.max(1, Math.min(24 * 365, Math.floor(raw) || 168));
+    const origin = snapshotOrigin(c);
+    if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
+    const allowedDomains = getSnapshotAllowedDomains(c);
+    let replaced = 0;
+    const failed: string[] = [];
+    const bindings: SnapshotBinding[] = [];
+    for (const addr of list) {
+        try {
+            const domain = (addr.split("@")[1] || "").toLowerCase();
+            if (!allowedDomains.some(d => isDomainOrSubdomain(domain, d))) {
+                failed.push(addr);
+                continue;
+            }
+            const b = await createSnapshotBindingRecord(c, addr, hours, origin);
+            replaced++;
+            bindings.push(b);
+        } catch {
+            failed.push(addr);
+        }
+    }
+    return c.json({ success: true, replaced, failed, bindings });
 }
 
 export async function getSnapshotTtlSeconds(c: Context<HonoCustomType>): Promise<number> {
@@ -484,4 +569,7 @@ export default {
     listSnapshotBindings,
     createSnapshotBinding,
     invalidateSnapshotBinding,
+    batchDeleteSnapshotBindings,
+    batchExtendSnapshotBindings,
+    batchReplaceSnapshotBindings,
 };

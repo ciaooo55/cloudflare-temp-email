@@ -8,6 +8,9 @@
 
 ## v1.13.0(main)
 
+- feat: |Snapshots| Batch operations for bindings: multi-select in the binding list with batch replace-links, batch extend-expiry (keeps the URL), and batch delete; single and batch binding now offer a "Permanent" duration option (no KV expiration, never auto-expires)
+- refactor: |Cleanup| Removed dead code: never-called duplicate `parseJsonLenient` in `ai_extract.ts` (the real one lives in `custom_ai.ts`), and 4 unused naive-ui imports in `AccountSettings.vue`
+
 - refactor: |Cleanup| Deduplicated webhook test-send logic: admin and user `testWebhookSettings` now share the new `utils/webhook.sendTestWebhook`, removing ~30 lines of duplication
 - refactor: |Cleanup| Paid off yesterday's tech debt: added `address?` to the `ParsedEmailContext` type and removed two `as any` casts in `mail_snapshot.ts` (`parsed?.sender` was already in the type)
 - refactor: |Cleanup| Removed a redundant D1 query when creating addresses: `insertAddressRecord` now returns `meta.last_row_id` directly instead of SELECT-ing the id afterwards

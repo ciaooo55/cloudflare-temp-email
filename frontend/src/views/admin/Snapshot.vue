@@ -34,6 +34,17 @@ const newAddress = ref('')
 const newDuration = ref(168)
 const batchInput = ref('')
 const batchBinding = ref(false)
+// 批量绑定独立的有效期选择
+const batchDuration = ref(168)
+// 表格多选
+const checkedAddrs = ref<string[]>([])
+// 批量操作栏的有效期选择（更换链接 / 调整有效期共用）
+const batchOpDuration = ref(168)
+const batchOpLoading = ref(false)
+
+// 永久有效哨兵：与后端 SNAPSHOT_BINDING_PERMANENT_MS 对应
+const PERMANENT_MS = 4102444800000
+const isPermanent = (expiresAt: number) => expiresAt >= PERMANENT_MS
 
 // 允许绑定的域名：从后端 /admin/notify/snapshot 取，唯一来源是 Worker 配置的 DOMAINS
 const allowedDomains = ref<string[]>([]);
@@ -58,6 +69,7 @@ const fetchAll = async () => {
         // Defensive: if the API ever returns non-array (null/error shape),
         // keep [] so the template's `bindings.length` never throws (blank tab).
         bindings.value = Array.isArray(b) ? b : []
+        pruneChecked()
     } catch (error) {
         message.error((error as Error).message || "error");
     }
@@ -81,11 +93,37 @@ const saveSettings = async () => {
 
 const fmtTime = (ts: number) => formatLocalDateTime(new Date(ts))
 const remainText = (ts: number) => {
+    if (isPermanent(ts)) return t('permanent')
     const ms = ts - Date.now()
     if (ms <= 0) return t('expired')
     const h = Math.floor(ms / 3600000)
     if (h < 24) return t('remainHours', { h })
     return t('remainDays', { d: Math.floor(h / 24) })
+}
+
+// 多选：全选 / 半选状态
+const allChecked = computed(() =>
+    bindings.value.length > 0 && checkedAddrs.value.length === bindings.value.length
+)
+const indeterminate = computed(() =>
+    checkedAddrs.value.length > 0 && checkedAddrs.value.length < bindings.value.length
+)
+const toggleAll = (checked: boolean) => {
+    checkedAddrs.value = checked ? bindings.value.map(b => b.address) : []
+}
+const toggleOne = (addr: string, checked: boolean) => {
+    const set = new Set(checkedAddrs.value)
+    if (checked) {
+        set.add(addr)
+    } else {
+        set.delete(addr)
+    }
+    checkedAddrs.value = [...set]
+}
+// 绑定列表变化时清理已不存在的选中项
+const pruneChecked = () => {
+    const set = new Set(bindings.value.map(b => b.address.toLowerCase()))
+    checkedAddrs.value = checkedAddrs.value.filter(a => set.has(a.toLowerCase()))
 }
 
 const addBinding = async () => {
@@ -186,7 +224,7 @@ const batchBind = async () => {
         try {
             const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                 method: 'POST',
-                body: JSON.stringify({ address: addr, durationHours: newDuration.value }),
+                body: JSON.stringify({ address: addr, durationHours: batchDuration.value }),
             });
             if (res.binding) {
                 success++;
@@ -254,12 +292,130 @@ const replaceBinding = async (b: Binding) => {
     })
 }
 
+// 批量删除选中绑定
+const batchDelete = async () => {
+    const addrs = [...checkedAddrs.value]
+    if (!addrs.length) return
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmBatchDelete', { n: addrs.length }),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            batchOpLoading.value = true
+            try {
+                const res = await api.fetch(`/admin/notify/snapshot_bindings/batch_delete`, {
+                    method: 'POST',
+                    body: JSON.stringify({ addresses: addrs }),
+                })
+                const failed = res.failed || []
+                if (failed.length) {
+                    message.error(t('batchOpDone', { success: res.deleted || 0, failed: failed.length }) + '\n' + failed.join('\n'), { duration: 8000 })
+                } else {
+                    message.success(t('batchOpDone', { success: res.deleted || 0, failed: 0 }))
+                }
+                // 乐观更新：从列表移除
+                const delSet = new Set(addrs.map(a => a.toLowerCase()))
+                bindings.value = bindings.value.filter(b => !delSet.has(b.address.toLowerCase()))
+                checkedAddrs.value = []
+            } catch (error) {
+                message.error((error as Error).message || "error")
+            } finally {
+                batchOpLoading.value = false
+            }
+        }
+    })
+}
+
+// 批量调整有效期：只改到期时间，不换链接
+const batchExtend = async () => {
+    const addrs = [...checkedAddrs.value]
+    if (!addrs.length) return
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmBatchExtend', { n: addrs.length, duration: durationLabel(batchOpDuration.value) }),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            batchOpLoading.value = true
+            try {
+                const res = await api.fetch(`/admin/notify/snapshot_bindings/batch_extend`, {
+                    method: 'POST',
+                    body: JSON.stringify({ addresses: addrs, durationHours: batchOpDuration.value }),
+                })
+                const failed = res.failed || []
+                if (failed.length) {
+                    message.error(t('batchOpDone', { success: res.updated || 0, failed: failed.length }) + '\n' + failed.join('\n'), { duration: 8000 })
+                } else {
+                    message.success(t('batchOpDone', { success: res.updated || 0, failed: 0 }))
+                }
+                // 乐观更新：用返回的新绑定替换
+                for (const b of (res.bindings || [])) {
+                    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase())
+                    if (idx >= 0) bindings.value[idx] = b
+                }
+                checkedAddrs.value = []
+            } catch (error) {
+                message.error((error as Error).message || "error")
+            } finally {
+                batchOpLoading.value = false
+            }
+        }
+    })
+}
+
+// 批量更换链接：生成新 token，旧链接立即失效
+const batchReplace = async () => {
+    const addrs = [...checkedAddrs.value]
+    if (!addrs.length) return
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('confirmBatchReplace', { n: addrs.length }),
+        positiveText: t('positiveText'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            batchOpLoading.value = true
+            try {
+                const res = await api.fetch(`/admin/notify/snapshot_bindings/batch_replace`, {
+                    method: 'POST',
+                    body: JSON.stringify({ addresses: addrs, durationHours: batchOpDuration.value }),
+                })
+                const failed = res.failed || []
+                if (failed.length) {
+                    message.error(t('batchOpDone', { success: res.replaced || 0, failed: failed.length }) + '\n' + failed.join('\n'), { duration: 8000 })
+                } else {
+                    message.success(t('batchOpDone', { success: res.replaced || 0, failed: 0 }))
+                }
+                for (const b of (res.bindings || [])) {
+                    const idx = bindings.value.findIndex(x => x.address.toLowerCase() === b.address?.toLowerCase())
+                    if (idx >= 0) {
+                        bindings.value[idx] = b
+                    } else {
+                        bindings.value.unshift(b)
+                    }
+                }
+                checkedAddrs.value = []
+            } catch (error) {
+                message.error((error as Error).message || "error")
+            } finally {
+                batchOpLoading.value = false
+            }
+        }
+    })
+}
+
 const quickDurations = computed(() => [
     { label: `24 ${t('hours')}`, value: 24 },
     { label: `7 ${t('days')}`, value: 168 },
     { label: `30 ${t('days')}`, value: 720 },
     { label: `365 ${t('days')}`, value: 8760 },
+    { label: t('permanent'), value: 0 },
 ])
+
+const durationLabel = (v: number) => {
+    const opt = quickDurations.value.find(o => o.value === v)
+    return opt ? opt.label : `${v} ${t('hours')}`
+}
 
 onMounted(fetchAll)
 </script>
@@ -291,10 +447,22 @@ onMounted(fetchAll)
 
             <n-divider>{{ t('bindings') }}</n-divider>
             <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
+            <!-- 批量操作栏：选中后出现 -->
+            <n-flex v-if="checkedAddrs.length" align="center" style="margin-top: 8px; padding: 8px 12px; background: rgba(127, 127, 127, 0.08); border-radius: 6px;">
+                <n-text strong>{{ t('selectedCount', { n: checkedAddrs.length }) }}</n-text>
+                <n-select v-model:value="batchOpDuration" :options="quickDurations" style="width: 150px;" />
+                <n-button size="small" :loading="batchOpLoading" @click="batchExtend">{{ t('batchExtend') }}</n-button>
+                <n-button size="small" :loading="batchOpLoading" @click="batchReplace">{{ t('batchReplace') }}</n-button>
+                <n-button size="small" type="error" ghost :loading="batchOpLoading" @click="batchDelete">{{ t('batchDelete') }}</n-button>
+                <n-button size="small" quaternary @click="checkedAddrs = []">{{ t('cancelSelection') }}</n-button>
+            </n-flex>
             <div style="overflow-x: auto;">
-            <n-table :bordered="false" style="margin-top: 8px; min-width: 720px;">
+            <n-table :bordered="false" style="margin-top: 8px; min-width: 760px;">
                 <thead>
                     <tr>
+                        <th style="width: 36px; white-space: nowrap;">
+                            <n-checkbox :checked="allChecked" :indeterminate="indeterminate" @update:checked="toggleAll" />
+                        </th>
                         <th style="white-space: nowrap;">{{ t('address') }}</th>
                         <th>{{ t('snapshotUrl') }}</th>
                         <th style="white-space: nowrap;">{{ t('expiresAt') }}</th>
@@ -303,6 +471,7 @@ onMounted(fetchAll)
                 </thead>
                 <tbody>
                     <tr v-for="b in bindings" :key="b.address">
+                        <td><n-checkbox :checked="checkedAddrs.includes(b.address)" @update:checked="(v: boolean) => toggleOne(b.address, v)" /></td>
                         <td style="white-space: nowrap;">{{ b.address }}</td>
                         <td>
                             <a :href="b.url" target="_blank" style="font-size: 12px; word-break: break-all;">{{ b.url }}</a>
@@ -322,7 +491,7 @@ onMounted(fetchAll)
                         </td>
                     </tr>
                     <tr v-if="!bindings.length">
-                        <td colspan="4"><n-text depth="3">{{ t('noBindings') }}</n-text></td>
+                        <td colspan="5"><n-text depth="3">{{ t('noBindings') }}</n-text></td>
                     </tr>
                 </tbody>
             </n-table>
@@ -331,7 +500,7 @@ onMounted(fetchAll)
                 <n-input v-model:value="newAddress" :placeholder="t('addressPlaceholder')" style="width: 260px;" />
                 <n-select v-model:value="newDuration" :options="quickDurations" style="width: 160px;" />
                 <n-input-number v-model:value="newDuration" :min="1" :max="8760" :placeholder="t('durationPlaceholder')"
-                    style="width: 140px;" />
+                    :disabled="newDuration === 0" style="width: 140px;" />
                 <n-button type="primary" @click="addBinding">{{ t('bind') }}</n-button>
             </n-flex>
             <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
@@ -343,6 +512,7 @@ onMounted(fetchAll)
                 :placeholder="t('batchPlaceholder')"
                 style="margin-top: 8px; font-family: monospace;" />
             <n-flex style="margin-top: 8px;" align="center">
+                <n-select v-model:value="batchDuration" :options="quickDurations" style="width: 160px;" />
                 <n-button type="primary" :loading="batchBinding" @click="batchBind">{{ t('batchBind') }}
 </n-button>
                 <n-button @click="batchInput = ''">{{ t('clear') }}

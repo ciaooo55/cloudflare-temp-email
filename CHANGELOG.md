@@ -8,6 +8,9 @@
 
 ## v1.13.0(main)
 
+- feat: |快照| 绑定管理批量操作：绑定列表支持多选，可批量更换链接、批量调整有效期（不换链接）、批量删除；单个绑定和批量绑定新增“永久有效”选项（KV 不设过期、永不自动失效）
+- refactor: |代码清理| 删除死代码：`ai_extract.ts` 里从未被调用的 `parseJsonLenient` 重复定义（正版在 `custom_ai.ts`），`AccountSettings.vue` 里 4 个未使用的 naive-ui 导入
+
 - refactor: |代码清理| webhook 测试发送逻辑去重：admin 和用户两侧的 `testWebhookSettings` 共用新的 `utils/webhook.sendTestWebhook`，删掉约 30 行重复代码
 - refactor: |代码清理| 补上昨天欠的技术债：`ParsedEmailContext` 类型补上 `address?` 字段，`mail_snapshot.ts` 里删掉两处 `as any` 硬绕（`parsed?.sender` 本来就在类型里）
 - refactor: |代码清理| 建地址去掉多余的一次 D1 查询：`insertAddressRecord` 改为直接返回 `meta.last_row_id`，不再 SELECT 查 id

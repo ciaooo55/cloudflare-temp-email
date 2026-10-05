@@ -14,6 +14,13 @@ export type SnapshotBinding = {
     createdAt: number;
 };
 
+/** 永久有效绑定的 expiresAt 哨兵值：2100-01-01T00:00:00Z。所有 `expiresAt <= Date.now()` 的过期检查对它都返回 false。 */
+export const SNAPSHOT_BINDING_PERMANENT_MS = 4102444800000;
+
+export function isPermanentSnapshotBinding(expiresAt: number): boolean {
+    return expiresAt >= SNAPSHOT_BINDING_PERMANENT_MS;
+}
+
 export type VerificationInfo = { isVerification: boolean; code: string | null; verifyLink?: string | null };
 
 const VERIFICATION_KEYWORDS = "验证码|驗證碼|校验码|校驗碼|动态码|動態碼|认证码|認證碼|确认码|確認碼|安全码|安全碼|認証コード|確認コード|confirmation\\s*code|login\\s*code|verification\\s*code|security\\s*code|auth(?:entication)?\\s*code|one[- ]time\\s*(?:code|password)|OTP|passcode|password\\s*reset\\s*code|one[- ]time\\s*pin|(?:2fa|two[- ]factor(?:\\s*authentication)?)\\s*code|apple\\s*id\\s*code|apple\\s*id\\s*代码|(?:whatsapp|instagram|facebook)\\s*code|一次性密码|一次性密碼|动态密码|動態密碼|动态口令|動態口令";
@@ -252,7 +259,10 @@ export async function refreshBoundSnapshot(
         } catch { /* ignore, 下面会直接返回 */ }
     }
     if (!html && !text) return binding.url;
-    const remainingSec = Math.max(60, Math.floor((binding.expiresAt - Date.now()) / 1000));
+    // 永久绑定：内容 KV 不设过期；普通绑定按剩余时长设置
+    const htmlKvOpts = isPermanentSnapshotBinding(binding.expiresAt)
+        ? {}
+        : { expirationTtl: Math.max(60, Math.floor((binding.expiresAt - Date.now()) / 1000)) };
     const finalParsed = parsedEmailContext.parsedEmail;
     const sender = finalParsed?.sender || "";
     const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, dateMs: Date.now() });
@@ -276,7 +286,7 @@ export async function refreshBoundSnapshot(
         await c.env.KV.put(
             `${SNAPSHOT_HTML_KV_PREFIX}${binding.token}`,
             snapshotHtml,
-            { expirationTtl: remainingSec }
+            htmlKvOpts
         );
         // 内容已更新，清除边缘缓存保证及时刷新（否则 10 秒内看到的还是旧邮件）
         if (binding.url) {
@@ -410,10 +420,12 @@ export async function createSnapshotBindingRecord(
     const addr = address.trim().toLowerCase();
     const token = generateSecureHexToken(32);
     const now = Date.now();
+    // hours <= 0 表示永久有效：KV 不设过期（key 一直存活到手动删除），expiresAt 用哨兵值
+    const permanent = hours <= 0;
     const binding: SnapshotBinding = {
         address: addr, token,
         url: `${origin}/m/${token}`,
-        expiresAt: now + hours * 3600 * 1000,
+        expiresAt: permanent ? SNAPSHOT_BINDING_PERMANENT_MS : now + hours * 3600 * 1000,
         createdAt: now,
     };
     // 重新绑定：先销毁旧绑定，保证旧链接立即失效
@@ -441,12 +453,15 @@ export async function createSnapshotBindingRecord(
         await deleteSnapshotBinding(c, addr).catch(() => {});
     }
     const expiration = Math.floor(binding.expiresAt / 1000);
+    // 永久有效：KV 不设过期时间，key 存活到手动删除为止
+    const kvOpts = permanent ? {} : { expiration };
+    const htmlOpts = permanent ? {} : { expirationTtl: hours * 3600 };
     await Promise.all([
-        c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), { expiration }),
-        c.env.KV.put(snapshotBindRevKey(token), addr, { expiration }),
+        c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), kvOpts),
+        c.env.KV.put(snapshotBindRevKey(token), addr, kvOpts),
         c.env.KV.put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`,
             buildSnapshotHtml("", `该快照已绑定 ${addr}，等待第一封新邮件到达后显示最新内容。`, "快照已绑定"),
-            { expirationTtl: hours * 3600 }),
+            htmlOpts),
     ]);
     // D1 也写一份：refreshBoundSnapshot 优先读 D1（无 30 秒边缘缓存），建完立即发邮件也能找到绑定
     if (c.env.DB) {
@@ -455,6 +470,49 @@ export async function createSnapshotBindingRecord(
                 "INSERT INTO snapshot_bindings (address, token, url, expires_at, created_at) VALUES (?, ?, ?, ?, ?) " +
                 "ON CONFLICT(address) DO UPDATE SET token=excluded.token, url=excluded.url, expires_at=excluded.expires_at, created_at=excluded.created_at"
             ).bind(addr, token, binding.url, binding.expiresAt, binding.createdAt).run();
+        } catch { /* ignore, KV 为主 */ }
+    }
+    return binding;
+}
+
+/**
+ * 只调整绑定有效期，不更换 token/链接。
+ * hours <= 0 表示改为永久有效。绑定不存在或已过期返回 null。
+ */
+export async function updateSnapshotBindingExpiry(
+    c: Context<HonoCustomType>,
+    address: string,
+    hours: number
+): Promise<SnapshotBinding | null> {
+    const addr = address.trim().toLowerCase();
+    // 先读现有绑定（D1 优先，KV 回退），不存在或已过期则不处理
+    let binding: SnapshotBinding | null = null;
+    if (c.env.DB) {
+        try {
+            const row = await c.env.DB.prepare(
+                "SELECT token, url, expires_at, created_at FROM snapshot_bindings WHERE address = ?"
+            ).bind(addr).first<{ token: string; url: string; expires_at: number; created_at: number }>();
+            if (row) binding = { address: addr, token: row.token, url: row.url, expiresAt: row.expires_at, createdAt: row.created_at };
+        } catch { /* ignore, fallback to KV */ }
+    }
+    if (!binding) {
+        try {
+            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+        } catch { /* ignore */ }
+    }
+    if (!binding || binding.expiresAt <= Date.now()) return null;
+    const permanent = hours <= 0;
+    binding.expiresAt = permanent ? SNAPSHOT_BINDING_PERMANENT_MS : Date.now() + hours * 3600 * 1000;
+    const kvOpts = permanent ? {} : { expiration: Math.floor(binding.expiresAt / 1000) };
+    await Promise.all([
+        c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), kvOpts),
+        c.env.KV.put(snapshotBindRevKey(binding.token), addr, kvOpts),
+    ]);
+    if (c.env.DB) {
+        try {
+            await c.env.DB.prepare(
+                "UPDATE snapshot_bindings SET expires_at = ? WHERE address = ?"
+            ).bind(binding.expiresAt, addr).run();
         } catch { /* ignore, KV 为主 */ }
     }
     return binding;

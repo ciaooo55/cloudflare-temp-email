@@ -747,8 +747,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "小时数"
     },
     "durationTip": {
-      "en": "Binding duration in hours. After expiry the old snapshot URL becomes invalid and the address is unbound. You can also invalidate it manually in advance.",
-      "zh": "绑定时长（小时）。到期后旧快照链接失效、邮箱自动解绑，也可以提前手动失效。"
+      "en": "Binding duration in hours. After expiry the old snapshot URL becomes invalid and the address is unbound. You can also invalidate it manually in advance. Choose Permanent for a binding that never expires.",
+      "zh": "绑定时长（小时）。到期后旧快照链接失效、邮箱自动解绑，也可以提前手动失效。选“永久有效”则永不过期。"
     },
     "expired": {
       "en": "expired",
@@ -905,6 +905,46 @@ export const MESSAGE_REGISTRY = {
     "clear": {
       "en": "Clear",
       "zh": "清空"
+    },
+    "permanent": {
+      "en": "Permanent",
+      "zh": "永久有效"
+    },
+    "selectedCount": {
+      "en": "{n} selected",
+      "zh": "已选 {n} 个"
+    },
+    "batchExtend": {
+      "en": "Extend Expiry",
+      "zh": "调整有效期"
+    },
+    "batchReplace": {
+      "en": "Replace Links",
+      "zh": "更换链接"
+    },
+    "batchDelete": {
+      "en": "Delete",
+      "zh": "删除"
+    },
+    "cancelSelection": {
+      "en": "Clear selection",
+      "zh": "取消选择"
+    },
+    "confirmBatchDelete": {
+      "en": "Delete {n} selected bindings? Their snapshot URLs will stop working immediately.",
+      "zh": "确定删除选中的 {n} 个绑定吗？快照链接将立即失效。"
+    },
+    "confirmBatchExtend": {
+      "en": "Set the expiry of {n} selected bindings to \"{duration}\"? The snapshot URLs stay the same.",
+      "zh": "确定将选中的 {n} 个绑定有效期设为「{duration}」吗？快照链接保持不变。"
+    },
+    "confirmBatchReplace": {
+      "en": "Replace the links of {n} selected bindings? The old URLs will stop working immediately.",
+      "zh": "确定为选中的 {n} 个绑定更换链接吗？旧链接将立即失效。"
+    },
+    "batchOpDone": {
+      "en": "Batch done: {success} succeeded, {failed} failed",
+      "zh": "批量操作完成：成功 {success} 个，失败 {failed} 个"
     },
   },
   "views.admin.AiExtractSettings": {
