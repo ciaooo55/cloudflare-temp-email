@@ -179,12 +179,45 @@ const invalidate = async (b: Binding) => {
 }
 
 const copyUrl = async (url: string) => {
+    await copyText(url)
+}
+
+const copyText = async (text: string) => {
     try {
-        await navigator.clipboard.writeText(url)
+        await navigator.clipboard.writeText(text)
         message.success(t('copied'))
     } catch {
-        message.warning(url)
+        message.warning(text)
     }
+}
+
+// 复制用的有效期格式：2026年10月5日14时30分，永久绑定显示“永久有效”
+const formatCopyDate = (ts: number): string => {
+    if (isPermanent(ts)) return t('permanent')
+    const d = new Date(ts)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}年${p(d.getMonth() + 1)}月${p(d.getDate())}日${p(d.getHours())}时${p(d.getMinutes())}分`
+}
+
+const bindingCopyText = (b: Binding): string =>
+    `邮箱：${b.address}\n查看邮件：${b.url}\n有效期：${formatCopyDate(b.expiresAt)}`
+
+// 单个邮箱复制信息
+const copyBindingInfo = (b: Binding) => copyText(bindingCopyText(b))
+
+// 复制选中的绑定信息
+const copySelected = () => {
+    if (!checkedAddrs.value.length) return
+    const set = new Set(checkedAddrs.value.map(a => a.toLowerCase()))
+    const selected = bindings.value.filter(b => set.has(b.address.toLowerCase()))
+    if (!selected.length) return
+    copyText(selected.map(bindingCopyText).join('\n\n'))
+}
+
+// 一键复制全部绑定信息
+const copyAll = () => {
+    if (!bindings.value.length) return
+    copyText(bindings.value.map(bindingCopyText).join('\n\n'))
 }
 
 // 批量绑定：每行一个邮箱
@@ -446,11 +479,15 @@ onMounted(fetchAll)
             </n-form-item-row>
 
             <n-divider>{{ t('bindings') }}</n-divider>
-            <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
+            <n-flex justify="space-between" align="center">
+                <n-text depth="3" style="font-size: 12px;">{{ t('bindingsTip') }}</n-text>
+                <n-button v-if="bindings.length" size="small" @click="copyAll">{{ t('copyAll') }}</n-button>
+            </n-flex>
             <!-- 批量操作栏：选中后出现 -->
             <n-flex v-if="checkedAddrs.length" align="center" style="margin-top: 8px; padding: 8px 12px; background: rgba(127, 127, 127, 0.08); border-radius: 6px;">
                 <n-text strong>{{ t('selectedCount', { n: checkedAddrs.length }) }}</n-text>
                 <n-select v-model:value="batchOpDuration" :options="quickDurations" style="width: 150px;" />
+                <n-button size="small" @click="copySelected">{{ t('copySelected') }}</n-button>
                 <n-button size="small" :loading="batchOpLoading" @click="batchExtend">{{ t('batchExtend') }}</n-button>
                 <n-button size="small" :loading="batchOpLoading" @click="batchReplace">{{ t('batchReplace') }}</n-button>
                 <n-button size="small" type="error" ghost :loading="batchOpLoading" @click="batchDelete">{{ t('batchDelete') }}</n-button>
@@ -484,6 +521,7 @@ onMounted(fetchAll)
                         <td>
                             <n-flex vertical>
                                 <n-button size="small" @click="copyUrl(b.url)">{{ t('copy') }}</n-button>
+                                <n-button size="small" @click="copyBindingInfo(b)">{{ t('copyInfo') }}</n-button>
                                 <n-button size="small" @click="replaceBinding(b)">{{ t('replaceLink') }}
 </n-button>
                                 <n-button size="small" type="error" ghost @click="invalidate(b)">{{ t('invalidate') }}</n-button>

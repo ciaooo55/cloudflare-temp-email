@@ -946,6 +946,18 @@ export const MESSAGE_REGISTRY = {
       "en": "Batch done: {success} succeeded, {failed} failed",
       "zh": "批量操作完成：成功 {success} 个，失败 {failed} 个"
     },
+    "copyInfo": {
+      "en": "Copy info",
+      "zh": "复制信息"
+    },
+    "copySelected": {
+      "en": "Copy selected",
+      "zh": "复制选中"
+    },
+    "copyAll": {
+      "en": "Copy all",
+      "zh": "复制全部"
+    },
   },
   "views.admin.AiExtractSettings": {
     "allowList": {
