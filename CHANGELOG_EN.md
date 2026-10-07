@@ -8,6 +8,9 @@
 
 ## v1.13.0(main)
 
+- feat: |mail| Show original recipient for forwarded emails: extract from To header on receipt, display in snapshot page and TG/Bark pushes
+- fix: |snapshot| Batch bind "cyclic object value" error: `useDurationPicker` returns an object, `batchDur.value` was the ref itself; fixed three `.value.value` usages
+
 - feat: |Snapshots| One-click copy for binding info: per-row "Copy info" button, "Copy selected" in the batch toolbar, and "Copy all" at the top-right of the binding list; one line per binding (email / view-mail URL / expiry as YYYY年MM月DD日HH时mm分, permanent shows "Permanent"); list paginated at 10 per page with cross-page select-all
 
 - feat: |Snapshots| Batch operations for bindings: multi-select in the binding list with batch replace-links, batch extend-expiry (keeps the URL), and batch delete; single and batch binding now offer a "Permanent" duration option (no KV expiration, never auto-expires)
