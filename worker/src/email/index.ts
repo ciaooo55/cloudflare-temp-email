@@ -52,8 +52,20 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         console.error("inbound rate limit check error", error);
     }
     const rawEmail = await new Response(message.raw).text();
+    // 转发邮件：从 To 头提取原始收件人（信封收件人 message.to 已被转发改写）
+    let originalRecipient: string | undefined;
+    try {
+        const toHeader = message.headers.get("To") || "";
+        // 取第一个邮箱地址
+        const m = toHeader.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+        const origAddr = m ? m[1].toLowerCase() : "";
+        if (origAddr && origAddr !== message.to.toLowerCase()) {
+            originalRecipient = origAddr;
+        }
+    } catch { /* ignore */ }
     const parsedEmailContext: ParsedEmailContext = {
-        rawEmail: rawEmail
+        rawEmail: rawEmail,
+        originalRecipient,
     };
 
     // check if junk mail

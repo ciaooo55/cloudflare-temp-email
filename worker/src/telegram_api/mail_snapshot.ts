@@ -127,7 +127,7 @@ export function sanitizeSnapshotHtml(html: string): string {
     return content;
 }
 
-export function buildSnapshotHtml(html: string, text: string, subject: string, meta?: { sender?: string; recipient?: string; dateMs?: number }): string {
+export function buildSnapshotHtml(html: string, text: string, subject: string, meta?: { sender?: string; recipient?: string; originalRecipient?: string; dateMs?: number }): string {
     let content = sanitizeSnapshotHtml(String(html || ""));
     if (!content) {
         content = `<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit;margin:0">${escapeHtml(String(text || ""))}</pre>`;
@@ -141,6 +141,7 @@ export function buildSnapshotHtml(html: string, text: string, subject: string, m
         header = `<div style="background:#f5f7fa;border:1px solid #e1e4e8;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:13px;color:#586069;line-height:1.8">`
             + (meta.sender ? `<div>来件邮箱：${escapeHtml(String(meta.sender))}</div>` : "")
             + (meta.recipient ? `<div>收件邮箱：${escapeHtml(String(meta.recipient))}</div>` : "")
+            + (meta.originalRecipient ? `<div>原始收件：${escapeHtml(String(meta.originalRecipient))}</div>` : "")
             + (timeStr ? `<div>时间：${escapeHtml(timeStr)}</div>` : "")
             + `</div>`;
     }
@@ -165,17 +166,18 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
     await c.env.KV.put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
         sender: parsed?.sender || "",
         recipient: address || parsedEmailContext.address || "",
+        originalRecipient: parsedEmailContext.originalRecipient,
         dateMs: Date.now(),
     }), { expirationTtl: ttlSeconds });
     return `${origin}/m/${token}`;
 }
 
 export function buildCompactMailMessage(info: {
-    chinese: boolean; subject: string; address: string; sender: string; createdAt: string; codeInfo: VerificationInfo; snapshotUrl: string;
+    chinese: boolean; subject: string; address: string; sender: string; createdAt: string; codeInfo: VerificationInfo; snapshotUrl: string; originalRecipient?: string;
 }): { text: string; entities: { type: "url" | "pre"; offset: number; length: number }[] } {
     const lines = info.chinese
-        ? ["📩 新邮件", "━━━━━━━━━━━━━━", `主题：${info.subject || "（无主题）"}`, `收件：${info.address}`, `发件：${info.sender || "未知"}`, `时间：${info.createdAt}`]
-        : ["📩 New mail", `Subject: ${info.subject || "(no subject)"}`, `To: ${info.address}`, `From: ${info.sender || "unknown"}`, `Date: ${info.createdAt}`];
+        ? ["📩 新邮件", "━━━━━━━━━━━━━━", `主题：${info.subject || "（无主题）"}`, `收件：${info.address}` + (info.originalRecipient ? `（原：${info.originalRecipient}）` : ""), `发件：${info.sender || "未知"}`, `时间：${info.createdAt}`]
+        : ["📩 New mail", `Subject: ${info.subject || "(no subject)"}`, `To: ${info.address}` + (info.originalRecipient ? ` (orig: ${info.originalRecipient})` : ""), `From: ${info.sender || "unknown"}`, `Date: ${info.createdAt}`];
     let text = lines.join("\n");
     const entities: { type: "url" | "pre"; offset: number; length: number }[] = [];
     if (info.codeInfo.isVerification) {
@@ -265,7 +267,7 @@ export async function refreshBoundSnapshot(
         : { expirationTtl: Math.max(60, Math.floor((binding.expiresAt - Date.now()) / 1000)) };
     const finalParsed = parsedEmailContext.parsedEmail;
     const sender = finalParsed?.sender || "";
-    const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, dateMs: Date.now() });
+    const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, originalRecipient: parsedEmailContext.originalRecipient, dateMs: Date.now() });
     // 绑定快照内容同时写入 D1：KV 读取有 30 秒边缘缓存强制下限，
     // 新邮件到达后 /m/ 必须秒级可见，D1 无此限制。D1 写入失败则删行，
     // 保证 /m/ 回退到 KV（KV 里是新内容，不会读到 D1 的旧行）。

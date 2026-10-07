@@ -475,17 +475,20 @@ const parseMail = async (
             ? parsedText.substring(0, 1000) + `\n\n...\n${msgs.TgMsgTooLongMsg}` : parsedText;
         const body = parsedText || msgs.TgParseFailedViewInAppMsg;
         const aiExtractBlock = formatAiExtractForTelegram(msgs, aiExtract);
+        const origTag = parsedEmailContext.originalRecipient
+            ? (chinese ? `（原：${parsedEmailContext.originalRecipient}）` : ` (orig: ${parsedEmailContext.originalRecipient})`)
+            : "";
         const header = chinese
             ? aiExtractBlock
                 + `📩 新邮件\n━━━━━━━━━━━━━━\n`
                 + `主题：${parsedEmail?.subject || "（无主题）"}\n`
-                + `收件：${address}\n`
+                + `收件：${address}${origTag}\n`
                 + `发件：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
                 + (created_at ? `时间：${created_at}\n` : "")
                 + `\n📄 邮件正文\n──────────────\n`
             : aiExtractBlock
                 + `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
-                + `To: ${address}\n`
+                + `To: ${address}${origTag}\n`
                 + (created_at ? `Date: ${created_at}\n` : "")
                 + `Subject: ${parsedEmail?.subject || ""}\nContent:\n`;
         const footer = chinese ? `\n━━━━━━━━━━━━━━` : "";
@@ -503,7 +506,7 @@ const parseMail = async (
 }
 
 async function sendBarkPush(env: Bindings, mail: {
-    subject: string; sender: string; to: string; bodyText: string; html: string; text: string; snapshotUrl: string | null;
+    subject: string; sender: string; to: string; bodyText: string; html: string; text: string; snapshotUrl: string | null; originalRecipient?: string;
 }, deviceKeys?: string[], pushUrl?: string, aiExtract?: ExtractResult | null) {
     try {
         const rawKeys = deviceKeys && deviceKeys.length
@@ -517,7 +520,7 @@ async function sendBarkPush(env: Bindings, mail: {
             device_keys: keys.join(","),
             title: code ? `🔑 ${code}` : "📩 新邮件",
             subtitle: mail.sender || "未知",
-            body: `主题：${mail.subject || "(无主题)"}\n收件：${mail.to}${code && mail.snapshotUrl ? `\n${mail.snapshotUrl}` : ""}`,
+            body: `主题：${mail.subject || "(无主题)"}\n收件：${mail.to}${mail.originalRecipient ? `（原：${mail.originalRecipient}）` : ""}${code && mail.snapshotUrl ? `\n${mail.snapshotUrl}` : ""}`,
             level: "timeSensitive", group: "temp-mail", isArchive: "1",
         });
         if (code) {
@@ -613,6 +616,7 @@ export async function sendMailNotifications(
             subject: parsed?.subject || "",
             sender: parsed?.sender || "",
             to: address,
+            originalRecipient: parsedEmailContext.originalRecipient,
             bodyText: mailBody(parsed?.text || "", parsed?.html || ""),
             html: parsed?.html || "",
             text: parsed?.text || "",
@@ -645,6 +649,7 @@ export async function sendMailNotifications(
                 subject: parsedEmailContext.parsedEmail?.subject || "",
                 address,
                 sender: parsedEmailContext.parsedEmail?.sender || "",
+                originalRecipient: parsedEmailContext.originalRecipient,
                 createdAt,
                 codeInfo: (() => {
                     const local = extractVerificationCodeWithSubject(

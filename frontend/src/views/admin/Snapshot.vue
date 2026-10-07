@@ -203,7 +203,7 @@ const addBinding = async () => {
     try {
         const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
             method: 'POST',
-            body: JSON.stringify({ address: newAddress.value, durationHours: newDur.value }),
+            body: JSON.stringify({ address: newAddress.value, durationHours: newDur.value.value }),
         })
         if (res.binding) {
             message.success(t('successTip'))
@@ -315,7 +315,7 @@ const batchBind = async () => {
         try {
             const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                 method: 'POST',
-                body: JSON.stringify({ address: addr, durationHours: batchDur.value }),
+                body: JSON.stringify({ address: addr, durationHours: batchDur.value.value }),
             });
             if (res.binding) {
                 success++;
@@ -355,7 +355,7 @@ const replaceBinding = async (b: Binding) => {
             try {
                 const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                     method: 'POST',
-                    body: JSON.stringify({ address: b.address, durationHours: newDur.value }),
+                    body: JSON.stringify({ address: b.address, durationHours: newDur.value.value }),
                 });
                 if (res.binding) {
                     message.success(t('linkReplaced'));
