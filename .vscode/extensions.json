@@ -1,8 +1,0 @@
-{
-  "recommendations": [
-    "ms-python.vscode-pylance",
-    "1yib.rust-bundle",
-    "rust-lang.rust-analyzer",
-    "vue.volar"
-  ]
-}

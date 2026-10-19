@@ -47,7 +47,7 @@ jobs:
 
       - name: Deploy Frontend for ${{ github.ref_name }}
         run: |
-          cd frontend/
+          cd app/frontend/
           pnpm install --no-frozen-lockfile
           pnpm build:pages
           cd ../pages/

@@ -30,7 +30,7 @@ jobs:
       - name: Deploy Frontend for ${{ github.ref_name }}
         if: ${{ env.FRONTEND_NAME != '' }}
         run: |
-          cd frontend/
+          cd app/frontend/
           echo "${{ secrets.FRONTEND_ENV }}" > .env.prod
           pnpm install --no-frozen-lockfile
           export frontend_branch="${{ secrets.FRONTEND_BRANCH }}"
@@ -67,7 +67,7 @@ jobs:
       - name: Deploy Telegram Frontend for ${{ github.ref_name }}
         if: ${{ env.TG_FRONTEND_NAME != '' }}
         run: |
-          cd frontend/
+          cd app/frontend/
           echo "${{ secrets.FRONTEND_ENV }}" > .env.prod
           pnpm install --no-frozen-lockfile
           export frontend_branch="${{ secrets.FRONTEND_BRANCH }}"
