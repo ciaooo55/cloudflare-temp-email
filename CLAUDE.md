@@ -4,14 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Structure
 
-- **Backend**: `worker/` — Cloudflare Workers API using Hono framework. Entry: `worker/src/worker.ts`, APIs under `worker/src/*_api/`.
-- **Frontend**: `frontend/` — Vue 3 + Naive UI app deployed to Cloudflare Pages. Routes in `frontend/src/router/`.
-- **Pages middleware**: `pages/functions/_middleware.js` — Routes API calls to Worker backend.
-- **Mail parser**: `mail-parser-wasm/` — Rust WASM email parser.
-- **SMTP/IMAP proxy**: `smtp_proxy_server/` — Python proxy server.
-- **DB schema/migrations**: `db/` — SQLite via Cloudflare D1, dated migration patches.
-- **Docs**: `vitepress-docs/` — VitePress documentation site (zh + en).
-- **E2E tests**: `e2e/` — Playwright tests in Docker Compose (API, browser, SMTP proxy).
+- **Backend**: `app/worker/` — Cloudflare Workers API using Hono framework. Entry: `app/worker/src/worker.ts`, APIs under `app/worker/src/*_api/`.
+- **Frontend**: `app/frontend/` — Vue 3 + Naive UI app deployed to Cloudflare Pages. Routes in `app/frontend/src/router/`.
+- **Bridge**: `bridge/` — Cross-account email forwarding worker (HMAC-signed).
+- **Skills & Tests**: `skills-test/` — `skills/` (AI agent skills), `e2e/` (Playwright tests), `scripts/` (utility scripts).
 - **Changelogs**: `CHANGELOG.md` (中文) + `CHANGELOG_EN.md` (English).
 
 ## Build & Dev Commands
@@ -20,16 +16,12 @@ Run inside each subfolder with `pnpm`:
 
 | Folder | Dev | Build | Lint | Deploy |
 |--------|-----|-------|------|--------|
-| `worker/` | `pnpm dev` | `pnpm build` | `pnpm lint` | `pnpm deploy` |
-| `frontend/` | `pnpm dev` | `pnpm build` | — | `pnpm deploy` |
-| `vitepress-docs/` | `pnpm dev` | `pnpm build` | — | — |
-| `mail-parser-wasm/` | — | `wasm-pack build --release` | — | — |
-
-SMTP proxy: `pip install -r smtp_proxy_server/requirements.txt` then `python smtp_proxy_server/main.py`.
+| `app/worker/` | `pnpm dev` | `pnpm build` | `pnpm lint` | via `~/workspace/cf-worker/deploy.py` (not `pnpm deploy`) |
+| `app/frontend/` | `pnpm dev` | `pnpm build` | — | Cloudflare Pages auto-deploy on push to main |
 
 ## E2E Tests
 
-Tests run in Docker Compose with Playwright. From `e2e/`:
+Tests run in Docker Compose with Playwright. From `skills-test/e2e/`:
 
 ```bash
 npm test              # Build, run all tests, exit
