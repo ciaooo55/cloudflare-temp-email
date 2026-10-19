@@ -20,7 +20,7 @@ description: Simulate a real incoming email end-to-end (triggering Telegram/Bark
 
 ## 步骤
 
-### 1. 加临时接口（`worker/src/worker.ts`）
+### 1. 加临时接口（`app/worker/src/worker.ts`）
 
 imports 增加：
 ```typescript
@@ -78,7 +78,7 @@ curl -sk "https://ciaooo55.looo.cloud/test-simulate-email?address=test-sim@looo.
 
 把第 1 步加的三处代码全部删掉，确认：
 ```bash
-grep -c "test-simulate-email\|TEMP-TEST" worker/src/worker.ts
+grep -c "test-simulate-email\|TEMP-TEST" app/worker/src/worker.ts
 # 必须返回 0
 ```
 

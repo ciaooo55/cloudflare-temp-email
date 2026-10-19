@@ -39,7 +39,7 @@ Key patterns for browser tests:
 
 ## Architecture
 
-### Worker Auth Flow (`worker/src/worker.ts`)
+### Worker Auth Flow (`app/worker/src/worker.ts`)
 
 Three auth layers applied via Hono middleware, each using different headers:
 
@@ -52,9 +52,9 @@ Three auth layers applied via Hono middleware, each using different headers:
 
 Public endpoints (no auth): `/open_api/*`. Multi-user system removed — admin-only now.
 
-### Worker Email Flow (`worker/src/email/`)
+### Worker Email Flow (`app/worker/src/email/`)
 
-Cloudflare Email Worker entry: `email()` in `worker/src/email/index.ts`. Processing pipeline:
+Cloudflare Email Worker entry: `email()` in `app/worker/src/email/index.ts`. Processing pipeline:
 1. Parse raw email → check junk → check address exists
 2. Auto-reply if configured → forward if configured → webhook if enabled
 3. Store in D1 database
