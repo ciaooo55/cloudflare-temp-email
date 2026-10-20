@@ -12,6 +12,7 @@
 - fix: |push| Worker-internal Bark pushes now use the workers.dev endpoint: fetching the public same-zone domain from inside a worker is blocked by Cloudflare (522); default push URL changed to https://bark-worker.18715260182.workers.dev/push
 - perf: |frontend| Enable PWA precache and cache-first for static assets (~80 files, 2.8MB); navigations stay network-first and API data is never cached, speeding up page refreshes
 - fix: |deploy| `SNAPSHOT_BASE_URL` default in `wrangler.toml.template` updated from retired m.ciaooo55.us.ci to https://api.ciaooo55.de5.net
+- docs: |docs| `AGENTS.md` and `CLAUDE.md` structure, build commands and paths aligned with the current `app/` layout (removed references to removed vitepress-docs, smtp_proxy_server, mail-parser-wasm dirs)
 - feat: |mail| Show original recipient for forwarded emails: extract from To header on receipt, display in snapshot page and TG/Bark pushes
 - fix: |snapshot| Batch bind "cyclic object value" error: `useDurationPicker` returns an object, `batchDur.value` was the ref itself; fixed three `.value.value` usages
 

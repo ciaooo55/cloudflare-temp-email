@@ -59,13 +59,13 @@ Cloudflare Email Worker entry: `email()` in `app/worker/src/email/index.ts`. Pro
 2. Auto-reply if configured → forward if configured → webhook if enabled
 3. Store in D1 database
 
-### Frontend State (`frontend/src/store/index.js`, `frontend/src/api/index.js`)
+### Frontend State (`app/frontend/src/store/index.js`, `app/frontend/src/api/index.js`)
 
 Global state via VueUse `useStorage` for persistence. The `api` module wraps axios with auto-attached auth headers and fingerprinting. API base URL comes from `VITE_API_BASE` env var (empty = same origin).
 
 ## Coding Style
 
-- `worker/` uses TypeScript + ESLint; `frontend/` uses Vue SFCs.
+- `app/worker/` uses TypeScript + ESLint; `app/frontend/` uses Vue SFCs.
 - Keep existing naming patterns: `*_api/` folders, `utils/`, `models/`.
 - ESM imports only (`type: module`).
 
@@ -80,14 +80,12 @@ Global state via VueUse `useStorage` for persistence. The `api` module wraps axi
 After completing any feature, bug fix, or improvement, **always check**:
 
 1. **CHANGELOG.md** (中文) and **CHANGELOG_EN.md** (English) — both must be updated under the current `(main)` version section with the change entry. Follow the existing format: `- feat/fix/docs: |模块| 描述`.
-2. **Documentation** — if the change involves new environment variables, new API endpoints, or configuration changes, update the corresponding docs in `vitepress-docs/docs/zh/` and `vitepress-docs/docs/en/`. Key files:
-   - `guide/worker-vars.md` — Worker environment variables
-   - `guide/ui/` — Frontend deployment docs
-   - `guide/feature/` — Feature-specific docs
-   - `api/` — API reference docs
+2. **Documentation** — if the change involves new environment variables, new API endpoints, or configuration changes, update the corresponding docs (`app/README.md`, `bridge/README.md`). Key files:
+   - `app/worker/wrangler.toml.template` — Worker environment variables and bindings reference
+   - `app/frontend/` — Frontend build/deploy notes
 3. **Both languages** — docs and changelogs exist in Chinese and English; always update both.
 
 ## Config
 
-- Worker settings in `worker/wrangler.toml` (see `wrangler.toml.template` for bindings).
+- Worker settings deploy via wrangler using `app/worker/wrangler.toml` (see `wrangler.toml.template` for bindings).
 - Frontend uses `VITE_*` env vars. Don't commit secrets.
