@@ -70,7 +70,7 @@ deploy.py 会自动备份线上版本 + 检查 bindings 漂移（必须 16 项�
 
 ```bash
 MARKER="SIM-$(date +%s)"
-curl -sk "https://ciaooo55.looo.cloud/test-simulate-email?address=test-sim@looo.cloud&marker=$MARKER"
+curl -sk "https://api.ciaooo55.de5.net/test-simulate-email?address=test-sim@looo.cloud&marker=$MARKER"
 # 返回 {"ok":true,...} 即触发成功，手机应收到 TG/Bark 推送
 ```
 
@@ -87,7 +87,7 @@ grep -c "test-simulate-email\|TEMP-TEST" app/worker/src/worker.ts
 ### 5. 确认生产无残留
 
 ```bash
-curl -sk "https://ciaooo55.looo.cloud/test-simulate-email?marker=verify-gone"
+curl -sk "https://api.ciaooo55.de5.net/test-simulate-email?marker=verify-gone"
 # 应返回 {"code":"AUTH_SITE_PASSWORD_INVALID",...}（401）
 # 如果还返回 {"ok":true}，说明边缘缓存未同步，等 1-2 分钟再验
 ```
