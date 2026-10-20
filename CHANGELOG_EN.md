@@ -9,6 +9,9 @@
 ## v1.13.0(main)
 
 - fix: |deploy| Unify domains to ciaooo55.de5.net: Pages proxy `functions/_middleware.js` backend URL now reads env var `BACKEND_URL` (default https://api.ciaooo55.de5.net) instead of hardcoded m.ciaooo55.us.ci; worker default Bark push URL updated to https://bark.ciaooo55.de5.net/push
+- fix: |push| Worker-internal Bark pushes now use the workers.dev endpoint: fetching the public same-zone domain from inside a worker is blocked by Cloudflare (522); default push URL changed to https://bark-worker.18715260182.workers.dev/push
+- perf: |frontend| Enable PWA precache and cache-first for static assets (~80 files, 2.8MB); navigations stay network-first and API data is never cached, speeding up page refreshes
+- fix: |deploy| `SNAPSHOT_BASE_URL` default in `wrangler.toml.template` updated from retired m.ciaooo55.us.ci to https://api.ciaooo55.de5.net
 - feat: |mail| Show original recipient for forwarded emails: extract from To header on receipt, display in snapshot page and TG/Bark pushes
 - fix: |snapshot| Batch bind "cyclic object value" error: `useDurationPicker` returns an object, `batchDur.value` was the ref itself; fixed three `.value.value` usages
 

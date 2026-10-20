@@ -9,6 +9,9 @@
 ## v1.13.0(main)
 
 - fix: |部署| 域名统一到 ciaooo55.de5.net：前端 Pages 代理 `functions/_middleware.js` 的后端地址从写死的 m.ciaooo55.us.ci 改为环境变量 `BACKEND_URL`（默认 https://api.ciaooo55.de5.net）；worker 默认 Bark 推送地址改为 https://bark.ciaooo55.de5.net/push
+- fix: |推送| worker 内部 Bark 推送改走 workers.dev 地址：与 bark-worker 同 zone 时经公网域名 fetch 被 Cloudflare 拦截（522），默认推送地址改为 https://bark-worker.18715260182.workers.dev/push
+- perf: |前端| PWA 静态资源启用预缓存与缓存优先（约 80 个文件、2.8MB），页面导航网络优先、接口数据不缓存，加快页面刷新
+- fix: |部署| `wrangler.toml.template` 中 `SNAPSHOT_BASE_URL` 默认值由已下线的 m.ciaooo55.us.ci 更新为 https://api.ciaooo55.de5.net
 - feat: |邮件| 转发邮件显示原始收件人：收信时从 To 头提取原始地址，快照页、TG/Bark 推送均显示"原始收件"
 - fix: |快照| 批量绑定"cyclic object value"报错：`useDurationPicker` 返回对象，`batchDur.value` 拿到的是 ref 本体，`JSON.stringify` 直接炸；三处改为 `.value.value`
 
