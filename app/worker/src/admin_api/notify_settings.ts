@@ -50,7 +50,7 @@ export type SnapshotSettings = {
 
 export type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
 
-export const DEFAULT_BARK_PUSH_URL = "https://bark.ciaooo55.us.ci/push";
+export const DEFAULT_BARK_PUSH_URL = "https://bark.ciaooo55.de5.net/push";
 export const DEFAULT_SNAPSHOT_TTL_HOURS = 24;
 /** 绑定快照边缘缓存默认关闭；开启时默认 10 秒 */
 export const DEFAULT_BOUND_CACHE_ENABLED = false;

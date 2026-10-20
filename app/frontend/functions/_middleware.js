@@ -9,8 +9,8 @@ const API_PATHS = [
 ];
 
 // Backend worker URL - proxies API requests to the production worker.
-// Uses service binding if configured (BACKEND), otherwise fetches via HTTPS.
-const BACKEND_URL = "https://m.ciaooo55.us.ci";
+// Configurable via Pages env var BACKEND_URL; defaults to the canonical domain.
+const DEFAULT_BACKEND_URL = "https://api.ciaooo55.de5.net";
 
 export async function onRequest(context) {
     const reqPath = new URL(context.request.url).pathname;
@@ -19,9 +19,10 @@ export async function onRequest(context) {
         if (context.env.BACKEND) {
             return context.env.BACKEND.fetch(context.request);
         }
+        const backendUrl = context.env.BACKEND_URL || DEFAULT_BACKEND_URL;
         // Fallback: proxy via HTTPS to the backend worker
         const url = new URL(context.request.url);
-        url.host = new URL(BACKEND_URL).host;
+        url.host = new URL(backendUrl).host;
         url.protocol = "https:";
         url.port = "";
         const req = new Request(url.toString(), context.request);

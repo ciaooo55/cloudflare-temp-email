@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |部署| 域名统一到 ciaooo55.de5.net：前端 Pages 代理 `functions/_middleware.js` 的后端地址从写死的 m.ciaooo55.us.ci 改为环境变量 `BACKEND_URL`（默认 https://api.ciaooo55.de5.net）；worker 默认 Bark 推送地址改为 https://bark.ciaooo55.de5.net/push
 - feat: |邮件| 转发邮件显示原始收件人：收信时从 To 头提取原始地址，快照页、TG/Bark 推送均显示"原始收件"
 - fix: |快照| 批量绑定"cyclic object value"报错：`useDurationPicker` 返回对象，`batchDur.value` 拿到的是 ref 本体，`JSON.stringify` 直接炸；三处改为 `.value.value`
 
