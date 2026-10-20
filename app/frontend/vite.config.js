@@ -40,8 +40,26 @@ export default defineConfig({
       },
       workbox: {
         disableDevLogs: true,
-        globPatterns: [],
-        runtimeCaching: [],
+        // 静态资源文件名带哈希、内容不可变，全部预缓存：刷新时不再重复下载 3MB 文件
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,wasm}'],
+        runtimeCaching: [
+          {
+            // 页面导航：优先网络（保证拿到最新版），断网时回退缓存
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: { cacheName: 'page-cache' },
+          },
+          {
+            // 静态资源：缓存优先（哈希文件名，部署后自动换新名失效）
+            urlPattern: ({ request }) =>
+              ['script', 'style', 'image', 'font', 'wasm'].includes(request.destination),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'asset-cache',
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
         navigateFallback: null,
         cleanupOutdatedCaches: true,
       },
