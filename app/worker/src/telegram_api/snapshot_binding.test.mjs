@@ -8,6 +8,7 @@ import {
     getSnapshotBinding,
     listSnapshotBindingRecords,
     refreshBoundSnapshot,
+    refreshBoundSnapshotsForIncomingMail,
     snapshotBindKey,
     snapshotBindRevKey,
     SNAPSHOT_KV_EDGE_TTL,
@@ -198,4 +199,29 @@ test("snapshot KV reads use short edge cache ttl (prompt refresh/invalidation)",
         assert.equal(typeof type, "object", `KV.get(${key}) should pass options object`);
         assert.equal(type.cacheTtl, SNAPSHOT_KV_EDGE_TTL, `KV.get(${key}) cacheTtl`);
     }
+});
+
+test("incoming forwarded mail refreshes the binding held by the original recipient", async () => {
+    const kv = makeKv();
+    const c = ctx(kv);
+    // 绑定挂在原始收件人（转发前的 iCloud 地址）名下，信封收件人是另一个地址
+    const b = await createSnapshotBindingRecord(c, "orig@icloud.com", 0, "https://snap.example.com");
+    const mail = {
+        parsedEmail: { html: "<p>code 654321</p>", text: "", subject: "s", sender: "meta@example.com" },
+        originalRecipient: "orig@icloud.com",
+    };
+    await refreshBoundSnapshotsForIncomingMail(c, "envelope@looo.cloud", mail);
+    const htmlEntry = kv.store.get(`mailhtml:${b.token}`);
+    assert.ok(htmlEntry, "bound snapshot content should be written");
+    assert.match(htmlEntry.value, /code 654321/);
+    // 原始收件与绑定地址相同，快照页不重复显示“原始收件”
+    assert.doesNotMatch(htmlEntry.value, /原始收件/);
+});
+
+test("incoming direct mail refreshes only the envelope binding", async () => {
+    const kv = makeKv();
+    const c = ctx(kv);
+    const b = await createSnapshotBindingRecord(c, "direct@example.com", 24, "https://snap.example.com");
+    await refreshBoundSnapshotsForIncomingMail(c, "direct@example.com", mailCtx("<p>hi 111222</p>"));
+    assert.match(kv.store.get(`mailhtml:${b.token}`).value, /hi 111222/);
 });

@@ -2,7 +2,7 @@ import { Context } from "hono";
 
 import { getJsonSetting, normalizeAddressDomain } from '../utils.ts';
 import { sendMailNotifications } from '../telegram_api/index.ts';
-import { refreshBoundSnapshot } from '../telegram_api/mail_snapshot.ts';
+import { refreshBoundSnapshotsForIncomingMail } from '../telegram_api/mail_snapshot.ts';
 import { isBlocked } from './black_list.ts';
 import { checkInboundRateLimit } from './inbound_rate_limit.ts';
 import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common.ts';
@@ -140,7 +140,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // bound snapshot: overwrite the fixed snapshot url with the newest mail
     try {
-        await refreshBoundSnapshot(
+        await refreshBoundSnapshotsForIncomingMail(
             { env: env } as Context<HonoCustomType>,
             toAddress, parsedEmailContext);
     } catch (error) {

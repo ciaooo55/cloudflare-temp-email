@@ -267,7 +267,8 @@ export async function refreshBoundSnapshot(
         : { expirationTtl: Math.max(60, Math.floor((binding.expiresAt - Date.now()) / 1000)) };
     const finalParsed = parsedEmailContext.parsedEmail;
     const sender = finalParsed?.sender || "";
-    const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, originalRecipient: parsedEmailContext.originalRecipient, dateMs: Date.now() });
+    const origRecipient = parsedEmailContext.originalRecipient;
+    const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, originalRecipient: origRecipient && origRecipient.toLowerCase() !== addr ? origRecipient : undefined, dateMs: Date.now() });
     // 绑定快照内容同时写入 D1：KV 读取有 30 秒边缘缓存强制下限，
     // 新邮件到达后 /m/ 必须秒级可见，D1 无此限制。D1 写入失败则删行，
     // 保证 /m/ 回退到 KV（KV 里是新内容，不会读到 D1 的旧行）。
@@ -301,6 +302,23 @@ export async function refreshBoundSnapshot(
         return null;
     }
     return binding.url;
+}
+
+/**
+ * 收信后的绑定快照刷新入口：先按信封收件人刷新；
+ * 转发邮件的绑定常挂在原始收件人（To 头）名下，再按原始收件人刷新一次，
+ * 否则这类绑定永远停在占位页（新邮件只落在信封地址上）。
+ */
+export async function refreshBoundSnapshotsForIncomingMail(
+    c: Context<HonoCustomType>,
+    address: string,
+    parsedEmailContext: ParsedEmailContext
+): Promise<void> {
+    await refreshBoundSnapshot(c, address, parsedEmailContext);
+    const original = parsedEmailContext.originalRecipient?.toLowerCase();
+    if (original && original !== address.toLowerCase()) {
+        await refreshBoundSnapshot(c, original, parsedEmailContext);
+    }
 }
 
 export const snapshotBindKey = (address: string) => `snapshot-bind:${address.toLowerCase()}`;
