@@ -450,6 +450,11 @@ onBeforeUnmount(() => {
                         TO: {{ row.address }}
                       </n-ellipsis>
                     </n-tag>
+                    <n-tag v-if="showEMailTo" type="success">
+                      <n-ellipsis style="max-width: 240px;">
+                        {{ t('originalRecipient') }}: {{ row.originalRecipient || row.address }}
+                      </n-ellipsis>
+                    </n-tag>
                     <AiExtractInfo :metadata="row.metadata" compact />
                   </template>
                 </n-thing>
@@ -535,6 +540,11 @@ onBeforeUnmount(() => {
                       TO: {{ row.address }}
                     </n-ellipsis>
                   </n-tag>
+                  <n-tag v-if="showEMailTo" type="success">
+                    <n-ellipsis class="mail-list-meta-text">
+                      {{ t('originalRecipient') }}: {{ row.originalRecipient || row.address }}
+                    </n-ellipsis>
+                  </n-tag>
                   <AiExtractInfo :metadata="row.metadata" compact />
                 </div>
               </template>
@@ -586,6 +596,11 @@ onBeforeUnmount(() => {
                 <n-tag v-if="showEMailTo" type="info">
                   <n-ellipsis style="max-width: 240px;">
                     TO: {{ row.address }}
+                  </n-ellipsis>
+                </n-tag>
+                <n-tag v-if="showEMailTo" type="success">
+                  <n-ellipsis style="max-width: 240px;">
+                    {{ t('originalRecipient') }}: {{ row.originalRecipient || row.address }}
                   </n-ellipsis>
                 </n-tag>
                 <AiExtractInfo :metadata="row.metadata" compact />

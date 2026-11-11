@@ -9,6 +9,7 @@
 ## v1.13.0(main)
 
 - feat: |mail| Show the original receiving address in the mail detail view with one-click copy: the original recipient is extracted from the raw mail's To header while parsing, and the detail header gains an "Original To" tag with a copy button (same definition as the backend's forwarded-mail original recipient)
+- feat: |mail| Mail list items also show the original recipient: each list row gains an "Original To" tag after TO, using the same definition as the detail view
 - feat: |snapshot| Out-of-allowlist domains now warn instead of blocking snapshot bindings: the create/batch-replace binding APIs accept an `ignoreDomainWarning` flag (requests without it are still rejected); the single bind, batch bind, replace link and batch replace flows warn first and continue binding after confirmation
 - fix: |snapshot| Duration picker ignored for single bindings (always 7 days): refs inside the plain object returned by `useDurationPicker` are not unwrapped by template `v-model`, so picker assignments overwrote the ref itself and the computed duration never saw the new choice (backend fell back to the 168h default); wrap the picker state in `reactive` and update the three read sites (`.value.value` -> `.value`)
 - fix: |deploy| Unify domains to ciaooo55.de5.net: Pages proxy `functions/_middleware.js` backend URL now reads env var `BACKEND_URL` (default https://api.ciaooo55.de5.net) instead of hardcoded m.ciaooo55.us.ci; worker default Bark push URL updated to https://bark.ciaooo55.de5.net/push

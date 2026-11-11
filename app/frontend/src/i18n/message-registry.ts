@@ -87,6 +87,10 @@ export const MESSAGE_REGISTRY = {
       "en": "Next",
       "zh": "下一封"
     },
+    "originalRecipient": {
+      "en": "Original To",
+      "zh": "原始收件"
+    },
     "pleaseSelectMail": {
       "en": "Please select mail",
       "zh": "请选择邮件"
