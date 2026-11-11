@@ -397,7 +397,7 @@ export async function listSnapshotBindingRecords(c: Context<HonoCustomType>): Pr
     const { keys } = await c.env.KV.list({ prefix: "snapshot-bind:" });
     const bindings: SnapshotBinding[] = [];
     for (const k of keys) {
-        const b = await c.env.KV.get<SnapshotBinding>(k.name, "json");
+        const b = await c.env.KV.get<SnapshotBinding>(k.name, { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         if (!b) continue;
         if (b.expiresAt <= Date.now()) {
             await deleteSnapshotBinding(c, b.address, b.token).catch(() => {});
@@ -443,7 +443,7 @@ export async function createSnapshotBindingRecord(
             } catch { /* ignore, fallback to KV */ }
         }
         if (!oldToken) {
-            const oldBinding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+            const oldBinding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
             if (oldBinding?.token) oldToken = oldBinding.token;
         }
         if (oldToken) {
@@ -499,7 +499,7 @@ export async function updateSnapshotBindingExpiry(
     }
     if (!binding) {
         try {
-            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         } catch { /* ignore */ }
     }
     if (!binding || binding.expiresAt <= Date.now()) return null;
