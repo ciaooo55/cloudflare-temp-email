@@ -6,6 +6,7 @@ import {
     deleteSnapshotBinding,
     listSnapshotBindingRecords,
     snapshotBindKey,
+    SNAPSHOT_KV_EDGE_TTL,
     updateSnapshotBindingExpiry,
 } from '../telegram_api/mail_snapshot.ts';
 import type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
@@ -389,7 +390,7 @@ async function invalidateSnapshotBinding(c: Context<HonoCustomType>): Promise<Re
     // 先查到旧 token 再删，保证 D1/KV/反向索引清干净（KV 边缘缓存可能导致直接删时反查不到 token）
     let token: string | undefined;
     try {
-        const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+        const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
         token = b?.token;
     } catch { /* ignore */ }
     await deleteSnapshotBinding(c, addr, token);
@@ -408,7 +409,7 @@ async function batchDeleteSnapshotBindings(c: Context<HonoCustomType>): Promise<
         try {
             let token: string | undefined;
             try {
-                const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json" });
+                const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
                 token = b?.token;
             } catch { /* ignore */ }
             await deleteSnapshotBinding(c, addr, token);

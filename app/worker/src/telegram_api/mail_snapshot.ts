@@ -367,6 +367,25 @@ export async function getSnapshotBinding(c: Context<HonoCustomType>, address: st
     }
 }
 
+/**
+ * 通知选快照链接用：先按信封收件人找绑定，找不到再按原始收件人找。
+ * 转发邮件的绑定常挂在原始收件人名下，与收信刷新（refreshBoundSnapshotsForIncomingMail）同一口径，
+ * 否则推送只会退回一次性快照，固定绑定链接永远用不上。
+ */
+export async function getSnapshotBindingForMail(
+    c: Context<HonoCustomType>,
+    address: string,
+    originalRecipient?: string
+): Promise<SnapshotBinding | null> {
+    const bound = await getSnapshotBinding(c, address);
+    if (bound?.url) return bound;
+    const original = originalRecipient?.toLowerCase();
+    if (original && original !== address.toLowerCase()) {
+        return getSnapshotBinding(c, original);
+    }
+    return null;
+}
+
 /** 删除绑定：正向绑定 + 快照 HTML 删除，反向索引写入删除标记（短 TTL，见上）。
  * 更换/失效链接后，旧 token 在各 PoP 一律 404，不会再命中边缘缓存里的旧页面。 */
 export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address: string, token?: string): Promise<void> {

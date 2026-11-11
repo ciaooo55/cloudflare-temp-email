@@ -6,6 +6,7 @@ import {
     DEFAULT_SNAPSHOT_TTL,
     deleteSnapshotBinding,
     getSnapshotBinding,
+    getSnapshotBindingForMail,
     listSnapshotBindingRecords,
     refreshBoundSnapshot,
     refreshBoundSnapshotsForIncomingMail,
@@ -224,4 +225,24 @@ test("incoming direct mail refreshes only the envelope binding", async () => {
     const b = await createSnapshotBindingRecord(c, "direct@example.com", 24, "https://snap.example.com");
     await refreshBoundSnapshotsForIncomingMail(c, "direct@example.com", mailCtx("<p>hi 111222</p>"));
     assert.match(kv.store.get(`mailhtml:${b.token}`).value, /hi 111222/);
+});
+
+test("getSnapshotBindingForMail falls back to the original recipient binding", async () => {
+    const kv = makeKv();
+    const c = ctx(kv);
+    const b = await createSnapshotBindingRecord(c, "orig@icloud.com", 0, "https://snap.example.com");
+    const bound = await getSnapshotBindingForMail(c, "envelope@looo.cloud", "orig@icloud.com");
+    assert.equal(bound?.token, b.token);
+    assert.equal(bound?.url, b.url);
+});
+
+test("getSnapshotBindingForMail prefers the envelope binding when both exist", async () => {
+    const kv = makeKv();
+    const c = ctx(kv);
+    const envBinding = await createSnapshotBindingRecord(c, "envelope@looo.cloud", 24, "https://snap.example.com");
+    await createSnapshotBindingRecord(c, "orig@icloud.com", 24, "https://snap.example.com");
+    const bound = await getSnapshotBindingForMail(c, "envelope@looo.cloud", "orig@icloud.com");
+    assert.equal(bound?.token, envBinding.token);
+    // 无原始收件人且信封无绑定时返回 null
+    assert.equal(await getSnapshotBindingForMail(c, "nobody@example.com", undefined), null);
 });

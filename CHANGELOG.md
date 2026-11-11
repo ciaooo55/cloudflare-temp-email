@@ -14,6 +14,7 @@
 - fix: |快照| 单个绑定有效期选择无效（恒为 7 天）：`useDurationPicker` 返回的普通对象中的 ref 在模板 `v-model` 里不解包，选择器的赋值会把 ref 本体覆盖掉，计算值恒读不到新选择、后端收到空值回退默认 168 小时；改用 `reactive` 包裹返回值并同步三处取值（`.value.value` 改为 `.value`）
 - fix: |快照| 补齐三处快照绑定 KV 读取缺失的边缘缓存参数（cacheTtl 30 秒），与既定“快照及时刷新”口径一致，修复全量测试中一项既存失败
 - fix: |快照| 修复原始收件人名下绑定永不刷新的问题：收信时只按信封收件人刷新绑定，转发邮件（如 iCloud 隐私邮箱转发）的绑定挂在原始收件人名下，导致这类绑定一直停在占位页；收信刷新改为信封地址与原始收件人各刷一次
+- fix: |快照| 同类问题一并修复：推送（TG/Bark）选快照链接时同样按原始收件人回退查绑定，转发邮件推送改用固定绑定链接（内容已在收信时刷新）；管理端删除/批量删除绑定前的两处 KV 读取补齐 cacheTtl 30 秒，与快照及时刷新口径统一
 - fix: |部署| 域名统一到 ciaooo55.de5.net：前端 Pages 代理 `functions/_middleware.js` 的后端地址从写死的 m.ciaooo55.us.ci 改为环境变量 `BACKEND_URL`（默认 https://api.ciaooo55.de5.net）；worker 默认 Bark 推送地址改为 https://bark.ciaooo55.de5.net/push
 - fix: |推送| worker 内部 Bark 推送改走 workers.dev 地址：与 bark-worker 同 zone 时经公网域名 fetch 被 Cloudflare 拦截（522），默认推送地址改为 https://bark-worker.18715260182.workers.dev/push
 - perf: |前端| PWA 静态资源启用预缓存与缓存优先（约 80 个文件、2.8MB），页面导航网络优先、接口数据不缓存，加快页面刷新

@@ -17,7 +17,7 @@ import {
     buildCompactMailMessage,
     createMailSnapshot,
     extractVerificationCodeWithSubject,
-    getSnapshotBinding,
+    getSnapshotBindingForMail,
 } from './mail_snapshot.ts';
 import { resolveRawEmail } from '../gzip.ts';
 import { UserFromGetMe } from "telegraf/types";
@@ -597,7 +597,7 @@ export async function sendMailNotifications(
     let snapshotUrl: string | null = null;
     if (wantBark || wantTg) {
         try {
-            const bound = await getSnapshotBinding(c, address).catch(() => null);
+            const bound = await getSnapshotBindingForMail(c, address, parsedEmailContext.originalRecipient).catch(() => null);
             if (bound?.url) {
                 snapshotUrl = bound.url;
             } else {
