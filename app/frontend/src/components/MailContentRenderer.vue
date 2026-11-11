@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import { useMessage } from 'naive-ui';
 import { useScopedI18n } from '@/i18n/app'
 import { CloudDownloadRound, ReplyFilled, ForwardFilled, FullscreenRound, ImageRound } from '@vicons/material'
 import ShadowHtmlComponent from "./ShadowHtmlComponent.vue";
@@ -13,6 +14,32 @@ import { useGlobalState } from '../store';
 const { preferShowTextMail, useIframeShowMail, useUTCDate, isDark, autoLoadRemoteImages } = useGlobalState();
 
 const { t } = useScopedI18n('components.MailContentRenderer')
+const message = useMessage();
+
+// 原始接收邮箱：邮件 To 头里的原始地址（解析不到时回退到系统收件地址），可一键复制
+const originalRecipient = computed(() => props.mail.originalRecipient || props.mail.address || '');
+
+const copyOriginalRecipient = async () => {
+  const text = originalRecipient.value;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    message.success(t('copied'));
+  } catch {
+    // 剪贴板 API 不可用时退化为临时文本框复制
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      message.success(t('copied'));
+    } catch {
+      message.warning(text);
+    }
+  }
+};
 
 const props = defineProps({
   mail: {
@@ -144,6 +171,12 @@ const handleSaveToS3 = async (filename, blob) => {
       </n-tag>
       <n-tag v-if="showEMailTo" type="info">
         TO: {{ mail.address }}
+      </n-tag>
+      <n-tag v-if="showEMailTo && originalRecipient" type="info">
+        {{ t('originalRecipient') }}: {{ originalRecipient }}
+        <n-button text size="tiny" type="primary" style="margin-left: 4px;" @click="copyOriginalRecipient">
+          {{ t('copy') }}
+        </n-button>
       </n-tag>
 
       <!-- 操作按钮 -->

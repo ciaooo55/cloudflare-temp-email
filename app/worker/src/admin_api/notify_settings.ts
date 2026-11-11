@@ -345,7 +345,7 @@ async function listSnapshotBindings(c: Context<HonoCustomType>): Promise<Respons
 }
 
 async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Response> {
-    const { address, durationHours } = await c.req.json<{ address?: string; durationHours?: number }>();
+    const { address, durationHours, ignoreDomainWarning } = await c.req.json<{ address?: string; durationHours?: number; ignoreDomainWarning?: boolean }>();
     const addr = (address || "").trim().toLowerCase();
     if (!addr || !addr.includes("@")) return c.json({ error: "请填写有效的邮箱地址" }, 400);
     // durationHours <= 0 表示永久有效；缺省 168 小时；上限 365 天
@@ -354,11 +354,12 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
     const origin = snapshotOrigin(c);
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
-    // 只要域名在允许列表中即可绑定（任意地址都能收到发到本 Worker 的邮件，不要求地址已存在）
+    // 域名不在允许列表中默认拒绝；前端提醒后用户确认可忽略提醒继续绑定
+    // （ignoreDomainWarning=true 时放行，绑定本身无害：只有系统实际收到的邮件才会显示）
     const domain = (addr.split("@")[1] || "").toLowerCase();
     const allowedDomains = getSnapshotAllowedDomains(c);
     const domainOk = allowedDomains.some(d => isDomainOrSubdomain(domain, d));
-    if (!domainOk) return c.json({ error: `域名 ${domain} 不在允许列表中` }, 400);
+    if (!domainOk && ignoreDomainWarning !== true) return c.json({ error: `域名 ${domain} 不在允许列表中` }, 400);
     const binding = await createSnapshotBindingRecord(c, addr, hours, origin);
     return c.json({ success: true, binding });
 }
@@ -448,7 +449,7 @@ async function batchExtendSnapshotBindings(c: Context<HonoCustomType>): Promise<
 
 /** 批量更换链接：为每个地址生成新 token（旧链接立即失效） */
 async function batchReplaceSnapshotBindings(c: Context<HonoCustomType>): Promise<Response> {
-    const { addresses, durationHours } = await c.req.json<{ addresses?: string[]; durationHours?: number }>();
+    const { addresses, durationHours, ignoreDomainWarning } = await c.req.json<{ addresses?: string[]; durationHours?: number; ignoreDomainWarning?: boolean }>();
     const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
     if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
     if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
@@ -463,7 +464,7 @@ async function batchReplaceSnapshotBindings(c: Context<HonoCustomType>): Promise
     for (const addr of list) {
         try {
             const domain = (addr.split("@")[1] || "").toLowerCase();
-            if (!allowedDomains.some(d => isDomainOrSubdomain(domain, d))) {
+            if (ignoreDomainWarning !== true && !allowedDomains.some(d => isDomainOrSubdomain(domain, d))) {
                 failed.push(addr);
                 continue;
             }

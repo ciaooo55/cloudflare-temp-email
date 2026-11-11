@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref, watch } from 'vue'
+import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
 import { NButton, NSpace, NTag, useMessage, useDialog } from 'naive-ui'
 import { formatLocalDateTime } from '../../utils'
@@ -35,13 +35,15 @@ const batchInput = ref('')
 const batchBinding = ref(false)
 
 // 有效期选择器：预设（含永久）+ 自定义小时数
+// 必须用 reactive 包裹：普通对象里的 ref 在模板 v-model 里不会被解包，
+// 选择器的赋值会把 ref 本身覆盖掉，导致 value 恒读不到新值（有效期永远是默认 168 小时）
 function useDurationPicker(defaultValue = 168) {
     const preset = ref<number | 'custom'>(defaultValue)
     const custom = ref<number | null>(null)
     const value = computed(() =>
         preset.value === 'custom' ? (custom.value || defaultValue) : (preset.value as number)
     )
-    return { preset, custom, value }
+    return reactive({ preset, custom, value })
 }
 const newDur = useDurationPicker(168)
 const batchDur = useDurationPicker(168)
@@ -195,15 +197,11 @@ const upsertBinding = (b: Binding) => {
     }
 }
 
-const addBinding = async () => {
-    if (!newAddress.value.trim()) {
-        message.warning(t('addressPlaceholder'));
-        return;
-    }
+const doAddBinding = async (ignoreDomainWarning: boolean) => {
     try {
         const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
             method: 'POST',
-            body: JSON.stringify({ address: newAddress.value, durationHours: newDur.value.value }),
+            body: JSON.stringify({ address: newAddress.value, durationHours: newDur.value, ignoreDomainWarning }),
         })
         if (res.binding) {
             message.success(t('successTip'))
@@ -217,6 +215,27 @@ const addBinding = async () => {
     } catch (error) {
         message.error((error as Error).message || "error");
     }
+}
+
+const addBinding = async () => {
+    const addr = newAddress.value.trim().toLowerCase();
+    if (!addr) {
+        message.warning(t('addressPlaceholder'));
+        return;
+    }
+    // 域名不在允许列表中：不再直接拦截，先提醒，用户确认后忽略提醒继续绑定
+    const domain = (addr.split('@')[1] || '');
+    if (domain && !isDomainAllowed(domain)) {
+        dialog.warning({
+            title: t('confirmTitle'),
+            content: t('domainWarnContent', { domain }),
+            positiveText: t('continueBind'),
+            negativeText: t('negativeText'),
+            onPositiveClick: () => doAddBinding(true),
+        })
+        return;
+    }
+    await doAddBinding(false);
 }
 
 const invalidate = async (b: Binding) => {
@@ -278,44 +297,16 @@ const copyAll = () => {
     copyText(bindings.value.map(bindingCopyText).join('\n'))
 }
 
-// 批量绑定：每行一个邮箱
-const batchBind = async () => {
-    const lines = batchInput.value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
-    if (!lines.length) {
-        message.warning(t('enterAddressFirst'));
-        return;
-    }
-    // 去重
-    const unique = [...new Set(lines)];
-    // 简单验证格式和域名
-    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const valid: string[] = [];
-    const invalid: string[] = [];
-    const boundSet = new Set(bindings.value.map(b => b.address?.toLowerCase()));
-    for (const addr of unique) {
-        if (!emailRe.test(addr)) {
-            invalid.push(t('invalidFormat', { addr }));
-        } else if (!isDomainAllowed(addr.split('@')[1])) {
-            invalid.push(t('invalidDomain', { addr }));
-        } else if (boundSet.has(addr)) {
-            invalid.push(t('alreadyBound', { addr }));
-        } else {
-            valid.push(addr);
-        }
-    }
-    if (invalid.length) {
-        message.warning(t('skippedAddresses') + '\n' + invalid.join('\n'));
-    }
-    if (!valid.length) return;
-    batchBinding.value = true;
+// 逐个绑定一组地址，返回统计结果（ignoreDomainWarning=true 时放行域名外地址）
+const bindMany = async (addrs: string[], ignoreDomainWarning: boolean) => {
     let success = 0;
     const failedList: string[] = [];
     const newBindings: Binding[] = [];
-    for (const addr of valid) {
+    for (const addr of addrs) {
         try {
             const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                 method: 'POST',
-                body: JSON.stringify({ address: addr, durationHours: batchDur.value.value }),
+                body: JSON.stringify({ address: addr, durationHours: batchDur.value, ignoreDomainWarning }),
             });
             if (res.binding) {
                 success++;
@@ -331,31 +322,90 @@ const batchBind = async () => {
             failedList.push(`${addr} (${errMsg})`);
         }
     }
+    return { success, failedList, newBindings };
+}
+
+// 批量绑定：每行一个邮箱
+const batchBind = async () => {
+    const lines = batchInput.value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!lines.length) {
+        message.warning(t('enterAddressFirst'));
+        return;
+    }
+    // 去重
+    const unique = [...new Set(lines)];
+    // 简单验证格式和域名：格式错误/已绑定的直接跳过；
+    // 域名不在允许列表中的不再直接过滤，单独收集后提醒确认
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const valid: string[] = [];
+    const domainWarn: string[] = [];
+    const invalid: string[] = [];
+    const boundSet = new Set(bindings.value.map(b => b.address?.toLowerCase()));
+    for (const addr of unique) {
+        if (!emailRe.test(addr)) {
+            invalid.push(t('invalidFormat', { addr }));
+        } else if (boundSet.has(addr)) {
+            invalid.push(t('alreadyBound', { addr }));
+        } else if (!isDomainAllowed(addr.split('@')[1])) {
+            domainWarn.push(addr);
+        } else {
+            valid.push(addr);
+        }
+    }
+    if (invalid.length) {
+        message.warning(t('skippedAddresses') + '\n' + invalid.join('\n'));
+    }
+    const finish = (success: number, failedList: string[], newBindings: Binding[]) => {
+        if (failedList.length) {
+            message.error(t('batchDoneWithFailed', { success, failed: failedList.length }) + '\n' + failedList.join('\n'), { duration: 8000 });
+        } else if (success > 0) {
+            message.success(t('batchDone', { success }));
+        }
+        if (success > 0) {
+            batchInput.value = '';
+            // Optimistic update: KV.list is eventually consistent, add new bindings directly
+            for (const b of newBindings) upsertBinding(b);
+        }
+    }
+    batchBinding.value = true;
+    const first = await bindMany(valid, false);
     batchBinding.value = false;
-    if (failedList.length) {
-        message.error(t('batchDoneWithFailed', { success, failed: failedList.length }) + '\n' + failedList.join('\n'), { duration: 8000 });
-    } else {
-        message.success(t('batchDone', { success }));
+    if (!domainWarn.length) {
+        finish(first.success, first.failedList, first.newBindings);
+        return;
     }
-    if (success > 0) {
-        batchInput.value = '';
-        // Optimistic update: KV.list is eventually consistent, add new bindings directly
-        for (const b of newBindings) upsertBinding(b);
-    }
+    // 有域名外地址：提醒后由用户决定是否忽略提醒继续绑定
+    dialog.warning({
+        title: t('confirmTitle'),
+        content: t('batchDomainWarnContent', { n: domainWarn.length, list: domainWarn.join('\n') }),
+        positiveText: t('continueBind'),
+        negativeText: t('negativeText'),
+        onPositiveClick: async () => {
+            batchBinding.value = true;
+            const second = await bindMany(domainWarn, true);
+            batchBinding.value = false;
+            finish(first.success + second.success, [...first.failedList, ...second.failedList], [...first.newBindings, ...second.newBindings]);
+        },
+        onNegativeClick: () => {
+            finish(first.success, first.failedList, first.newBindings);
+        },
+    })
 }
 
 // 更换链接：直接重新创建绑定，后端会自动让旧链接失效（原子操作）
 const replaceBinding = async (b: Binding) => {
+    const domain = (b.address.split('@')[1] || '').toLowerCase();
+    const domainOk = !domain || isDomainAllowed(domain);
     dialog.warning({
         title: t('confirmTitle'),
-        content: t('confirmReplace'),
+        content: domainOk ? t('confirmReplace') : `${t('confirmReplace')}\n${t('domainWarnContent', { domain })}`,
         positiveText: t('positiveText'),
         negativeText: t('negativeText'),
         onPositiveClick: async () => {
             try {
                 const res = await api.fetch(`/admin/notify/snapshot_bindings`, {
                     method: 'POST',
-                    body: JSON.stringify({ address: b.address, durationHours: newDur.value.value }),
+                    body: JSON.stringify({ address: b.address, durationHours: newDur.value, ignoreDomainWarning: !domainOk }),
                 });
                 if (res.binding) {
                     message.success(t('linkReplaced'));
@@ -444,9 +494,16 @@ const batchExtend = async () => {
 const batchReplace = async () => {
     const addrs = [...checkedRowKeys.value]
     if (!addrs.length) return
+    // 选中项里有域名外地址时，在确认框里一并提醒，确认后忽略提醒继续
+    const outOfDomain = addrs.filter(a => {
+        const d = (a.split('@')[1] || '').toLowerCase();
+        return d && !isDomainAllowed(d);
+    })
     dialog.warning({
         title: t('confirmTitle'),
-        content: t('confirmBatchReplace', { n: addrs.length }),
+        content: outOfDomain.length
+            ? `${t('confirmBatchReplace', { n: addrs.length })}\n${t('batchDomainWarnContent', { n: outOfDomain.length, list: outOfDomain.join('\n') })}`
+            : t('confirmBatchReplace', { n: addrs.length }),
         positiveText: t('positiveText'),
         negativeText: t('negativeText'),
         onPositiveClick: async () => {
@@ -454,7 +511,7 @@ const batchReplace = async () => {
             try {
                 const res = await api.fetch(`/admin/notify/snapshot_bindings/batch_replace`, {
                     method: 'POST',
-                    body: JSON.stringify({ addresses: addrs, durationHours: batchOpDuration.value }),
+                    body: JSON.stringify({ addresses: addrs, durationHours: batchOpDuration.value, ignoreDomainWarning: outOfDomain.length > 0 }),
                 })
                 const failed = res.failed || []
                 if (failed.length) {

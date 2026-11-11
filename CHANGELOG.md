@@ -8,6 +8,9 @@
 
 ## v1.13.0(main)
 
+- feat: |邮件| 邮件详情页显示原始接收邮箱并支持快捷复制：解析邮件时从原始邮件 To 头提取原始收件地址，详情页信息区在 TO 后新增“原始收件”标签，带一键复制按钮（口径与后端转发邮件原始收件人一致）
+- feat: |快照| 域名外邮箱绑定改为提醒后可忽略继续：后端创建绑定/批量换链接口新增 `ignoreDomainWarning` 放行参数（不带参数时仍拒绝）；前端单个绑定、批量绑定、更换链接、批量换链遇到域名不在允许列表时先弹窗提醒，确认后继续绑定，不再直接过滤或报错
+- fix: |快照| 单个绑定有效期选择无效（恒为 7 天）：`useDurationPicker` 返回的普通对象中的 ref 在模板 `v-model` 里不解包，选择器的赋值会把 ref 本体覆盖掉，计算值恒读不到新选择、后端收到空值回退默认 168 小时；改用 `reactive` 包裹返回值并同步三处取值（`.value.value` 改为 `.value`）
 - fix: |部署| 域名统一到 ciaooo55.de5.net：前端 Pages 代理 `functions/_middleware.js` 的后端地址从写死的 m.ciaooo55.us.ci 改为环境变量 `BACKEND_URL`（默认 https://api.ciaooo55.de5.net）；worker 默认 Bark 推送地址改为 https://bark.ciaooo55.de5.net/push
 - fix: |推送| worker 内部 Bark 推送改走 workers.dev 地址：与 bark-worker 同 zone 时经公网域名 fetch 被 Cloudflare 拦截（522），默认推送地址改为 https://bark-worker.18715260182.workers.dev/push
 - perf: |前端| PWA 静态资源启用预缓存与缓存优先（约 80 个文件、2.8MB），页面导航网络优先、接口数据不缓存，加快页面刷新

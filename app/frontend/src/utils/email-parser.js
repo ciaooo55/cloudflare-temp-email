@@ -5,9 +5,24 @@ function humanFileSize(size) {
     return parseFloat((size / Math.pow(1024, i)).toFixed(2)) + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
 }
 
+// 原始接收邮箱：从原始邮件 To 头提取第一个地址（口径与后端 email/index.ts 一致）。
+// item.address 是系统归一化后的收件地址，转发/改写场景下与原始收件不同，详情页单独展示原始值。
+export function extractOriginalRecipient(raw) {
+    try {
+        const headerSection = String(raw || '').split(/\r?\n\r?\n/)[0] || '';
+        const m = headerSection.match(/^To:[ \t]*([^\r\n]*(?:\r?\n[ \t][^\r\n]*)*)/im);
+        if (!m) return '';
+        const addr = m[1].match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+        return addr ? addr[1].toLowerCase() : '';
+    } catch {
+        return '';
+    }
+}
+
 export async function processItem(item) {
     // Try to parse the email using mail-parser-wasm
     item.originalSource = item.source;
+    item.originalRecipient = extractOriginalRecipient(item.raw);
     try {
         const { parse_message } = await import('mail-parser-wasm');
         const parsedEmail = parse_message(item.raw);

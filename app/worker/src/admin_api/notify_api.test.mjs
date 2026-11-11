@@ -280,6 +280,22 @@ test("快照绑定: 历史域名即使不在 DOMAINS 里也能绑（回归 22 �
     assert.equal(bad.status, 400);
 });
 
+test("快照绑定: 域名外地址带 ignoreDomainWarning 可放行，且有效期按所选小时数生效", async () => {
+    const kv = makeKv(), db = makeDb();
+    const domEnv = { envExtra: { DOMAINS: JSON.stringify(["example.com"]) } };
+    // 前端提醒后用户确认：带放行标记可绑定列表外域名
+    const before = Date.now();
+    const r = await bodyOf(await notifyApi.createSnapshotBinding(
+        makeCtx({ kv, db, body: { address: "u@evil.example", durationHours: 720, ignoreDomainWarning: true }, ...domEnv })));
+    assert.equal(r.status, 200);
+    assert.equal(r.data.success, true);
+    assert.equal(r.data.binding.address, "u@evil.example");
+    // 有效期必须是所选的 720 小时（30 天），不能被默认值 168 覆盖
+    const expected = before + 720 * 3600 * 1000;
+    assert.ok(Math.abs(r.data.binding.expiresAt - expected) < 60_000,
+        `expiresAt 应约为 ${expected}，实际 ${r.data.binding.expiresAt}`);
+});
+
 test("快照绑定: 创建/列表/重绑/失效全流程", async () => {
     const kv = makeKv(), db = makeDb(["u@example.com"]);
     const domEnv = { envExtra: { DOMAINS: JSON.stringify(["example.com"]) } };

@@ -159,6 +159,18 @@ export const MESSAGE_REGISTRY = {
       "en": "View Attachments",
       "zh": "查看附件"
     },
+    "copied": {
+      "en": "Copied",
+      "zh": "已复制"
+    },
+    "copy": {
+      "en": "Copy",
+      "zh": "复制"
+    },
+    "originalRecipient": {
+      "en": "Original To",
+      "zh": "原始收件"
+    },
     "delete": {
       "en": "Delete",
       "zh": "删除"
@@ -857,6 +869,18 @@ export const MESSAGE_REGISTRY = {
     "invalidDomain": {
       "en": "{addr} (domain not allowed)",
       "zh": "{addr} (域名不在列表中)"
+    },
+    "domainWarnContent": {
+      "en": "The domain {domain} is not in the allowed list. You can still bind it, but only mail the system actually receives will show. Continue anyway?",
+      "zh": "域名 {domain} 不在允许列表中。仍然可以绑定，但只有系统实际收到的邮件才会显示。确定继续吗？"
+    },
+    "batchDomainWarnContent": {
+      "en": "{n} address(es) use a domain outside the allowed list:\n{list}\nBind them anyway?",
+      "zh": "有 {n} 个邮箱的域名不在允许列表中：\n{list}\n仍然绑定它们吗？"
+    },
+    "continueBind": {
+      "en": "Bind anyway",
+      "zh": "仍然绑定"
     },
     "alreadyBound": {
       "en": "{addr} (already bound)",
