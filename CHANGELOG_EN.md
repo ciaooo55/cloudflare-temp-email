@@ -110,7 +110,7 @@
 ### Improvements
 
 - feat: |AI Extract| Improve local verification-code rules: also read the mail subject; support codes before keywords (e.g. `116352（动态验证码）`, `ABC123 is your code`), `G-123456` prefixes, grouped / spaced / zero-width-split / full-width codes, and Russian, Spanish, Portuguese, French, German, Italian, Turkish and Hebrew keywords; reject numbers longer than 8 digits, decimals and amounts, times, digits in URLs and email addresses, tracking / order / voucher codes and letters-only words; only accept keyword-less numbers in stricter positions; bound input length and remove regex backtracking risks
-- fix: |test| Fix worker unit tests and lint: type-only imports now use `import type` (`Next`, `LocaleMessages`, `RawMailRow`, ...), which previously made 3 test files fail to load under Node so 29 cases never ran; remove a hard-coded local absolute path from the test loader; drop 2 useless regex escapes in `email/index.ts` (`pnpm lint` errors); add a `pnpm test` script. No runtime behavior change
+- fix: |test| Fix worker unit tests and lint: type-only imports now use `import type` (`Next`, `LocaleMessages`, `RawMailRow`, ...), which previously made 3 test files fail to load under Node so 32 cases never ran; remove a hard-coded local absolute path from the test loader; drop 2 useless regex escapes in `email/index.ts` (`pnpm lint` errors); add a `pnpm test` script. No runtime behavior change
 
 ## v1.12.0
 
