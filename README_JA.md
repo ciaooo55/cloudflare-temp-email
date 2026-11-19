@@ -42,7 +42,7 @@
 - **高性能** - Rust WASM によるメール解析で極めて高速に応答します
 - **モダンな UI** - 多言語対応のレスポンシブデザインで、簡単に操作できます
 - **アドレスパスワード** - メールアドレスごとに個別のパスワードを設定し、セキュリティを強化できます
-- **Agent フレンドリー** - AI agent がメールボックスを利用できる組み込みの [`skill`](skills/cf-temp-mail-agent-mail/SKILL.md) を提供します
+- **Agent フレンドリー** - AI agent がメールボックスを利用できる組み込みの [`skill`](skills-test/skills/cf-temp-mail-agent-mail/SKILL.md) を提供します
 - **モバイル管理** - Android の管理画面とメールボックス管理に対応したコミュニティクライアント [CloudMail](https://github.com/Lur1N77777/CloudMail) を利用できます
 
 ## デプロイドキュメント - クイックスタート
@@ -153,7 +153,7 @@
 - [x] Webhook とメッセージプッシュ連携に対応します
 - [x] `CF Turnstile` CAPTCHA 検証に対応します
 - [x] 悪用を防ぐためのレート制限を設定できます
-- [x] **Agent フレンドリー**：組み込みの [`cf-temp-mail-agent-mail`](skills/cf-temp-mail-agent-mail/SKILL.md) skill により、AI agent がメールボックスを直接利用できます。詳しくは[ドキュメント](vitepress-docs/docs/en/guide/feature/agent-email.md)を参照してください
+- [x] **Agent フレンドリー**：組み込みの [`cf-temp-mail-agent-mail`](skills-test/skills/cf-temp-mail-agent-mail/SKILL.md) skill により、AI agent がメールボックスを直接利用できます
 - [x] コミュニティのモバイル管理クライアント：[CloudMail](https://github.com/Lur1N77777/CloudMail) は本プロジェクト互換の API 向けに Expo / React Native で構築されており、Android 管理コンソール、アドレス管理、受信済み／送信済み／不明メール、確認コードのクイックコピー、OLED ブラックテーマ、ローカルグループ分けを提供します
 
 </details>

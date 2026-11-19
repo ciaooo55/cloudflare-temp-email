@@ -57,6 +57,7 @@
 - fix: |前端| 顶部导航标签不换行不挤压，超宽时横向滚动，避免窄屏下标签文字截断
 - fix: |前端| Worker 配置页数字 `1` 不再被当成布尔值显示为"是"；仅真实布尔值显示"是/否"，`HAS_*` 计数按"是否已设置"处理
 - fix: |前端| 发信额度关闭时输入框显示为空并标注"未启用"，再打开时自动填回默认值，避免提交空值
+- docs: |文档| 修复 README（中/英/日）里的失效链接：Agent skill 链接改指向实际路径 `skills-test/skills/cf-temp-mail-agent-mail/SKILL.md`，去掉指向仓库中已不存在的 `vitepress-docs/` 的链接
 - fix: |前端| 全局邮箱设置的多选输入提示从下拉空状态移到常驻提示文字；Webhook/Telegram 白名单同步处理
 - fix: |前端| Telegram 机器人表格、快照表格增加横向滚动与最小宽度，长邮箱地址不再换行截断
 - fix: |前端| Telegram `getUpdates` 调试地址增加一键复制按钮
