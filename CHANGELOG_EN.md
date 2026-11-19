@@ -58,6 +58,7 @@
 - fix: |Frontend| Multi-select input hints moved from the dropdown empty state to persistent helper text; webhook/Telegram allowlists handled the same way
 - fix: |Frontend| Telegram bot table and snapshot table gain horizontal scroll and min-widths; long addresses no longer wrap-truncate
 - fix: |Frontend| Telegram `getUpdates` debug URL gets a one-click copy button
+- docs: |docs| Fix dead links in README (zh/en/ja): the Agent skill link now points to the real path `skills-test/skills/cf-temp-mail-agent-mail/SKILL.md`, and the link into the no-longer-existing `vitepress-docs/` directory is removed
 - fix: |Frontend| Global mailbox settings form gains a save button at the bottom — no more scrolling back to the top
 - fix: |Frontend| Mail "HTML" view mode renamed "HTML source" to distinguish it from rich text
 - fix: |Frontend| Appearance page notes that changes apply instantly and are saved in the current browser; Admin page explains the current login method and where to change the password
