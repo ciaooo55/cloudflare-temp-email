@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |deps| Repair the broken `app/worker/pnpm-lock.yaml`: add the missing `@sindresorhus/is@7.2.0` entry and drop orphaned entries so `pnpm install --frozen-lockfile` works again (`package.json` and resolved versions are unchanged)
 - feat: |mail| Show the original receiving address in the mail detail view with one-click copy: the original recipient is extracted from the raw mail's To header while parsing, and the detail header gains an "Original To" tag with a copy button (same definition as the backend's forwarded-mail original recipient)
 - feat: |mail| Mail list items also show the original recipient: each list row gains an "Original To" tag after TO, using the same definition as the detail view
 - feat: |snapshot| Out-of-allowlist domains now warn instead of blocking snapshot bindings: the create/batch-replace binding APIs accept an `ignoreDomainWarning` flag (requests without it are still rejected); the single bind, batch bind, replace link and batch replace flows warn first and continue binding after confirmation
