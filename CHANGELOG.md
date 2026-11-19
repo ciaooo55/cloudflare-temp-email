@@ -114,6 +114,7 @@
 ### Improvements
 
 - feat: |AI 识别| 本地验证码规则增强：同时识别邮件标题，支持验证码在关键词前（如 `116352（动态验证码）`、`ABC123 is your code`）、`G-123456` 前缀、分组 / 空格 / 零宽字符 / 全角数字，新增俄西葡法德意土希伯来语等关键词；排除超过 8 位数字、小数金额、时间、URL 与邮箱地址中的数字、tracking / order / voucher code 及纯字母单词，收紧无关键词时的数字识别，并限制分析长度、消除正则回溯风险
+- fix: |测试| 修复 worker 单元测试与 lint：纯类型导入改为 `import type`（`Next`、`LocaleMessages`、`RawMailRow` 等），原先 3 个测试文件在 Node 下加载失败、其中 32 个用例从未执行；去掉测试 loader 里写死的本机绝对路径；修掉 `email/index.ts` 正则里 2 处多余转义（`pnpm lint` 报错）；新增 `pnpm test` 脚本。运行时行为不变
 
 ## v1.12.0
 

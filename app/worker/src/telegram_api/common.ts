@@ -4,7 +4,7 @@ import { validateAddressPayload, verifyAddressToken } from '../address_auth.ts';
 import { CONSTANTS } from '../constants.ts';
 import { getBooleanValue, getIntValue, getJsonSetting } from '../utils.ts';
 import { deleteAddressWithData, newAddress, generateRandomName } from '../common.ts';
-import { LocaleMessages } from '../i18n/type.ts';
+import type { LocaleMessages } from '../i18n/type.ts';
 import i18n from '../i18n/index.ts';
 
 export const tgUserNewAddress = async (

@@ -57,7 +57,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     try {
         const toHeader = message.headers.get("To") || "";
         // 取第一个邮箱地址
-        const m = toHeader.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+        const m = toHeader.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
         const origAddr = m ? m[1].toLowerCase() : "";
         if (origAddr && origAddr !== message.to.toLowerCase()) {
             originalRecipient = origAddr;
