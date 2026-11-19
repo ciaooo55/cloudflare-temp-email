@@ -20,8 +20,8 @@ importers:
         specifier: 3.888.0
         version: 3.888.0
       hono:
-        specifier: ^4.13.7
-        version: 4.13.7
+        specifier: ^4.13.18
+        version: 4.13.18
       mimetext:
         specifier: ^3.0.28
         version: 3.0.28
@@ -1180,8 +1180,8 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
-  hono@4.13.7:
-    resolution: {integrity: sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==}
+  hono@4.13.18:
+    resolution: {integrity: sha512-H9q/E1XizaWstJxUW881dmLxEj+t/TrGGnyxINkm4+sK0qUwsMtFdo2BWI9Vs3cIS19MU6b6iCijoUoEf4f3DA==}
     engines: {node: '>=16.9.0'}
 
   html-to-text@9.0.5:
@@ -2955,7 +2955,7 @@ snapshots:
 
   has-flag@4.0.0: {}
 
-  hono@4.13.7: {}
+  hono@4.13.18: {}
 
   html-to-text@9.0.5:
     dependencies:
