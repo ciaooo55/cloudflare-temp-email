@@ -1,11 +1,11 @@
 import { Context } from 'hono';
 import { Jwt } from 'hono/utils/jwt'
-import { WorkerMailerOptions } from 'worker-mailer';
+import type { WorkerMailerOptions } from 'worker-mailer';
 
 import { getBooleanValue, getDomains, getStringArray, getStringValue, getIntValue, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword, getJsonObjectValue, getRandomSubdomainDomains, getDomainMapValue, isDomainOrSubdomain, normalizeDomains, trimLower } from './utils.ts';
 import { unbindTelegramByAddress } from './telegram_api/common.ts';
 import { CONSTANTS } from './constants.ts';
-import { AddressCreationSettings, AdminWebhookSettings, ExtractResult, WebhookMail, WebhookSettings } from './models/index.ts';
+import { AddressCreationSettings, AdminWebhookSettings, type ExtractResult, type WebhookMail, WebhookSettings } from './models/index.ts';
 import i18n from './i18n/index.ts';
 import { formatWebhookBody, getWebhookAttachments } from './utils/webhook.ts';
 
