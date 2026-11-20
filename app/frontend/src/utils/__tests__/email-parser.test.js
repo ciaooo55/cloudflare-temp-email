@@ -13,6 +13,10 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
+    it.each(['&nbsp;123456', '&#160;123456', '&#160;&#49;&#50;&#51;&#52;&#53;&#54;'])('decodes HTML entities before extracting historical codes: %s', async (encoded) => {
+        const parsed = await processItem({ raw: 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:' + encoded + '</p>', metadata: null });
+        expect(JSON.parse(parsed.metadata).ai_extract.result).toBe('123456');
+    })
     it('reads current JSON sent messages without treating them as MIME', () => {
         const raw = JSON.stringify({ version: 'v2', subject: 'Sent subject', to_mail: 'recipient@example.com', content: 'Sent body', is_html: false });
         const parsed = processSentItem({ address: 'sender@example.com', raw });

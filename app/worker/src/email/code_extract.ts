@@ -1,4 +1,5 @@
 import { commonParseMail } from '../common.ts';
+import { decodeHTML } from 'entities';
 import { extractCode, joinSubjectAndBody } from './extract_code.ts';
 import type { ExtractResult } from '../models/index.ts';
 
@@ -10,7 +11,7 @@ export async function extractEmailInfo(
         && !/content-transfer-encoding:\s*(?:base64|quoted-printable)/i.test(context.rawEmail)) return null;
     try {
         const parsed = await commonParseMail(context);
-        const body = parsed.text || parsed.html?.replace(/<[^>]*>/g, ' ') || '';
+        const body = parsed.text || decodeHTML(parsed.html?.replace(/<[^>]*>/g, ' ') || '');
         const code = extractCode(joinSubjectAndBody(parsed.subject, body));
         if (!code) return null;
         const result: ExtractResult = { type: 'auth_code', result: code, result_text: '' };

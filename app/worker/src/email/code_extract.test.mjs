@@ -26,3 +26,8 @@ test('unencoded HTML code split by tags is parsed before extraction', async () =
     const rawEmail = 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Verification code: <span>123456</span></p>';
     assert.equal((await extractEmailInfo({ rawEmail }, {}, null)).result, '123456');
 });
+
+test('HTML entities are decoded before local extraction', async () => {
+    const rawEmail = 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:&nbsp;&#49;&#50;&#51;&#52;&#53;&#54;</p>';
+    assert.equal((await extractEmailInfo({ rawEmail }, {}, null)).result, '123456');
+});
