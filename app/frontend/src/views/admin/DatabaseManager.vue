@@ -65,7 +65,7 @@ const fetchData = async () => {
     try {
         const [versionRes, configRes] = await Promise.all([
             api.fetch('/admin/db_version'),
-            api.fetch(`/admin/config/${D1_STORAGE_PLAN_CONFIG_KEY}`)
+            api.fetch(`/admin/config/${D1_STORAGE_PLAN_CONFIG_KEY}`).catch(() => null)
         ]);
         if (versionRes) Object.assign(dbVersionData.value, versionRes);
 

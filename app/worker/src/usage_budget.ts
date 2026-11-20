@@ -77,6 +77,14 @@ export async function reserveReadUsage(env: Bindings, now = Date.now()) {
     return false;
 }
 
+export async function reserveHttpUsage(env: Bindings, readOnly: boolean) {
+    try {
+        return await (readOnly ? reserveReadUsage(env) : reserveUsage(env, "soft", API_WRITE_COST));
+    } catch (error) {
+        return error instanceof Error && /\bno such table: worker_usage_day\b/.test(error.message);
+    }
+}
+
 export async function getUsageStatus(env: Bindings, now = Date.now()) {
     const day = utcDay(now);
     const usage = await env.DB.prepare("SELECT row_reads, row_writes, inbound_emails FROM worker_usage_day WHERE day = ?")

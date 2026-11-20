@@ -19,7 +19,7 @@ import { email } from './email/index.ts';
 import { scheduled } from './scheduled.ts';
 import { getPasswords, getBooleanValue, getDomains, checkIsAdmin, getEnvStringList } from './utils.ts';
 import { checkAccessControl } from './ip_blacklist.ts';
-import { API_WRITE_COST, quotaRetryAfter, reserveReadUsage, reserveUsage } from './usage_budget.ts';
+import { quotaRetryAfter, reserveHttpUsage } from './usage_budget.ts';
 
 const API_PATHS = [
 	"/api/",
@@ -207,9 +207,7 @@ app.use('/*', async (c, next) => {
 		return await next();
 	}
 	const readOnly = ['GET', 'HEAD', 'OPTIONS'].includes(c.req.method);
-	const allowed = await (readOnly
-		? reserveReadUsage(c.env)
-		: reserveUsage(c.env, "soft", API_WRITE_COST)).catch(() => false);
+	const allowed = await reserveHttpUsage(c.env, readOnly);
 	if (!allowed) {
 		c.header("Retry-After", String(quotaRetryAfter()));
 		return c.json({ message: "Daily storage budget paused this operation" }, 503);

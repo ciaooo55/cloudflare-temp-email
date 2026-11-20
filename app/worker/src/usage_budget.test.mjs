@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createD1 } from "../test-loader/d1.mjs";
-import { getUsageStatus, quotaRetryAfter, reserveInboundUsage, reserveReadUsage, usageLimits, USAGE_BUDGET_SCHEMA } from "./usage_budget.ts";
+import { getUsageStatus, quotaRetryAfter, reserveHttpUsage, reserveInboundUsage, reserveReadUsage, usageLimits, USAGE_BUDGET_SCHEMA } from "./usage_budget.ts";
 
 const now = Date.UTC(2026, 0, 1, 23, 59, 59);
 
@@ -27,4 +27,22 @@ test("a read lease is reserved in one operation and limits are capped by the Fre
     for (let i = 0; i < 16; i++) assert.equal(await reserveReadUsage(env, now), true);
     assert.equal(await reserveReadUsage(env, now), false);
     assert.equal((await getUsageStatus(env, now)).usage.row_writes, 33);
+});
+
+test("fresh databases allow settings and admin login until budgeting is initialized", async () => {
+    const DB = createD1();
+    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "40" };
+    assert.equal(await reserveHttpUsage(env, true), true);
+    assert.equal(await reserveHttpUsage(env, false), true);
+    await assert.rejects(reserveInboundUsage(env), /no such table: worker_usage_day/);
+
+    DB.sqlite.exec(USAGE_BUDGET_SCHEMA);
+    assert.equal(await reserveHttpUsage(env, true), true);
+    assert.equal(await reserveHttpUsage(env, false), false);
+});
+
+test("an unrelated D1 error does not disable HTTP budgeting", async () => {
+    const DB = { prepare() { throw new Error("D1 unavailable"); } };
+    assert.equal(await reserveHttpUsage({ DB }, true), false);
+    assert.equal(await reserveHttpUsage({ DB }, false), false);
 });
