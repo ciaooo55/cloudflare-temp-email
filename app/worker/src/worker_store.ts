@@ -150,7 +150,7 @@ async function lookup(env: Bindings, key: string, promoteLegacy: boolean, retrie
                 .bind(key.slice(REVERSE_PREFIX.length)).first<string>("address");
         }
     }
-    cache?.set(key, { value, until: now + CACHE_TTL });
+    if (promoteLegacy) cache?.set(key, { value, until: now + CACHE_TTL });
     return value;
 }
 

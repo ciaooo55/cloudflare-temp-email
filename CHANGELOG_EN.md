@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- perf: |mail| Check the sender blacklist before reserving daily D1 usage so rejected mail is not charged; promote legacy KV blacklists only after budget admission
 - fix: |Worker| Keep receiving mail before the new D1 tables are created and keep legacy D1-only snapshot bindings and HTML readable after KV import
 - perf: |Worker| Move remaining KV data to D1 with a resumable import, add daily budgets that prioritize inbound mail, and use a five-minute cron cadence and minimum cleanup interval
 - fix: |statistics| Fix the admin Statistics tab returning 500 (`no such table: users`) and showing all counters as 0: the `users` table no longer exists in the schema or migrations since the multi-user system was removed, but the statistics API still queried it, failing the whole batch; drop the `userCount` query, the "User Count" card and its i18n strings
