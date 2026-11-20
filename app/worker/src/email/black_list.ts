@@ -1,4 +1,4 @@
-import { workerStore } from "../worker_store.ts";
+import { isMissingWorkerStoreTable, workerStore } from "../worker_store.ts";
 import { addressParser } from "postal-mime";
 
 import { CONSTANTS } from '../constants.ts';
@@ -24,7 +24,11 @@ export const isBlocked = async (message: Pick<ForwardableEmailMessage, "from" | 
     if (!env.DB) {
         return false;
     }
-    const blockList = await workerStore(env).get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, { type: 'json', promoteLegacy }) || [];
+    const blockList = await workerStore(env).get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, { type: 'json', promoteLegacy })
+        .catch(async error => {
+            if (!isMissingWorkerStoreTable(error)) throw error;
+            return env.KV?.get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, "json").catch(() => null);
+        }) || [];
     if (blockList.some(word => senders.some(sender => sender.includes(word)))) {
         return true;
     }

@@ -9,6 +9,7 @@ export const MAIL_FULL_COST = { reads: 56, writes: 14 };
 export const API_WRITE_COST = { reads: 100, writes: 12 };
 const API_READ_COST = { reads: 50, writes: 2 };
 export const CRON_COST = { reads: 120, writes: 5 };
+const inboundSchemaReady = new WeakSet<D1Database>();
 
 type Cost = { reads: number; writes: number };
 type DailyUsage = { row_reads: number; row_writes: number; inbound_emails: number };
@@ -52,6 +53,13 @@ export async function reserveUsage(env: Bindings, tier: "soft" | "hard", cost: C
 }
 
 export async function reserveInboundUsage(env: Bindings, now = Date.now()) {
+    if (!inboundSchemaReady.has(env.DB)) {
+        const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM sqlite_schema
+            WHERE type = 'table' AND name IN ('worker_usage_day', 'worker_store', 'worker_store_chunk', 'worker_store_import')`)
+            .first<number>("n");
+        if (count !== 4) return "receive-only";
+        inboundSchemaReady.add(env.DB);
+    }
     if (await reserveUsage(env, "soft", MAIL_FULL_COST, true, now)) return "full";
     if (await reserveUsage(env, "hard", MAIL_CORE_COST, true, now)) return "receive-only";
     return "paused";

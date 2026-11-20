@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createD1 } from "../test-loader/d1.mjs";
 import dbApi from "./admin_api/db_api.ts";
 import { CONSTANTS } from "./constants.ts";
-import { getStoreImportStatus, importStorePage, workerStore } from "./worker_store.ts";
+import { cleanupWorkerStore, getStoreImportStatus, importStorePage, workerStore } from "./worker_store.ts";
 
 async function setup() {
     const DB = createD1();
@@ -67,4 +67,42 @@ test("chunked D1 values preserve Unicode on updates and when extending expiry", 
     await store.put("mailhtml:big", "small");
     assert.equal(await store.get("mailhtml:big"), "small");
     assert.equal(DB.sqlite.prepare("SELECT count(*) AS n FROM worker_store_chunk").get().n, 0);
+});
+
+test("legacy D1 bindings and HTML remain readable after KV import and without KV", async () => {
+    const { DB } = await setup();
+    DB.sqlite.exec(`CREATE TABLE snapshot_bindings (address TEXT PRIMARY KEY, token TEXT UNIQUE, url TEXT, expires_at INTEGER, created_at INTEGER);
+        CREATE TABLE bound_snapshot_html (token TEXT PRIMARY KEY, html TEXT);`);
+    const expires = Date.now() + 600_000;
+    const insert = DB.sqlite.prepare("INSERT INTO snapshot_bindings VALUES (?, ?, ?, ?, ?)");
+    insert.run("inbox@example.com", "legacy", "https://example.com/m/legacy", expires, Date.now());
+    insert.run("d1@example.com", "d1-only", "https://example.com/m/d1-only", expires, Date.now());
+    DB.sqlite.exec(`INSERT INTO bound_snapshot_html VALUES ('legacy', '<p>Legacy D1</p>'), ('d1-only', '<p>D1 only</p>');`);
+    const KV = {
+        async get(key) { return key === "snapshot-bindrev:legacy" ? "inbox@example.com" : null; },
+        async list() { return { keys: [{ name: "snapshot-bindrev:legacy" }], list_complete: true }; },
+    };
+    const env = { DB, KV };
+    assert.equal(await workerStore(env).get("mailhtml:legacy"), "<p>Legacy D1</p>");
+    assert.deepEqual(await importStorePage(env), { complete: true, scanned: 1 });
+    KV.get = () => { throw new Error("KV must not be used after import"); };
+    assert.equal(await workerStore(env).get("mailhtml:legacy"), "<p>Legacy D1</p>");
+    const store = workerStore({ DB });
+    assert.equal(await store.get("mailhtml:legacy"), "<p>Legacy D1</p>");
+    assert.equal(await store.get("snapshot-bindrev:d1-only"), "d1@example.com");
+    assert.equal((await store.get("snapshot-bind:d1@example.com", "json")).expiresAt, expires);
+    assert.equal(await store.get("mailhtml:d1-only"), "<p>D1 only</p>");
+    assert.deepEqual((await store.list({ prefix: "snapshot-bind:" })).keys.map(k => k.name).sort(),
+        ["snapshot-bind:d1@example.com", "snapshot-bind:inbox@example.com"]);
+
+    await store.put("snapshot-bind:inbox@example.com", JSON.stringify({ token: "new", expiresAt: expires }));
+    assert.equal(await store.get("mailhtml:legacy"), null);
+    await store.delete("snapshot-bind:inbox@example.com");
+    assert.equal(await store.get("mailhtml:legacy"), null);
+
+    await store.put("snapshot-bind:d1@example.com", JSON.stringify({ token: "d1-only", expiresAt: expires }),
+        { expiration: Math.floor(Date.now() / 1000) - 1 });
+    await cleanupWorkerStore({ DB });
+    assert.equal(await store.get("snapshot-bind:d1@example.com"), null);
+    assert.equal(await store.get("mailhtml:d1-only"), null);
 });
