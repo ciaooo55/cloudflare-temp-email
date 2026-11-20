@@ -13,4 +13,19 @@ describe('on-demand translations', () => {
         await ensureLocaleMessages('ja')
         expect(i18n.global.getLocaleMessage('ja').views).toBeDefined()
     })
+
+    it.each(['de', 'es', 'ja', 'pt-BR'])('translates workspace and original-address labels in %s without Chinese fallback', async locale => {
+        await ensureLocaleMessages(locale)
+        const messages = i18n.global.getLocaleMessage(locale)
+        const source = i18n.global.getLocaleMessage('zh')
+        for (const key of ['workspace', 'notifications', 'dailyMail', 'dailyMailHint', 'mailboxesHint', 'mailRules', 'mailRulesHint', 'notificationsHint', 'systemHint', 'privacyFirst']) {
+            expect(messages.views.Admin[key]).toBeTruthy()
+            expect(messages.views.Admin[key]).not.toBe(source.views.Admin[key])
+        }
+        for (const key of ['originalSender', 'originalRecipient', 'loadRemoteImages']) {
+            expect(messages.components.MailContentRenderer[key]).toBeTruthy()
+            expect(messages.components.MailContentRenderer[key]).not.toBe(source.components.MailContentRenderer[key])
+        }
+        expect(messages.components.MailBox.originalRecipient).toBeTruthy()
+    })
 })

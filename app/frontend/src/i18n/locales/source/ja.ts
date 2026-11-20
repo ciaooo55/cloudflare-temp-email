@@ -1,4 +1,17 @@
 export const jaMessages = {
+  "views.Admin.workspace": "メールワークスペース",
+  "views.Admin.notifications": "通知と連携",
+  "views.Admin.dailyMail": "日常の送受信",
+  "views.Admin.dailyMailHint": "本文、認証コード、元のアドレスを先に表示します。画像は選択した場合のみ表示します。",
+  "views.Admin.mailboxesHint": "メールボックスの検索・作成と、未登録アドレス宛てのメールを確認します。",
+  "views.Admin.mailRules": "メールルールとセキュリティ",
+  "views.Admin.mailRulesHint": "メールボックスの既定値、送信権限、コード抽出、APIアクセスルールを管理します。",
+  "views.Admin.notificationsHint": "通知、Webhook連携、保存済みメールスナップショットを設定します。",
+  "views.Admin.systemHint": "使用量、データベース、デプロイの管理。各ツールは開いたときだけ読み込みます。",
+  "views.Admin.privacyFirst": "画像はクリック後に表示",
+  "components.MailContentRenderer.originalSender": "元の差出人",
+  "components.MailContentRenderer.originalRecipient": "元の宛先",
+  "components.MailBox.originalRecipient": "元の宛先",
   "components.WebhookComponent.randomMail": "ランダムなメール",
   "components.WebhookComponent.specifiedMail": "ID を指定",
   "components.WebhookComponent.mailId": "メール ID",
@@ -357,7 +370,7 @@ export const jaMessages = {
   "components.AddressCredentialModal.username": "ユーザー名",
   "components.MailContentRenderer.markAsRead": "既読にする",
   "components.MailContentRenderer.markAsUnread": "未読にする",
-  "components.MailContentRenderer.loadRemoteImages": "画像を読み込む",
+  "components.MailContentRenderer.loadRemoteImages": "画像を表示",
   "components.MailContentRenderer.remoteImagesBlocked": "プライバシー保護のため、{count} 件の外部リソースをブロックしました",
   "views.common.Appearance.autoLoadRemoteImages": "メール本文の外部画像を自動的に読み込む"
 }

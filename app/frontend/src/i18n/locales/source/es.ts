@@ -1,4 +1,17 @@
 export const esMessages = {
+  "views.Admin.workspace": "Espacio de correo",
+  "views.Admin.notifications": "Notificaciones e integraciones",
+  "views.Admin.dailyMail": "Correo diario",
+  "views.Admin.dailyMailHint": "Lee primero el texto, los códigos y las direcciones originales. Las imágenes solo se muestran si lo eliges.",
+  "views.Admin.mailboxesHint": "Busca o crea buzones y revisa el correo de direcciones no registradas.",
+  "views.Admin.mailRules": "Reglas de correo y seguridad",
+  "views.Admin.mailRulesHint": "Gestiona los valores del buzón, permisos de envío, extracción de códigos y acceso a la API.",
+  "views.Admin.notificationsHint": "Configura notificaciones, integraciones Webhook e instantáneas de correo guardadas.",
+  "views.Admin.systemHint": "Uso, base de datos y despliegue. Las herramientas se cargan solo al abrirlas.",
+  "views.Admin.privacyFirst": "Imágenes al hacer clic",
+  "components.MailContentRenderer.originalSender": "Remitente original",
+  "components.MailContentRenderer.originalRecipient": "Destinatario original",
+  "components.MailBox.originalRecipient": "Destinatario original",
   "components.WebhookComponent.randomMail": "Correo aleatorio",
   "components.WebhookComponent.specifiedMail": "Especificar ID",
   "components.WebhookComponent.mailId": "ID del correo",
@@ -357,7 +370,7 @@ export const esMessages = {
   "components.AddressCredentialModal.username": "Usuario",
   "components.MailContentRenderer.markAsRead": "Marcar como leído",
   "components.MailContentRenderer.markAsUnread": "Marcar como no leído",
-  "components.MailContentRenderer.loadRemoteImages": "Cargar imágenes",
+  "components.MailContentRenderer.loadRemoteImages": "Mostrar imágenes",
   "components.MailContentRenderer.remoteImagesBlocked": "Se bloquearon {count} recursos remotos para proteger tu privacidad",
   "views.common.Appearance.autoLoadRemoteImages": "Cargar automáticamente las imágenes externas del correo"
 }
