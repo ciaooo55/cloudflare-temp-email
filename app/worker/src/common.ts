@@ -8,6 +8,7 @@ import { CONSTANTS } from './constants.ts';
 import { AddressCreationSettings, AdminWebhookSettings, type ExtractResult, type WebhookMail, WebhookSettings } from './models/index.ts';
 import i18n from './i18n/index.ts';
 import { formatWebhookBody, getWebhookAttachments } from './utils/webhook.ts';
+import { consumeRateLimit } from './rate_limits.ts';
 
 const DEFAULT_NAME_REGEX = /[^a-z0-9]/g;
 const DEFAULT_RANDOM_SUBDOMAIN_LENGTH = 8;
@@ -798,22 +799,12 @@ export function isValidWebhookUrl(url: string): boolean {
 
 // Rate limit webhook sends: max 30 per minute per key (address or 'admin')
 async function checkWebhookRateLimit(env: Bindings, key: string): Promise<boolean> {
-    if (!env.KV) return true; // no KV = no rate limiting, allow
-    const kvKey = `webhook_ratelimit:${key}`;
+    if (!env.DB) return true;
     const now = Date.now();
-    const windowMs = 60_000;
-    const maxCalls = 30;
     try {
-        const raw = await env.KV.get(kvKey, 'json') as { count: number; windowStart: number } | null;
-        if (!raw || now - raw.windowStart > windowMs) {
-            await env.KV.put(kvKey, JSON.stringify({ count: 1, windowStart: now }), { expirationTtl: 120 });
-            return true;
-        }
-        if (raw.count >= maxCalls) return false;
-        await env.KV.put(kvKey, JSON.stringify({ count: raw.count + 1, windowStart: raw.windowStart }), { expirationTtl: 120 });
-        return true;
+        return await consumeRateLimit(env.DB, `webhook_ratelimit:${key}`, 30, now, now - 60_000, now + 120_000);
     } catch {
-        return true; // fail open on KV errors to avoid breaking mail flow
+        return true; // fail open on storage errors to avoid breaking mail flow
     }
 }
 

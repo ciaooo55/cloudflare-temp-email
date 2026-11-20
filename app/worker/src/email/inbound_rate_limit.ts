@@ -1,7 +1,7 @@
 /**
  * Inbound mail rate limiting (anti mail-bomb).
  *
- * Two dimensions, both per 1-minute sliding bucket:
+ * Two dimensions, both per fixed 1-minute bucket:
  *   1. sender + recipient pair: 30/min  (same sender hammering one address)
  *   2. sender across all recipients: 99/min (same sender blasting many addresses)
  *
@@ -10,60 +10,82 @@
  *   offense #2 -> 1 hour ban
  *   offense #3+ -> 24 hour ban
  *
- * Offense counter resets after 24h of clean behavior (KV TTL, refreshed on
- * each offense). Temp bans are separate KV keys with TTL = ban duration.
+ * Offense counter resets 24h after the last offense.
  *
  * Sender identity = SMTP envelope sender (message.from), NOT the From header
  * (trivially spoofed). Empty envelope sender (bounces) is exempt.
  */
 
+import { withRateLimitTable } from '../rate_limits.ts';
+
 const PAIR_LIMIT = 30;
 const SENDER_LIMIT = 99;
-const OFFENSE_TTL_SECS = 24 * 3600;
-const BAN_DURATIONS_SECS = [10 * 60, 3600, 24 * 3600];
-const COUNTER_TTL_SECS = 120; // minute bucket + boundary slack
+const OFFENSE_TTL_MS = 86_400_000;
+const BAN_DURATIONS_MS = [600_000, 3_600_000, OFFENSE_TTL_MS];
+const COUNTER_TTL_MS = 120_000;
 
-const banKey = (sender: string) => `inbound_ban|${sender}`;
-const offenseKey = (sender: string) => `inbound_offense|${sender}`;
-const counterKey = (dim: string, id: string) =>
-    `inbound_rl|${dim}|${id}|${Math.floor(Date.now() / 60000)}`;
-
-async function incrCounter(env: Bindings, key: string): Promise<number> {
-    const cur = parseInt((await env.KV.get(key)) || "0", 10) || 0;
-    const next = cur + 1;
-    await env.KV.put(key, next.toString(), { expirationTtl: COUNTER_TTL_SECS });
-    return next;
-}
+const ACTIVE_BAN = "SELECT 1 FROM worker_rate_limits WHERE key = ? AND blocked_until > ?";
+const INCREMENT_COUNTER = `
+    INSERT INTO worker_rate_limits (key, count, window_start, expires_at)
+    SELECT ?, 1, ?, ? WHERE NOT EXISTS (${ACTIVE_BAN})
+    ON CONFLICT(key) DO UPDATE SET
+        count = CASE WHEN window_start = excluded.window_start THEN count + 1 ELSE 1 END,
+        window_start = excluded.window_start,
+        expires_at = excluded.expires_at
+    RETURNING count
+`;
+const RECORD_OFFENSE = `
+    INSERT INTO worker_rate_limits (key, count, window_start, expires_at, blocked_until)
+    SELECT ?, 1, ?, ?, ? WHERE NOT EXISTS (${ACTIVE_BAN})
+        AND EXISTS (
+            SELECT 1 FROM worker_rate_limits WHERE (key = ? AND count > ?) OR (key = ? AND count > ?)
+        )
+    ON CONFLICT(key) DO UPDATE SET
+        count = CASE WHEN expires_at <= excluded.window_start THEN 1 ELSE count + 1 END,
+        window_start = excluded.window_start,
+        expires_at = excluded.expires_at,
+        blocked_until = CASE
+            WHEN expires_at <= excluded.window_start THEN excluded.blocked_until
+            WHEN count = 1 THEN excluded.window_start + ?
+            ELSE excluded.window_start + ?
+        END
+    RETURNING count, blocked_until
+`;
 
 export async function checkInboundRateLimit(
     sender: string, recipient: string, env: Bindings
 ): Promise<{ blocked: boolean; reason?: string }> {
-    if (!env.KV) return { blocked: false };
+    if (!env.DB) return { blocked: false };
     const s = sender.toLowerCase().trim().slice(0, 200);
     if (!s) return { blocked: false }; // bounce / empty envelope sender: exempt
     const r = recipient.toLowerCase().trim().slice(0, 200);
 
-    // 1. temp ban check (1 KV read)
-    if (await env.KV.get(banKey(s))) {
+    const now = Date.now();
+    const bucket = Math.floor(now / 60_000) * 60_000;
+    const pairKey = `inbound_pair:${JSON.stringify([s, r])}`;
+    const senderKey = `inbound_sender:${s}`;
+    const banKey = `inbound_ban:${s}`;
+    const [pair, senderTotal, offenseResult] = await withRateLimitTable(env.DB, () => env.DB.batch<{
+        count: number;
+        blocked_until?: number;
+    }>([
+        env.DB.prepare(INCREMENT_COUNTER).bind(pairKey, bucket, now + COUNTER_TTL_MS, banKey, now),
+        env.DB.prepare(INCREMENT_COUNTER).bind(senderKey, bucket, now + COUNTER_TTL_MS, banKey, now),
+        env.DB.prepare(RECORD_OFFENSE).bind(
+            banKey, now, now + OFFENSE_TTL_MS, now + BAN_DURATIONS_MS[0], banKey, now,
+            pairKey, PAIR_LIMIT, senderKey, SENDER_LIMIT, BAN_DURATIONS_MS[1], BAN_DURATIONS_MS[2]
+        ),
+    ]));
+    if (!pair.results.length) {
         return { blocked: true, reason: "sender temporarily blocked" };
     }
 
-    // 2. increment both counters
-    const [pairCount, senderCount] = await Promise.all([
-        incrCounter(env, counterKey("pair", `${s}|${r}`)),
-        incrCounter(env, counterKey("sender", s)),
-    ]);
-
-    // 3. threshold check -> graduated ban
-    if (pairCount > PAIR_LIMIT || senderCount > SENDER_LIMIT) {
-        const oKey = offenseKey(s);
-        const offense = (parseInt((await env.KV.get(oKey)) || "0", 10) || 0) + 1;
-        await env.KV.put(oKey, offense.toString(), { expirationTtl: OFFENSE_TTL_SECS });
-        const banSecs = BAN_DURATIONS_SECS[Math.min(offense - 1, BAN_DURATIONS_SECS.length - 1)];
-        await env.KV.put(banKey(s), "1", { expirationTtl: banSecs });
+    const offense = offenseResult.results[0];
+    if (offense?.blocked_until) {
+        const banSecs = (offense.blocked_until - now) / 1000;
         const reason =
-            `inbound rate limit exceeded (pair ${pairCount}/${PAIR_LIMIT}, ` +
-            `sender ${senderCount}/${SENDER_LIMIT}), banned ${banSecs}s (offense #${offense})`;
+            `inbound rate limit exceeded (pair ${pair.results[0].count}/${PAIR_LIMIT}, ` +
+            `sender ${senderTotal.results[0].count}/${SENDER_LIMIT}), banned ${banSecs}s (offense #${offense.count})`;
         console.warn(`[inbound-rl] ${reason} sender=${s}`);
         return { blocked: true, reason };
     }
