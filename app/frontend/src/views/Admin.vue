@@ -108,7 +108,6 @@ onMounted(() => { if (!openSettings.value.fetched) return api.getOpenSettings(me
         </nav>
         <header class="workspace-heading">
           <div>
-            <p class="workspace-eyebrow">MAIL / {{ t('workspace') }}</p>
             <h1>{{ activeLabel }}</h1>
           </div>
           <button v-if="isMobile && adminTab !== 'sendMail'" type="button" class="mobile-compose" @click="navigate('sendMail')">

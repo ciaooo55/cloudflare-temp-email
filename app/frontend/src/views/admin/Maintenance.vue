@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useDialog } from 'naive-ui'
 import { useScopedI18n } from '@/i18n/app'
-import { CleaningServicesFilled, AddFilled, DeleteFilled } from '@vicons/material'
+import { CleaningServicesFilled, AddFilled, DeleteFilled } from '../../components/mail-icons'
 import { formatLocalDateTime } from '../../utils'
 
 import { useGlobalState } from '../../store'
@@ -151,8 +151,8 @@ onMounted(async () => {
 
 
 <template>
-    <div class="center">
-        <n-card :bordered="false" embedded>
+    <div class="settings-page">
+        <section class="settings-surface">
             <n-alert :show-icon="false" :bordered="false" type="warning">
                 <span>{{ t('cronTip') }}</span>
             </n-alert>
@@ -311,7 +311,7 @@ onMounted(async () => {
                     </n-space>
                 </n-tab-pane>
             </n-tabs>
-        </n-card>
+        </section>
     </div>
 </template>
 

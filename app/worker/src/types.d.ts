@@ -22,7 +22,6 @@ type Bindings = {
     RATE_LIMITER: RateLimit
     SEND_MAIL: SendEmail
     ASSETS: Fetcher
-    AI: Ai
 
     // config
     DEFAULT_LANG: string | undefined
@@ -51,7 +50,6 @@ type Bindings = {
     DISABLE_ADMIN_PASSWORD_CHECK: string | boolean | undefined
     JWT_SECRET: string
     BLACK_LIST: string | undefined
-    ENABLE_WEBHOOK: string | boolean | undefined
     ENABLE_USER_CREATE_EMAIL: string | boolean | undefined
     DISABLE_ANONYMOUS_USER_CREATE_EMAIL: string | boolean | undefined
     ENABLE_USER_DELETE_EMAIL: string | boolean | undefined

@@ -127,16 +127,17 @@ onMounted(fetchData)
 </script>
 
 <template>
-    <div class="center">
-        <n-card :bordered="false" embedded :title="t('title')" style="max-width: 800px; overflow: auto;">
-            <n-flex justify="end">
+    <div class="settings-page">
+        <section class="settings-surface">
+            <n-flex justify="end" class="page-actions">
                 <n-button @click="testDevice()" secondary :loading="testingDeviceId === '__all__'" :disabled="!!testingDeviceId">{{ t('testAll') }}</n-button>
                 <n-button @click="saveAll" type="primary">{{ t('save') }}</n-button>
             </n-flex>
             <n-form-item-row :label="t('pushUrl')" style="margin-top: 12px;">
                 <n-input v-model:value="pushUrl" :placeholder="t('pushUrlTip')" />
             </n-form-item-row>
-            <n-table :bordered="false" style="margin-top: 8px;">
+            <div class="table-scroll">
+            <n-table :bordered="false" style="margin-top: 8px; min-width: 620px;">
                 <thead>
                     <tr>
                         <th>{{ t('deviceName') }}</th>
@@ -166,23 +167,18 @@ onMounted(fetchData)
                     </tr>
                 </tbody>
             </n-table>
-            <n-flex style="margin-top: 12px;">
+            </div>
+            <details class="settings-disclosure" :open="!devices.length">
+            <summary>{{ t('add') }}</summary>
+            <n-flex>
                 <n-input v-model:value="newName" :placeholder="t('namePlaceholder')" style="width: 200px;" />
                 <n-input v-model:value="newKeys" :placeholder="t('keysPlaceholder')" style="flex: 1;" type="password"
                     show-password-on="click" />
                 <n-button type="primary" @click="addDevice">{{ t('add') }}</n-button>
             </n-flex>
+            </details>
             <n-text v-if="testResult" depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ testResult }}</n-text>
             <n-text depth="3" style="font-size: 12px; margin-top: 12px; display: block;">{{ t('tip') }}</n-text>
-        </n-card>
+        </section>
     </div>
 </template>
-
-<style scoped>
-.center {
-    display: flex;
-    text-align: left;
-    place-items: center;
-    justify-content: center;
-}
-</style>

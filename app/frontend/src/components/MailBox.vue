@@ -163,6 +163,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="mailbox">
     <div class="mailbox-toolbar">
+      <slot name="filters" />
       <n-input v-if="showFilterInput" v-model:value="keyword" :placeholder="t('keywordQueryTip')"
         :aria-label="t('keywordQueryTip')" clearable class="mail-search" />
       <div class="refresh-controls">
@@ -232,7 +233,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mailbox-toolbar { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; }
-.mail-search { max-width: 340px; }
+.mail-search { max-width: 300px; flex: 1 1 200px; }
 .refresh-controls { display: flex; align-items: center; justify-content: flex-end; gap: 14px; flex: 1; white-space: nowrap; }
 .auto-refresh { display: inline-flex; align-items: center; color: var(--mail-muted); font-size: 12px; }
 .batch-controls { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 14px; }

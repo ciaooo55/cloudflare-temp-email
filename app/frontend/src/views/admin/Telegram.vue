@@ -247,13 +247,13 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="center">
-        <n-card :bordered="false" embedded style="max-width: 800px; overflow: auto;">
-            <n-flex justify="end">
+    <div class="settings-page">
+        <section class="settings-surface">
+            <n-flex justify="end" class="page-actions">
                 <n-button @click="fetchStatus" secondary>
                     {{ t('status') }}
                 </n-button>
-                <n-button @click="init" type="primary">
+                <n-button @click="init" secondary>
                     {{ t('init') }}
                 </n-button>
                 <n-button @click="saveSettings" type="primary">
@@ -301,7 +301,9 @@ onMounted(async () => {
                     </tbody>
                 </n-table>
                 </div>
-                <n-flex style="margin-top: 12px;" vertical>
+                <details class="settings-disclosure" :open="!bots.length">
+                <summary>{{ t('add') }}</summary>
+                <n-flex vertical>
                     <n-flex>
                         <n-input v-model:value="newBotName" :placeholder="t('namePlaceholder')" style="width: 200px;" />
                         <n-input v-model:value="newBotToken" :placeholder="t('tokenPlaceholder')" style="flex: 1;" show-password-on="click" type="password" />
@@ -312,6 +314,7 @@ onMounted(async () => {
                         <n-button type="primary" @click="addBot">{{ t('add') }}</n-button>
                     </n-flex>
                 </n-flex>
+                </details>
             </n-card>
             <n-modal v-model:show="showTestModal" preset="dialog" :title="t('test')">
                 <n-form-item-row :label="t('testChatId')">
@@ -325,10 +328,10 @@ onMounted(async () => {
             <n-card :bordered="false" embedded>
                 <n-form-item-row :label="t('enableTelegramAllowList')" :feedback="t('manualInputPrompt')">
                     <n-input-group>
-                        <n-checkbox v-model:checked="settings.enableAllowList" style="width: 20%;">
+                        <n-checkbox v-model:checked="settings.enableAllowList" >
                             {{ t('enable') }}
                         </n-checkbox>
-                        <n-select v-model:value="settings.allowList" filterable multiple tag style="width: 80%;"
+                        <n-select v-model:value="settings.allowList" filterable multiple tag
                             :placeholder="t('telegramAllowList')">
                         </n-select>
                     </n-input-group>
@@ -336,11 +339,11 @@ onMounted(async () => {
                 <br />
                 <n-form-item-row :label="t('enableGlobalMailPush')">
                     <n-input-group>
-                        <n-checkbox v-model:checked="settings.enableGlobalMailPush" style="width: 20%;">
+                        <n-checkbox v-model:checked="settings.enableGlobalMailPush" >
                             {{ t('enable') }}
                         </n-checkbox>
                         <n-select v-model:value="settings.globalMailPushList" filterable multiple tag
-                            style="width: 80%;" :placeholder="t('globalMailPushList')">
+                             :placeholder="t('globalMailPushList')">
                         </n-select>
                     </n-input-group>
                     <template #feedback>
@@ -359,15 +362,6 @@ onMounted(async () => {
                 </n-form-item-row>
             </n-card>
             <pre v-if="status.fetched">{{ JSON.stringify(status, null, 2) }}</pre>
-        </n-card>
+        </section>
     </div>
 </template>
-
-<style scoped>
-.center {
-    display: flex;
-    text-align: left;
-    place-items: center;
-    justify-content: center;
-}
-</style>

@@ -9,6 +9,7 @@
 ## v1.13.0(main)
 
 - feat: |frontend| Replace ten selected non-daily pages with a dark-only mail workspace and mobile layout, always open the mail list, watermark the version and simplify statistics to three totals
+- feat: |design| Redraw action icons, buttons, tables and rule forms, share the inbox/sent split reader, collapse notification creation and batch binding forms, lazy-load rich-text editing and remove retired locale resources
 - refactor: |mail| Receive and list domain mailboxes without creation, remove unknown-recipient classification, AI and mail Webhook runtime code, and extract verification codes locally while preserving notifications, three blocking levels and sending APIs
 - refactor: |operations| Remove database/Worker configuration pages while retaining D1 initialization, migration and quota-protection operations; preserve existing data and settings
 

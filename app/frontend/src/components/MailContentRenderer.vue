@@ -2,7 +2,7 @@
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useMessage } from 'naive-ui';
 import { useScopedI18n } from '@/i18n/app'
-import { CloudDownloadRound, ReplyFilled, ForwardFilled, FullscreenRound, ImageRound } from '@vicons/material'
+import { CloudDownloadRound, ReplyFilled, ForwardFilled, FullscreenRound, ImageRound } from './mail-icons'
 import ShadowHtmlComponent from "./ShadowHtmlComponent.vue";
 import AiExtractInfo from "./AiExtractInfo.vue";
 import { getDownloadEmlUrl } from '../utils/email-parser';

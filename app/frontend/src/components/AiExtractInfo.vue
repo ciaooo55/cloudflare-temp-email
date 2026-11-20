@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useScopedI18n } from '@/i18n/app';
-import { ContentCopyOutlined, LinkRound, CodeRound } from '@vicons/material';
+import { ContentCopyOutlined, LinkRound, CodeRound } from './mail-icons';
 import { useMessage } from 'naive-ui';
 import { useGlobalState } from '../store';
 

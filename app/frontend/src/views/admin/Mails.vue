@@ -11,9 +11,10 @@ const { adminMailTabAddress } = useGlobalState()
 const { t } = useScopedI18n('views.admin.Mails')
 
 const mailBoxKey = ref("")
+const address = ref(adminMailTabAddress.value)
 
 const queryMail = () => {
-    adminMailTabAddress.value = adminMailTabAddress.value.trim();
+    adminMailTabAddress.value = address.value.trim();
     mailBoxKey.value = Date.now();
 }
 
@@ -33,16 +34,15 @@ const deleteMail = async (curMailId) => {
 </script>
 
 <template>
-    <div style="margin-top: 10px;">
-        <n-input-group>
-            <n-input v-model:value="adminMailTabAddress" :placeholder="t('addressQueryTip')"
-                @keydown.enter="queryMail" clearable />
-            <n-button @click="queryMail" type="primary" tertiary>
-                {{ t('query') }}
-            </n-button>
-        </n-input-group>
-        <div style="margin-top: 10px;"></div>
-        <MailBox :key="mailBoxKey" :enableUserDeleteEmail="true" :fetchMailData="fetchMailData"
-            :deleteMail="deleteMail" :showFilterInput="true" />
-    </div>
+    <MailBox :key="mailBoxKey" :enableUserDeleteEmail="true" :fetchMailData="fetchMailData"
+        :deleteMail="deleteMail" :showFilterInput="true">
+        <template #filters>
+            <n-input-group class="address-query">
+                <n-input v-model:value="address" :placeholder="t('addressQueryTip')" :aria-label="t('addressQueryTip')"
+                    @keydown.enter="queryMail" clearable />
+                <n-button @click="queryMail" secondary>{{ t('query') }}</n-button>
+            </n-input-group>
+        </template>
+    </MailBox>
 </template>
+<style scoped>.address-query { flex: 1 1 240px; min-width: 0; }</style>
