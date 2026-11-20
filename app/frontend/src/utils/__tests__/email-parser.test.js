@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PostalMime from 'postal-mime'
-import { processItem, releaseMailResources } from '../email-parser'
+import { processItem, refreshParsedItem, releaseMailResources } from '../email-parser'
 
 const wasmParse = vi.hoisted(() => vi.fn())
 vi.mock('mail-parser-wasm', () => ({ parse_message: wasmParse }))
@@ -13,6 +13,14 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
+    it('keeps locally extracted codes when refreshing historical mail with empty server metadata', async () => {
+        const incoming = { source: 'envelope@example.com', raw: 'Subject: Verification code\r\n\r\nYour verification code is 123456.', metadata: null };
+        const parsed = await processItem({ ...incoming });
+        const refreshed = refreshParsedItem(parsed, { ...incoming });
+        expect(JSON.parse(refreshed.metadata).ai_extract.result).toBe('123456');
+        expect(refreshed.attachments).toBe(parsed.attachments);
+        expect(JSON.parse(refreshParsedItem(parsed, { ...incoming, metadata: '{}' }).metadata).ai_extract.result).toBe('123456');
+    })
     it('extracts verification codes locally when historical mail has no metadata', async () => {
         const parsed = await processItem({ raw: 'Subject: Verification code 654321\r\nContent-Type: text/plain\r\n\r\nUse this code to log in.' })
         expect(JSON.parse(parsed.metadata).ai_extract).toMatchObject({ type: 'auth_code', result: '654321' })

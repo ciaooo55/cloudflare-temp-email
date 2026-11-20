@@ -102,6 +102,13 @@ export async function processItem(item) {
     return item;
 }
 
+export function refreshParsedItem(cached, incoming) {
+    const item = { ...cached, ...incoming, source: cached.source,
+        originalSource: incoming.source || cached.originalSource };
+    addVerificationCode(item);
+    return item;
+}
+
 export function getDownloadEmlUrl(raw) {
     return URL.createObjectURL(
         new Blob([raw], { type: 'text/plain' }

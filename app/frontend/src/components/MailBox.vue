@@ -4,7 +4,7 @@ import { useMessage } from 'naive-ui'
 import { useScopedI18n } from '@/i18n/app'
 import { useGlobalState } from '../store'
 import { useIsMobile } from '../utils/composables'
-import { processItem, releaseMailResources } from '../utils/email-parser'
+import { processItem, refreshParsedItem, releaseMailResources } from '../utils/email-parser'
 import { utcToLocalDate } from '../utils'
 import { buildReplyModel, buildForwardModel } from '../utils/mail-actions'
 import MailContentRenderer from './MailContentRenderer.vue'
@@ -55,7 +55,7 @@ const refresh = async () => {
     const next = await Promise.all((response.results || []).map(item => {
       const cached = previous.get(item.id)
       return cached && cached.raw === item.raw
-        ? { ...cached, ...item, source: cached.source, originalSource: item.source || cached.originalSource }
+        ? refreshParsedItem(cached, item)
         : processItem({ ...item })
     }))
     if (disposed || currentVersion !== version) {
