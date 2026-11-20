@@ -8,7 +8,7 @@ import { api } from '../api'
 import { getRouterPathWithLang, hashPassword } from '../utils'
 import Turnstile from '../components/Turnstile.vue'
 import { useIsMobile } from '../utils/composables'
-import { adminGroups, normalizeAdminSection } from '../utils/admin-navigation'
+import { adminGroups, createAdminSelectOptions, normalizeAdminSection } from '../utils/admin-navigation'
 
 // Only the active tool is mounted and its chunk downloaded.
 const SenderAccess = defineAsyncComponent(() => import('./admin/SenderAccess.vue'));
@@ -116,10 +116,7 @@ const navigation = computed(() => adminGroups.map(group => ({
   key: group.key, label: t(group.label),
   children: group.items.map(([key, label]) => ({ key, label: t(label) }))
 })))
-const mobileOptions = computed(() => navigation.value.map(group => ({
-  type: 'group', label: group.label,
-  children: group.children.map(item => ({ label: item.label, value: item.key }))
-})))
+const mobileOptions = computed(() => createAdminSelectOptions(t))
 const activeLabel = computed(() => navigation.value.flatMap(group => group.children)
   .find(item => item.key === adminTab.value)?.label || '')
 const activeGroup = computed(() => adminGroups.find(group => group.items.some(([key]) => key === adminTab.value)))

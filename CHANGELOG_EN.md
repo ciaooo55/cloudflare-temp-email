@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |frontend| Give mobile workspace navigation groups stable unique keys to prevent repeated or reordered headings while scrolling or filtering
 - fix: |i18n| Translate workspace groups and original-address labels in German, Spanish, Portuguese and Japanese instead of falling back to Chinese
 - perf: |frontend| Load challenge scripts and extra locales on demand, share startup settings requests and fingerprint work, precache only the shell and parse ordinary mail without downloading WASM
 - feat: |reader| Open each message as text with codes and original addresses, derive text for HTML-only mail, show images only on click, and group tools by daily mail, mailboxes, rules, notifications and system
