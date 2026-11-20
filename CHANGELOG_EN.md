@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |mail| Check mailbox blacklist rules before reserving the daily D1 budget so rejected mail does not consume shared budget
+
 - feat: |mail| Add mailbox-specific sender domain blocks (including subdomains) and disabled mailboxes that reject all inbound and outbound mail, preserving the global sender blacklist
 
 - perf: |mail| Cache D1 blacklist reads during budget prechecks, skipping only unpromoted legacy KV values to avoid duplicate queries

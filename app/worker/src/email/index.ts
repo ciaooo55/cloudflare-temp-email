@@ -39,20 +39,20 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         console.log(`Reject message from ${message.from} to ${normalizeAddressDomain(await getRecipient(message, env))}`);
         return;
     }
+    const recipient = await getRecipient(message, env);
+    const toAddress = normalizeAddressDomain(recipient);
+    if (await isBlockedForRecipient(message, toAddress, env, false)) {
+        message.setReject("Reject blocked mailbox or sender domain");
+        console.log(`Reject message from ${message.from} to ${toAddress}`);
+        return;
+    }
     const admission = await reserveInboundUsage(env).catch(() => "paused");
     if (admission === "paused") {
         message.setReject("Mail temporarily paused: storage budget unavailable");
         return;
     }
-    const recipient = await getRecipient(message, env);
-    const toAddress = normalizeAddressDomain(recipient);
     if (await isBlocked(message, env, admission === "full")) {
         message.setReject("Reject from address");
-        console.log(`Reject message from ${message.from} to ${toAddress}`);
-        return;
-    }
-    if (await isBlockedForRecipient(message, toAddress, env, admission === "full")) {
-        message.setReject("Reject blocked mailbox or sender domain");
         console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
     }
