@@ -5,6 +5,7 @@ import { getJsonSetting } from './utils.ts';
 import { CleanupSettings } from './models/index.ts';
 import { executeCustomSqlCleanup } from './admin_api/cleanup_api.ts';
 import { cleanupStaleRawMails } from './scheduled_raw_mails.ts';
+import { cleanupExpiredRateLimits } from './rate_limits.ts';
 import {
     SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP,
     isTaskDueThisTick, markTaskRun,
@@ -19,6 +20,11 @@ function asPositiveInt(value: unknown, fallback: number): number {
 
 export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) {
     console.log("Scheduled event: ", event);
+    try {
+        await cleanupExpiredRateLimits(env.DB);
+    } catch (error) {
+        console.error("[scheduled] rate limit cleanup failed:", error);
+    }
     const settings: CleanupSettings = (await getJsonSetting<CleanupSettings>(
         { env: env, } as Context<HonoCustomType>,
         CONSTANTS.AUTO_CLEANUP_KEY
