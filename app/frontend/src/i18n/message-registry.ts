@@ -1373,10 +1373,6 @@ export const MESSAGE_REGISTRY = {
     "sendMailCount": {
       "en": "Send Mail Count",
       "zh": "发送邮件总数"
-    },
-    "userCount": {
-      "en": "User Count",
-      "zh": "用户总数"
     }
   },
   "views.admin.SenderAccess": {

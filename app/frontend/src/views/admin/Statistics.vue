@@ -12,7 +12,6 @@ const { t } = useScopedI18n('views.admin.Statistics')
 
 const statistics = ref({
     addressCount: 0,
-    userCount: 0,
     mailCount: 0,
     activeAddressCount7days: 0,
     activeAddressCount30days: 0,
@@ -22,13 +21,12 @@ const statistics = ref({
 const fetchStatistics = async () => {
     try {
         const {
-            userCount, mailCount, sendMailCount,
+            mailCount, sendMailCount,
             addressCount, activeAddressCount7days,
             activeAddressCount30days,
         } = await api.fetch(`/admin/statistics`);
         statistics.value.mailCount = mailCount || 0;
         statistics.value.sendMailCount = sendMailCount || 0;
-        statistics.value.userCount = userCount || 0;
         statistics.value.addressCount = addressCount || 0;
         statistics.value.activeAddressCount7days = activeAddressCount7days || 0;
         statistics.value.activeAddressCount30days = activeAddressCount30days || 0;
@@ -72,21 +70,14 @@ onMounted(async () => {
         </n-card>
         <n-card :bordered="false" embedded>
             <n-row>
-                <n-col :span="8">
-                    <n-statistic :label="t('userCount')" :value="statistics.userCount">
-                        <template #prefix>
-                            <n-icon :component="User" />
-                        </template>
-                    </n-statistic>
-                </n-col>
-                <n-col :span="8">
+                <n-col :span="12">
                     <n-statistic :label="t('mailCount')" :value="statistics.mailCount">
                         <template #prefix>
                             <n-icon :component="MailBulk" />
                         </template>
                     </n-statistic>
                 </n-col>
-                <n-col :span="8">
+                <n-col :span="12">
                     <n-statistic :label="t('sendMailCount')" :value="statistics.sendMailCount">
                         <template #prefix>
                             <n-icon :component="SendOutlined" />
