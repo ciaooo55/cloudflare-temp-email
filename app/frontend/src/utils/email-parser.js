@@ -1,12 +1,14 @@
 import PostalMime from 'postal-mime';
 import { extractCode, joinSubjectAndBody } from '../../../worker/src/email/extract_code';
-import { htmlToPlainText } from './sanitize-html';
 
 function addVerificationCode(item) {
     let metadata;
     try { metadata = JSON.parse(item.metadata || '{}'); } catch { metadata = {}; }
     if (metadata?.ai_extract?.type === 'auth_code' && metadata.ai_extract.result) return;
-    const code = extractCode(joinSubjectAndBody(item.subject, item.text || htmlToPlainText(item.message)));
+    const body = item.text || (item.message || '')
+        .replace(/<(style|script)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+        .replace(/<[^>]*>/g, ' ');
+    const code = extractCode(joinSubjectAndBody(item.subject, body));
     if (code) item.metadata = JSON.stringify({ ...metadata, ai_extract: { type: 'auth_code', result: code, result_text: '' } });
 }
 

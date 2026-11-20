@@ -751,11 +751,6 @@ export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<stri
     return trimLower(c.env.PREFIX);
 }
 
-// Security: validate webhook URLs to prevent SSRF.
-// Only allows http/https to public addresses; blocks private/loopback/link-local IPs.
-// Note: hostname-based DNS resolution cannot be intercepted in Workers runtime;
-// we mitigate via manual redirect following (each hop re-validated) and timeouts.
-
 export async function triggerAnotherWorker(
     c: Context<HonoCustomType>,
     rpcEmailMessage: RPCEmailMessage,

@@ -5,11 +5,12 @@ import { processItem, releaseMailResources } from '../email-parser'
 const wasmParse = vi.hoisted(() => vi.fn())
 vi.mock('mail-parser-wasm', () => ({ parse_message: wasmParse }))
 beforeEach(() => {
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:attachment')
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    vi.stubGlobal('URL', Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:attachment'), revokeObjectURL: vi.fn(),
+    }))
     wasmParse.mockReset()
 })
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
     it('extracts verification codes locally when historical mail has no metadata', async () => {

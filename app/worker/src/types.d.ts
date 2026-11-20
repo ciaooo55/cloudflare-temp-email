@@ -122,14 +122,6 @@ type Bindings = {
     FRONTEND_URL: string | undefined
     BACKEND_URL: string | undefined
 
-    // AI extraction config
-    ENABLE_AI_EMAIL_EXTRACT: string | boolean | undefined
-    AI_EXTRACT_MODE: string | undefined
-    AI_EXTRACT_MODEL: string | undefined
-    // custom OpenAI-compatible AI endpoint (AI_EXTRACT_MODE=custom)
-    AI_EXTRACT_API_URL: string | undefined
-    AI_EXTRACT_API_KEY: string | undefined
-
     // gzip compression for raw_mails
     ENABLE_MAIL_GZIP: string | boolean | undefined
     ENABLE_MAIL_READ_STATUS: string | boolean | undefined
