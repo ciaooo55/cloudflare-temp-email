@@ -1,10 +1,8 @@
-import { decodeHTML } from 'entities';
-
-export function htmlToVerificationText(html: string): string {
-    return decodeHTML(html
+export function stripVerificationHtml(html: string): string {
+    return html
         .replace(/<(style|script)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
         .replace(/<\/?(?:p|div|li|tr|td|th|h[1-6]|blockquote|section|article|br|hr)\b[^>]*>/gi, '\n')
-        .replace(/<[^>]*>/g, ''));
+        .replace(/<[^>]*>/g, '');
 }
 
 /**
