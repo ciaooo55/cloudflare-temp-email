@@ -47,6 +47,21 @@ test('empty settings, missing DB and missing store tables allow mail', async () 
     }
 });
 
+test('IDN rules and sender domains normalize to punycode', async () => {
+    const rules = { mailboxDomainBlockList: [{ address: 'box@example.com', domain: ' @BÜCHER.de ' }] };
+    assert.deepEqual(normalizeMailboxBlockRules(rules).mailboxDomainBlockList,
+        [{ address: 'box@example.com', domain: 'xn--bcher-kva.de' }]);
+    const env = setup(rules);
+    for (const sender of ['sender@xn--bcher-kva.de', 'sender@BÜCHER.de', 'sender@a.bücher.de']) {
+        assert.equal(await isBlockedForRecipient(message(sender), 'box@example.com', env), true);
+    }
+    assert.equal(await isBlockedForRecipient(message('sender@safe.com', 'Name <sender@bücher.de>'), 'box@example.com', env), true);
+    assert.equal(await isBlockedForRecipient(message('sender@notbücher.de'), 'box@example.com', env), false);
+    for (const domain of ['', 'bücher.de/path', 'user@bücher.de', 'bücher.de:80', 'bücher.de?query', 'bad..de', '%62ücher.de']) {
+        assert.deepEqual(normalizeMailboxBlockRules({ mailboxDomainBlockList: [{ address: 'box@example.com', domain }] }).mailboxDomainBlockList, []);
+    }
+});
+
 test('missing-table fallback reads legacy rules and unexpected storage errors propagate', async () => {
     const env = { DB: createD1(), KV: { async get(key) {
         assert.equal(key, CONSTANTS.EMAIL_MAILBOX_BLOCK_RULES);

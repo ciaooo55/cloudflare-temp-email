@@ -27,7 +27,13 @@ const normalizeMailbox = (value: unknown): string => {
 };
 
 const normalizeDomain = (value: unknown): string => {
-    const domain = typeof value === "string" ? value.trim().toLowerCase().replace(/^@/, "") : "";
+    let domain = typeof value === "string" ? value.trim().toLowerCase().replace(/^@/, "") : "";
+    if (!domain || /[\s/\\?#:@%]/.test(domain)) return "";
+    try {
+        domain = new URL(`http://${domain}`).hostname;
+    } catch {
+        return "";
+    }
     return domain.length <= 253 && domain.split(".").every(label =>
         /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) ? domain : "";
 };
@@ -64,7 +70,7 @@ export const isBlockedForRecipient = async (
     const address = toAddress.trim().toLowerCase();
     if (rules.blockedMailboxList.includes(address)) return true;
     const domains = [message.from, ...parseSenderAddresses(message.headers)]
-        .map(normalizeMailbox).filter(Boolean).map(sender => sender.split("@")[1]);
+        .map(normalizeMailbox).filter(Boolean).map(sender => normalizeDomain(sender.split("@")[1])).filter(Boolean);
     return rules.mailboxDomainBlockList.some(rule => rule.address === address &&
         domains.some(domain => domain === rule.domain || domain.endsWith(`.${rule.domain}`)));
 };

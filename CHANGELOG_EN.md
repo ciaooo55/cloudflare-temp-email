@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |mail| Normalize internationalized domain blacklist rules and sender domains to Punycode for matching
+
 - fix: |mail| Reject disabled mailboxes on the admin binding send endpoint too
 
 - fix: |mail| Check mailbox blacklist rules before reserving the daily D1 budget so rejected mail does not consume shared budget
