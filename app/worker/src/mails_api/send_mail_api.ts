@@ -1,4 +1,5 @@
 import { Context, Hono } from 'hono'
+import { isMailboxBlocked } from '../email/black_list.ts';
 import { verifyAddressToken } from '../address_auth.ts';
 import { createMimeMessage } from 'mimetext';
 import { Resend } from 'resend';
@@ -193,6 +194,9 @@ export const sendMail = async (
     const domains = getDomains(c);
     if (!includesDomain(domains, mailDomain)) {
         throw new Error(msgs.InvalidDomainMsg)
+    }
+    if (await isMailboxBlocked(address, c.env)) {
+        throw new Error(msgs.AddressBlockedMsg)
     }
     const sendBalanceState = options?.isAdmin ? null : await getSendBalanceState(c, address);
     if (sendBalanceState?.needCheckBalance) {

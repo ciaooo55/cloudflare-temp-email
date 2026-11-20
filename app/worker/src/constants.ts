@@ -25,6 +25,7 @@ export const CONSTANTS = {
     WEBHOOK_KV_SETTINGS_KEY: "temp-mail-webhook-settings",
     WEBHOOK_KV_USER_SETTINGS_KEY: "temp-mail-webhook-user-settings",
     EMAIL_KV_BLACK_LIST: "temp-mail-email-black-list",
+    EMAIL_MAILBOX_BLOCK_RULES: "email_mailbox_block_rules",
     WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY: "temp-mail-webhook-admin-mail-settings",
     SEND_MAIL_LIMIT_COUNT_KEY_PREFIX: "send_mail_limit_count:",
     SEND_MAIL_LIMIT_CONFIG_KEY: "send_mail_limit_config",

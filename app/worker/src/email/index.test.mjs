@@ -91,6 +91,28 @@ test("blacklisted mail leaves the usage ledger and legacy store untouched", asyn
     }
 });
 
+test("recipient-blocked mail leaves the usage ledger and legacy store untouched", async () => {
+    for (const source of ["D1", "KV"]) {
+        for (const rules of [
+            { blockedMailboxList: ["inbox@example.com"] },
+            { mailboxDomainBlockList: [{ address: "inbox@example.com", domain: "example.com" }] },
+        ]) {
+            const DB = createD1();
+            DB.sqlite.exec(WORKER_STORE_SCHEMA + USAGE_BUDGET_SCHEMA);
+            const value = JSON.stringify(rules);
+            if (source === "D1") {
+                DB.sqlite.prepare("INSERT INTO worker_store (key, value) VALUES (?, ?)")
+                    .run(CONSTANTS.EMAIL_MAILBOX_BLOCK_RULES, value);
+            }
+            const before = DB.sqlite.prepare("SELECT * FROM worker_store").all();
+            const KV = { async get(key) { return key === CONSTANTS.EMAIL_MAILBOX_BLOCK_RULES ? value : null; } };
+            assert.deepEqual(await deliver({ DB, KV }), ["Reject blocked mailbox or sender domain"]);
+            assert.equal(DB.sqlite.prepare("SELECT COUNT(*) AS n FROM worker_usage_day").get().n, 0);
+            assert.deepEqual(DB.sqlite.prepare("SELECT * FROM worker_store").all(), before);
+        }
+    }
+});
+
 test("admitted mail still promotes the legacy KV blacklist", async () => {
     const DB = createD1();
     DB.sqlite.exec(WORKER_STORE_SCHEMA + USAGE_BUDGET_SCHEMA);
