@@ -37,17 +37,43 @@ type Options = { expiration?: number; expirationTtl?: number };
 type ReadOptions = "json" | { type?: "json"; promoteLegacy?: boolean };
 type Cached = { value: string | null; until: number };
 const caches = new WeakMap<D1Database, Map<string, Cached>>();
-const legacyHtmlTables = new WeakMap<D1Database, boolean>();
+export function isMissingWorkerStoreTable(error: unknown) {
+    return error instanceof Error && /\bno such table: worker_store(?:_chunk|_import)?\b/.test(error.message);
+}
 
-async function legacySnapshotHtml(db: D1Database, key: string) {
-    if (!key.startsWith("mailhtml:")) return null;
-    let exists = legacyHtmlTables.get(db);
-    if (exists === undefined) {
-        exists = !!(await db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'bound_snapshot_html'").first());
-        legacyHtmlTables.set(db, exists);
+const BIND_PREFIX = "snapshot-bind:";
+const REVERSE_PREFIX = "snapshot-bindrev:";
+const HTML_PREFIX = "mailhtml:";
+type LegacyBinding = { address: string; token: string; url: string; expiresAt: number; createdAt: number };
+const legacySnapshotTables = new WeakMap<D1Database, Set<string>>();
+
+async function getLegacySnapshotTables(db: D1Database) {
+    let tables = legacySnapshotTables.get(db);
+    if (!tables) {
+        const { results } = await db.prepare(`SELECT name FROM sqlite_schema WHERE type = 'table'
+            AND name IN ('snapshot_bindings', 'bound_snapshot_html')`).all<{ name: string }>();
+        tables = new Set(results.map(({ name }) => name));
+        legacySnapshotTables.set(db, tables);
     }
-    return exists ? db.prepare("SELECT html FROM bound_snapshot_html WHERE token = ?")
-        .bind(key.slice("mailhtml:".length)).first<string>("html") : null;
+    return tables;
+}
+
+async function legacySnapshotBinding(db: D1Database, address: string) {
+    if (!(await getLegacySnapshotTables(db)).has("snapshot_bindings")) return null;
+    return db.prepare(`SELECT address, token, url, expires_at AS expiresAt, created_at AS createdAt
+        FROM snapshot_bindings WHERE address = ?`).bind(address).first<LegacyBinding>();
+}
+
+async function legacySnapshotHtml(env: Bindings, token: string, now: number) {
+    if (!(await getLegacySnapshotTables(env.DB)).has("bound_snapshot_html")) return null;
+    const html = await env.DB.prepare("SELECT html FROM bound_snapshot_html WHERE token = ?")
+        .bind(token).first<string>("html");
+    if (html === null) return null;
+    const address = await lookup(env, REVERSE_PREFIX + token, false);
+    if (!address || address === "__deleted__") return null;
+    const raw = await lookup(env, BIND_PREFIX + address, false);
+    const binding = raw && JSON.parse(raw) as LegacyBinding;
+    return binding && binding.token === token && binding.expiresAt > now ? html : null;
 }
 
 function settingsCache(db: D1Database) {
@@ -106,10 +132,23 @@ async function lookup(env: Bindings, key: string, promoteLegacy: boolean, retrie
         } else {
             value = row.value;
         }
-    } else if (!row?.key && env.KV && !row?.complete) {
-        value = await env.KV.get(key, key.startsWith("snapshot-bind") || key.startsWith("mailhtml:") ? { cacheTtl: 30 } : undefined);
-        if (value !== null) value = await legacySnapshotHtml(db, key) ?? value;
-        if (value !== null && promoteLegacy && LEGACY_KEYS.has(key)) await write(db, key, value, null, true);
+    } else if (!row?.key) {
+        const forward = key.startsWith(BIND_PREFIX);
+        const reverse = key.startsWith(REVERSE_PREFIX);
+        const html = key.startsWith(HTML_PREFIX);
+        if (forward) {
+            const binding = await legacySnapshotBinding(db, key.slice(BIND_PREFIX.length));
+            if (binding) return JSON.stringify(binding);
+        }
+        if (html) value = await legacySnapshotHtml(env, key.slice(HTML_PREFIX.length), now);
+        if (value === null && env.KV && !row?.complete) {
+            value = await env.KV.get(key, forward || reverse || html ? { cacheTtl: 30 } : undefined);
+            if (value !== null && promoteLegacy && LEGACY_KEYS.has(key)) await write(db, key, value, null, true);
+        }
+        if (value === null && reverse && (await getLegacySnapshotTables(db)).has("snapshot_bindings")) {
+            value = await db.prepare("SELECT address FROM snapshot_bindings WHERE token = ?")
+                .bind(key.slice(REVERSE_PREFIX.length)).first<string>("address");
+        }
     }
     cache?.set(key, { value, until: now + CACHE_TTL });
     return value;
@@ -132,7 +171,7 @@ export function workerStore(env: Bindings) {
         async setExpiry(key: string, expiration: number | null) {
             const updated = await env.DB.prepare("UPDATE worker_store SET expires_at = ? WHERE key = ? AND value IS NOT NULL")
                 .bind(expiration, key).run();
-            if (updated.meta.changes || !env.KV) return;
+            if (updated.meta.changes) return;
             const legacy = await lookup(env, key, false);
             if (legacy !== null) await write(env.DB, key, legacy, expiration, true);
         },
@@ -142,6 +181,14 @@ export function workerStore(env: Bindings) {
                 FROM worker_store WHERE key >= ? AND key < ? AND value IS NOT NULL AND (expires_at IS NULL OR expires_at > ?)`)
                 .bind(prefix, end, Date.now()).all<{ name: string; value: string | null }>();
             const entries = new Map(rows.results.map(({ name, value }) => [name, value]));
+            if (prefix === BIND_PREFIX && (await getLegacySnapshotTables(env.DB)).has("snapshot_bindings")) {
+                const legacy = await env.DB.prepare("SELECT address FROM snapshot_bindings WHERE expires_at > ?")
+                    .bind(Date.now()).all<{ address: string }>();
+                for (const { address } of legacy.results) {
+                    const name = BIND_PREFIX + address;
+                    if (!entries.has(name)) entries.set(name, null);
+                }
+            }
             if (env.KV && !(await getStoreImportStatus(env)).complete) {
                 let cursor: string | undefined;
                 do {
@@ -179,7 +226,9 @@ export async function importStorePage(env: Bindings) {
         }
         if (!LEGACY_KEYS.has(name) && !LEGACY_PREFIXES.some(prefix => name.startsWith(prefix))) continue;
         if (await env.DB.prepare("SELECT 1 FROM worker_store WHERE key = ?").bind(name).first()) continue;
-        const value = await legacySnapshotHtml(env.DB, name) ?? await env.KV.get(name);
+        if (name.startsWith(BIND_PREFIX) && await legacySnapshotBinding(env.DB, name.slice(BIND_PREFIX.length))) continue;
+        if (name.startsWith(HTML_PREFIX) && await legacySnapshotHtml(env, name.slice(HTML_PREFIX.length), Date.now()) !== null) continue;
+        const value = await env.KV.get(name);
         if (value !== null) {
             await write(env.DB, name, value, expiration === undefined ? null : expiration * 1000, true);
         } else if (expiration === undefined || expiration * 1000 > Date.now()) {
@@ -196,7 +245,15 @@ export async function importStorePage(env: Bindings) {
 export async function cleanupWorkerStore(env: Bindings) {
     const now = Date.now();
     if (env.KV && !(await getStoreImportStatus(env)).complete) return;
+    const tables = await getLegacySnapshotTables(env.DB);
+    const retained = [
+        tables.has("snapshot_bindings") ? `AND NOT EXISTS (SELECT 1 FROM snapshot_bindings WHERE
+            (key LIKE '${BIND_PREFIX}%' AND address = substr(key, ${BIND_PREFIX.length + 1}))
+            OR (key LIKE '${REVERSE_PREFIX}%' AND token = substr(key, ${REVERSE_PREFIX.length + 1})))` : "",
+        tables.has("bound_snapshot_html") ? `AND NOT EXISTS (SELECT 1 FROM bound_snapshot_html WHERE
+            key LIKE '${HTML_PREFIX}%' AND token = substr(key, ${HTML_PREFIX.length + 1}))` : "",
+    ].join(" ");
     await env.DB.prepare(`DELETE FROM worker_store WHERE key IN (
-        SELECT key FROM worker_store WHERE expires_at <= ? ORDER BY expires_at LIMIT 100
+        SELECT key FROM worker_store WHERE expires_at <= ? ${retained} ORDER BY expires_at LIMIT 100
     )`).bind(now).run();
 }

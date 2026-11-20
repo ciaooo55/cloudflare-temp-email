@@ -9,7 +9,7 @@ import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common
 import { checkIfJunkMail } from './check_junk.ts';
 import { removeAttachmentIfNeed } from './check_attachment.ts';
 import { extractEmailInfo } from './ai_extract.ts';
-import { EmailRuleSettings } from '../models/index.ts';
+import type { EmailRuleSettings } from '../models/index.ts';
 import { CONSTANTS } from '../constants.ts';
 import { storeRawMail } from './storage.ts';
 import { reserveInboundUsage } from '../usage_budget.ts';

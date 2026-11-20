@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createD1 } from "../test-loader/d1.mjs";
 import { getUsageStatus, quotaRetryAfter, reserveHttpUsage, reserveInboundUsage, reserveReadUsage, usageLimits, USAGE_BUDGET_SCHEMA } from "./usage_budget.ts";
+import { WORKER_STORE_SCHEMA } from "./worker_store.ts";
 
 const now = Date.UTC(2026, 0, 1, 23, 59, 59);
 
 test("soft exhaustion keeps inbound storage available until the hard budget, then resets at UTC midnight", async () => {
     const DB = createD1();
-    DB.sqlite.exec(USAGE_BUDGET_SCHEMA);
+    DB.sqlite.exec(USAGE_BUDGET_SCHEMA + WORKER_STORE_SCHEMA);
     const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "15", D1_DAILY_WRITE_HARD_LIMIT: "27" };
     assert.equal(await reserveInboundUsage(env, now), "full");
     assert.equal(await reserveReadUsage(env, now), false);
@@ -34,7 +35,7 @@ test("fresh databases allow settings and admin login until budgeting is initiali
     const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "40" };
     assert.equal(await reserveHttpUsage(env, true), true);
     assert.equal(await reserveHttpUsage(env, false), true);
-    await assert.rejects(reserveInboundUsage(env), /no such table: worker_usage_day/);
+    assert.equal(await reserveInboundUsage(env), "receive-only");
 
     DB.sqlite.exec(USAGE_BUDGET_SCHEMA);
     assert.equal(await reserveHttpUsage(env, true), true);
