@@ -309,7 +309,6 @@ export const ptBRMessages = {
   "views.admin.CreateAccount.enableRandomSubdomain": "Usar subdomínio aleatório",
   "views.common.Appearance.useSimpleIndex": "Usar índice simples",
   "views.common.Appearance.useUTCDate": "Usar data UTC",
-  "views.admin.Statistics.userCount": "Quantidade de usuários",
   "components.AiExtractInfo.authCode": "Código de verificação",
   "views.admin.AccountSettings.verified_address_list": "Lista de endereços verificados (pode enviar e-mail pela API interna do cf)",
   "components.MailContentRenderer.attachments": "Ver anexos",

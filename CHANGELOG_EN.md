@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |statistics| Fix the admin Statistics tab returning 500 (`no such table: users`) and showing all counters as 0: the `users` table no longer exists in the schema or migrations since the multi-user system was removed, but the statistics API still queried it, failing the whole batch; drop the `userCount` query, the "User Count" card and its i18n strings
 - fix: |deps| Repair the broken `app/worker/pnpm-lock.yaml`: add the missing `@sindresorhus/is@7.2.0` entry and drop orphaned entries so `pnpm install --frozen-lockfile` works again (`package.json` and resolved versions are unchanged)
 - feat: |mail| Show the original receiving address in the mail detail view with one-click copy: the original recipient is extracted from the raw mail's To header while parsing, and the detail header gains an "Original To" tag with a copy button (same definition as the backend's forwarded-mail original recipient)
 - fix: |deps| Upgrade worker `hono` 4.13.7 → 4.13.18 (patch-level upgrade within the same minor) to fix the 5 hono advisories reported by `pnpm audit` (patched in 4.13.11 / 4.13.16)
