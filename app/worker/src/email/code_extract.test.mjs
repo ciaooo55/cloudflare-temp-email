@@ -21,3 +21,8 @@ test('base64 verification mail is decoded before local extraction', async () => 
 test('ordinary plain mail needs no MIME parse or metadata write', async () => {
     assert.equal(await extractEmailInfo({ rawEmail: 'Subject: Hello\r\n\r\nOrdinary message' }, {}, null), null);
 });
+
+test('unencoded HTML code split by tags is parsed before extraction', async () => {
+    const rawEmail = 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Verification code: <span>123456</span></p>';
+    assert.equal((await extractEmailInfo({ rawEmail }, {}, null)).result, '123456');
+});

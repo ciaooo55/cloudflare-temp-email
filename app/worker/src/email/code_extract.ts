@@ -6,6 +6,7 @@ export async function extractEmailInfo(
     context: ParsedEmailContext, env: Bindings, messageId: string | null
 ): Promise<ExtractResult | null> {
     if (!extractCode(context.rawEmail)
+        && !/content-type:\s*text\/html/i.test(context.rawEmail)
         && !/content-transfer-encoding:\s*(?:base64|quoted-printable)/i.test(context.rawEmail)) return null;
     try {
         const parsed = await commonParseMail(context);
