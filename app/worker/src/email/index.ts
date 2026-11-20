@@ -5,7 +5,7 @@ import { sendMailNotifications } from '../telegram_api/index.ts';
 import { refreshBoundSnapshotsForIncomingMail } from '../telegram_api/mail_snapshot.ts';
 import { isBlocked } from './black_list.ts';
 import { checkInboundRateLimit } from './inbound_rate_limit.ts';
-import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common.ts';
+import { triggerWebhook, triggerAnotherWorker } from '../common.ts';
 import { checkIfJunkMail } from './check_junk.ts';
 import { removeAttachmentIfNeed } from './check_attachment.ts';
 import { extractEmailInfo } from './ai_extract.ts';
@@ -141,16 +141,6 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     // AI email content extraction
     const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);
 
-    // Parse email content BEFORE notifications (snapshot/TG/Bark need parsedEmail)
-    try {
-        const parsed = await commonParseMail(parsedEmailContext);
-        if (parsed) {
-            parsedEmailContext.parsedEmail = parsed;
-        }
-    } catch (error) {
-        console.error("parse email for notifications error", error);
-    }
-
     // bound snapshot: overwrite the fixed snapshot url with the newest mail
     try {
         await refreshBoundSnapshotsForIncomingMail(
@@ -164,7 +154,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     try {
         await sendMailNotifications(
             { env: env } as Context<HonoCustomType>,
-            toAddress, parsedEmailContext, message_id, aiExtractResult);
+            toAddress, parsedEmailContext, storedMailId, aiExtractResult);
     } catch (error) {
         console.error("send mail notifications error", error);
     }
@@ -181,16 +171,13 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // trigger another worker
     try {
-        // parsedEmail is already cached in parsedEmailContext by commonParseMail;
-        // reuse it instead of calling commonParseMail again.
-        const parsedText = parsedEmailContext.parsedEmail?.text ?? ""
         const rpcEmail: RPCEmailMessage = {
             from: message.from,
             to: toAddress,
             rawEmail: rawEmail,
             headers: message.headers
         }
-        await triggerAnotherWorker({ env: env } as Context<HonoCustomType>, rpcEmail, parsedText);
+        await triggerAnotherWorker({ env: env } as Context<HonoCustomType>, rpcEmail, parsedEmailContext);
     } catch (error) {
         console.error("trigger another worker error", error);
     }

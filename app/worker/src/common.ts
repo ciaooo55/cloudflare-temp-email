@@ -948,14 +948,17 @@ export async function triggerWebhook(
 export async function triggerAnotherWorker(
     c: Context<HonoCustomType>,
     rpcEmailMessage: RPCEmailMessage,
-    parsedText: string | undefined | null
+    parsedEmailContext: ParsedEmailContext
 ): Promise<void> {
-    if (!parsedText) {
+    if (!getBooleanValue(c.env.ENABLE_ANOTHER_WORKER)) {
         return;
     }
-
     const anotherWorkerList: AnotherWorker[] = getAnotherWorkerList(c);
-    if (!getBooleanValue(c.env.ENABLE_ANOTHER_WORKER) || anotherWorkerList.length === 0) {
+    if (anotherWorkerList.length === 0) {
+        return;
+    }
+    const parsedText = (await commonParseMail(parsedEmailContext))?.text;
+    if (!parsedText) {
         return;
     }
 
