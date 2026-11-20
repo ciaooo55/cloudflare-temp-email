@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |mail| Reject disabled mailboxes on the admin binding send endpoint too
+
 - fix: |mail| Check mailbox blacklist rules before reserving the daily D1 budget so rejected mail does not consume shared budget
 
 - feat: |mail| Add mailbox-specific sender domain blocks (including subdomains) and disabled mailboxes that reject all inbound and outbound mail, preserving the global sender blacklist
