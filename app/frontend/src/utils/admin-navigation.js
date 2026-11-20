@@ -25,3 +25,10 @@ export function normalizeAdminSection(section) {
     if (['qucickSetup', 'quickSetup', 'maintenance'].includes(section)) return 'database'
     return adminGroups.some(group => group.items.some(([key]) => key === section)) ? section : 'mails'
 }
+
+export function createAdminSelectOptions(translate) {
+    return adminGroups.map(group => ({
+        type: 'group', key: group.key, label: translate(group.label),
+        children: group.items.map(([value, label]) => ({ value, label: translate(label) })),
+    }))
+}

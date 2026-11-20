@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adminGroups, normalizeAdminSection } from '../admin-navigation'
+import { adminGroups, createAdminSelectOptions, normalizeAdminSection } from '../admin-navigation'
 
 describe('admin workspace navigation', () => {
     const keys = adminGroups.flatMap(group => group.items.map(([key]) => key))
@@ -32,5 +32,16 @@ describe('admin workspace navigation', () => {
         expect(adminGroups.find(group => group.key === 'rules').items.map(([key]) => key))
             .toContain('account_settings')
         expect(adminGroups.every(group => group.description)).toBe(true)
+    })
+
+    it('gives mobile select groups unique stable keys across locale changes', () => {
+        const options = createAdminSelectOptions(label => `zh:${label}`)
+        const translated = createAdminSelectOptions(label => `en:${label}`)
+        expect(options.map(group => group.key)).toEqual(adminGroups.map(group => group.key))
+        expect(new Set(options.map(group => group.key)).size).toBe(5)
+        expect(translated.map(group => group.key)).toEqual(options.map(group => group.key))
+        expect(options.flatMap(group => group.children.map(item => item.value))).toEqual(keys)
+        expect(options.every(group => group.type === 'group' && group.label.startsWith('zh:'))).toBe(true)
+        expect(translated.every(group => group.label.startsWith('en:'))).toBe(true)
     })
 })
