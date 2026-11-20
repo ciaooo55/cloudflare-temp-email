@@ -194,10 +194,8 @@ export const sendMail = async (
     if (!includesDomain(domains, mailDomain)) {
         throw new Error(msgs.InvalidDomainMsg)
     }
-    const sendBalanceState = await getSendBalanceState(c, address, {
-        isAdmin: options?.isAdmin,
-    });
-    if (sendBalanceState.needCheckBalance) {
+    const sendBalanceState = options?.isAdmin ? null : await getSendBalanceState(c, address);
+    if (sendBalanceState?.needCheckBalance) {
         if (!sendBalanceState.balance || sendBalanceState.balance <= 0) {
             throw new Error(msgs.NoBalanceMsg)
         }
@@ -220,7 +218,7 @@ export const sendMail = async (
     if (!content) {
         throw new Error(msgs.ContentEmptyMsg)
     }
-    await ensureSendMailLimit(c);
+    const sendLimitConfig = await ensureSendMailLimit(c);
 
     // send to verified address list, do not update balance
     let sendByVerifiedAddressList = false;
@@ -264,10 +262,10 @@ export const sendMail = async (
             throw new Error(`${msgs.EnableResendOrSmtpOrSendMailMsg} (${mailDomain})`);
         }
     }
-    await increaseSendMailLimitCount(c);
+    await increaseSendMailLimitCount(c, sendLimitConfig);
 
     // update balance
-    if (!sendByVerifiedAddressList && sendBalanceState.needCheckBalance) {
+    if (!sendByVerifiedAddressList && sendBalanceState?.needCheckBalance) {
         try {
             const { success } = await c.env.DB.prepare(
                 `UPDATE address_sender SET balance = balance - 1 where address = ?`
