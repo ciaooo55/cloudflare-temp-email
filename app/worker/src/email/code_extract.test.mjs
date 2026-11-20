@@ -31,3 +31,8 @@ test('HTML entities are decoded before local extraction', async () => {
     const rawEmail = 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:&nbsp;&#49;&#50;&#51;&#52;&#53;&#54;</p>';
     assert.equal((await extractEmailInfo({ rawEmail }, {}, null)).result, '123456');
 });
+
+test('adjacent inline elements preserve a verification code split across digit groups', async () => {
+    const rawEmail = 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:&nbsp;<span>&#49;&#50;&#51;</span><span>&#52;&#53;&#54;</span>.</p>';
+    assert.equal((await extractEmailInfo({ rawEmail }, {}, null)).result, '123456');
+});

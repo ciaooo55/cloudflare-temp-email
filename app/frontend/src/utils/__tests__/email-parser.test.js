@@ -13,7 +13,7 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
-    it.each(['&nbsp;123456', '&#160;123456', '&#160;&#49;&#50;&#51;&#52;&#53;&#54;'])('decodes HTML entities before extracting historical codes: %s', async (encoded) => {
+    it.each(['&nbsp;123456', '&#160;123456', '&#160;&#49;&#50;&#51;&#52;&#53;&#54;', '&nbsp;<span>&#49;&#50;&#51;</span><span>&#52;&#53;&#54;</span>'])('decodes HTML entities before extracting historical codes: %s', async (encoded) => {
         const parsed = await processItem({ raw: 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:' + encoded + '</p>', metadata: null });
         expect(JSON.parse(parsed.metadata).ai_extract.result).toBe('123456');
     })
