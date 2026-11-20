@@ -78,3 +78,31 @@ test("admitted mail still promotes the legacy KV blacklist", async () => {
     assert.equal(DB.sqlite.prepare("SELECT value FROM worker_store WHERE key = ?").get(CONSTANTS.EMAIL_KV_BLACK_LIST).value, list);
     assert.equal(DB.sqlite.prepare("SELECT inbound_emails FROM worker_usage_day").get().inbound_emails, 1);
 });
+
+test("D1 blacklist reads are cached across admission and repeated deliveries", async () => {
+    for (const blacklist of [[], ["other@example.com"], ["sender@example.com"]]) {
+        const DB = createD1();
+        DB.sqlite.exec(WORKER_STORE_SCHEMA + USAGE_BUDGET_SCHEMA);
+        DB.sqlite.exec("CREATE TABLE raw_mails (source TEXT, address TEXT, raw TEXT, message_id TEXT); CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);");
+        DB.sqlite.prepare("INSERT INTO worker_store (key, value) VALUES (?, ?)")
+            .run(CONSTANTS.EMAIL_KV_BLACK_LIST, JSON.stringify(blacklist));
+        const prepare = DB.prepare;
+        let blacklistReads = 0;
+        DB.prepare = sql => {
+            const statement = prepare(sql);
+            if (/SELECT .*FROM worker_store WHERE key = \?/s.test(sql)) {
+                const bind = statement.bind;
+                statement.bind = (...values) => {
+                    if (values[0] === CONSTANTS.EMAIL_KV_BLACK_LIST) blacklistReads++;
+                    return bind(...values);
+                };
+            }
+            return statement;
+        };
+        const expected = blacklist.includes("sender@example.com") ? ["Reject from address"] : [];
+        assert.deepEqual(await deliver({ DB }), expected);
+        assert.equal(blacklistReads, 1);
+        assert.deepEqual(await deliver({ DB }), expected);
+        assert.equal(blacklistReads, 1);
+    }
+});
