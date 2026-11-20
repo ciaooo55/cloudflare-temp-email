@@ -21,6 +21,16 @@ test("prefers the snapshot domain over the Mini App URL", async () => {
     assert.match(url, /^https:\/\/snapshot\.example\.com\/m\/[0-9a-f]{64}$/);
 });
 
+test("creates a snapshot from MIME that has not been parsed yet", async () => {
+    const DB = createD1();
+    DB.sqlite.exec(WORKER_STORE_SCHEMA);
+    const context = { env: { DB, SNAPSHOT_BASE_URL: "https://snapshot.example.com" } };
+    const mail = { rawEmail: "From: sender@example.com\r\nSubject: Test mail\r\n\r\nSnapshot body" };
+    const url = await createMailSnapshot(context, null, mail, 7200);
+    assert.match(url, /^https:\/\/snapshot\.example\.com\/m\/[0-9a-f]{64}$/);
+    assert.match(DB.sqlite.prepare("SELECT value FROM worker_store WHERE key LIKE 'mailhtml:%'").get().value, /Snapshot body/);
+});
+
 test("extracts multilingual verification codes", () => {
     assert.deepEqual(extractVerificationCode("验证码：123456"), { isVerification: true, code: "123456" });
     assert.deepEqual(extractVerificationCode("Verification code: A1B2C3"), { isVerification: true, code: "A1B2C3" });
