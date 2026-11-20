@@ -42,7 +42,7 @@ const copy = async value => {
   catch (error) { message.error(error.message || 'error') }
 }
 const confirm = (content, action) => dialog.warning({
-  title: t('actions'), content, positiveText: t('ok'), negativeText: locale.value === 'zh' ? '取消' : 'Cancel',
+  title: t('actions'), content, positiveText: locale.value === 'zh' ? '确认' : 'Confirm', negativeText: locale.value === 'zh' ? '取消' : 'Cancel',
   onPositiveClick: async () => {
     try { await action(); await fetchData(); message.success(t('success')) }
     catch (error) { message.error(error.message || 'error') }
@@ -118,7 +118,7 @@ onMounted(fetchData)
     <n-modal v-model:show="showReset" preset="dialog" :title="t('resetPassword')">
       <p>{{ resetRow?.name }}</p>
       <n-input v-model:value="password" type="password" :aria-label="t('newPassword')" :placeholder="t('newPassword')" />
-      <template #action><n-button type="primary" :disabled="!password.trim()" @click="reset">{{ t('ok') }}</n-button></template>
+      <template #action><n-button type="primary" :disabled="!password.trim()" @click="reset">{{ locale === 'zh' ? '确认' : 'Confirm' }}</n-button></template>
     </n-modal>
   </div>
 </template>
