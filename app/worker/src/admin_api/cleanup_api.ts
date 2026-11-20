@@ -4,7 +4,7 @@ import { cleanup } from '../common.ts';
 import { CONSTANTS } from '../constants.ts';
 import { getJsonSetting, saveSetting } from '../utils.ts';
 import { CleanupSettings, CustomSqlCleanup, ScheduledTaskRunInfo } from '../models/index.ts';
-import { getTaskRunInfo, markTaskRun, SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP } from '../scheduled_tasks.ts';
+import { cleanupInterval, getTaskRunInfo, markTaskRun, SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP } from '../scheduled_tasks.ts';
 import { cleanupStaleRawMails } from '../scheduled_raw_mails.ts';
 import i18n from '../i18n/index.ts';
 import { LocaleMessages } from '../i18n/type.ts';
@@ -112,11 +112,17 @@ export default {
     },
     getCleanup: async (c: Context<HonoCustomType>) => {
         const cleanupSetting = await getJsonSetting<CleanupSettings>(c, CONSTANTS.AUTO_CLEANUP_KEY);
+        if (cleanupSetting) {
+            cleanupSetting.rawMailsIntervalMinutes = cleanupInterval(cleanupSetting.rawMailsIntervalMinutes, 10);
+            cleanupSetting.autoCleanupIntervalMinutes = cleanupInterval(cleanupSetting.autoCleanupIntervalMinutes, 60);
+        }
         return c.json(cleanupSetting)
     },
     saveCleanup: async (c: Context<HonoCustomType>) => {
         const msgs = i18n.getMessagesByContext(c);
         const cleanupSetting = await c.req.json<CleanupSettings>();
+        cleanupSetting.rawMailsIntervalMinutes = cleanupInterval(cleanupSetting.rawMailsIntervalMinutes, 10);
+        cleanupSetting.autoCleanupIntervalMinutes = cleanupInterval(cleanupSetting.autoCleanupIntervalMinutes, 60);
 
         // Validate custom SQL cleanup list
         if (cleanupSetting.customSqlCleanupList && cleanupSetting.customSqlCleanupList.length > 0) {

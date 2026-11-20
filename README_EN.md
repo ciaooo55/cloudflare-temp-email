@@ -176,7 +176,7 @@ Try it now → [https://mail.awsl.uk/](https://mail.awsl.uk/)
 - **Backend**: TypeScript + Cloudflare Workers
 - **Email Parsing**: Rust WASM (mail-parser-wasm)
 - **Database**: Cloudflare D1 (SQLite)
-- **Storage**: Cloudflare KV + R2 (optional S3)
+- **Storage**: Cloudflare D1 + R2 (optional S3); see the [migration guide](app/README.md) for legacy KV
 - **Proxy Service**: Python SMTP/IMAP Proxy Server
 
 ### Main Components

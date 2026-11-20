@@ -1,3 +1,4 @@
+import { workerStore } from "./worker_store.ts";
 import { Context } from 'hono';
 import { Jwt } from 'hono/utils/jwt'
 import type { WorkerMailerOptions } from 'worker-mailer';
@@ -883,21 +884,21 @@ export async function triggerWebhook(
     storedMailId: number | undefined,
     aiExtract?: ExtractResult | null
 ): Promise<void> {
-    if (!c.env.KV || !getBooleanValue(c.env.ENABLE_WEBHOOK)) {
+    if (!c.env.DB || !getBooleanValue(c.env.ENABLE_WEBHOOK)) {
         return
     }
     const webhookList: WebhookSettings[] = []
 
     // admin mail webhook
-    const adminMailWebhookSettings = await c.env.KV.get<WebhookSettings>(CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY, "json");
+    const adminMailWebhookSettings = await workerStore(c.env).get<WebhookSettings>(CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY, "json");
     if (adminMailWebhookSettings?.enabled) {
         webhookList.push(adminMailWebhookSettings)
     }
 
     // user mail webhook
-    const adminSettings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
+    const adminSettings = await workerStore(c.env).get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
     if (!adminSettings?.enableAllowList || adminSettings?.allowList.includes(address)) {
-        const settings = await c.env.KV.get<WebhookSettings>(
+        const settings = await workerStore(c.env).get<WebhookSettings>(
             `${CONSTANTS.WEBHOOK_KV_USER_SETTINGS_KEY}:${address}`, "json"
         );
         if (settings?.enabled) {

@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context } from 'hono'
 
 import i18n from '../i18n/index.ts'
@@ -57,7 +58,7 @@ const get = async (c: Context<HonoCustomType>) => {
             getJsonSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY),
             getJsonSetting(c, CONSTANTS.SEND_BLOCK_LIST_KEY),
             getJsonSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY),
-            c.env.KV ? c.env.KV.get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, 'json') : Promise.resolve([]),
+            c.env.DB ? workerStore(c.env).get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, 'json') : Promise.resolve([]),
             getJsonSetting<EmailRuleSettings>(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY),
             getJsonSetting(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY),
             getAddressCreationSettings(c),
@@ -101,9 +102,6 @@ const save = async (c: Context<HonoCustomType>) => {
         return c.text(msgs.EnableSendMailMsg, 400)
     }
     // 所有输入依赖都先校验，再执行任意写入，避免接口返回 400 时出现部分设置已落库的半成功状态。
-    if (fromBlockList?.length > 0 && !c.env.KV) {
-        return c.text(msgs.EnableKVMsg, 400)
-    }
     if (sendMailLimitConfig && !validateSendMailLimitConfig(sendMailLimitConfig)) {
         return c.text(msgs.InvalidInputMsg, 400)
     }
@@ -113,8 +111,8 @@ const save = async (c: Context<HonoCustomType>) => {
     await saveSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY, JSON.stringify(blockList));
     await saveSetting(c, CONSTANTS.SEND_BLOCK_LIST_KEY, JSON.stringify(sendBlockList));
     await saveSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY, JSON.stringify(verifiedAddressList));
-    if (fromBlockList?.length > 0 && c.env.KV) {
-        await c.env.KV.put(CONSTANTS.EMAIL_KV_BLACK_LIST, JSON.stringify(fromBlockList))
+    if (Array.isArray(fromBlockList)) {
+        await workerStore(c.env).put(CONSTANTS.EMAIL_KV_BLACK_LIST, JSON.stringify(fromBlockList))
     }
     await saveSetting(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY, JSON.stringify(noLimitSendAddressList || []));
     await saveSetting(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY, JSON.stringify(emailRuleSettings || {}));

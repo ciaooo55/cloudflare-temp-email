@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- perf: |Worker| Move remaining KV data to D1 with a resumable import, add daily budgets that prioritize inbound mail, and use a five-minute cron cadence and minimum cleanup interval
 - fix: |statistics| Fix the admin Statistics tab returning 500 (`no such table: users`) and showing all counters as 0: the `users` table no longer exists in the schema or migrations since the multi-user system was removed, but the statistics API still queried it, failing the whole batch; drop the `userCount` query, the "User Count" card and its i18n strings
 - perf: |Worker| Move inbound mail, daily IP and webhook rate limits and scheduled-task run state to D1 to reduce free-tier KV usage; transient rate-limit state resets at rollout, while existing snapshots, Telegram data and other KV settings are unchanged
 - fix: |deps| Repair the broken `app/worker/pnpm-lock.yaml`: add the missing `@sindresorhus/is@7.2.0` entry and drop orphaned entries so `pnpm install --frozen-lockfile` works again (`package.json` and resolved versions are unchanged)

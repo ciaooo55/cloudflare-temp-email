@@ -6,22 +6,28 @@ import { CleanupSettings } from './models/index.ts';
 import { executeCustomSqlCleanup } from './admin_api/cleanup_api.ts';
 import { cleanupStaleRawMails } from './scheduled_raw_mails.ts';
 import { cleanupExpiredRateLimits } from './rate_limits.ts';
+import { cleanupWorkerStore, importStorePage } from './worker_store.ts';
+import { CRON_COST, reserveUsage } from './usage_budget.ts';
 import {
     SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP,
-    isTaskDueThisTick, markTaskRun,
+    cleanupInterval, isTaskDueThisTick, markTaskRun,
 } from './scheduled_tasks.ts';
 
-// worker cron 每分钟触发一次（见 wrangler.toml.template [triggers]），
-// 每个任务按自己在网页里配置的间隔执行，间隔全部可在管理端修改。
 function asPositiveInt(value: unknown, fallback: number): number {
     const n = Math.floor(Number(value));
     return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) {
+    if (!(await reserveUsage(env, "soft", CRON_COST).catch(() => false))) return;
+    const now = event.scheduledTime;
     console.log("Scheduled event: ", event);
     try {
         await cleanupExpiredRateLimits(env.DB);
+        await cleanupWorkerStore(env);
+        if (env.KV && await reserveUsage(env, "soft", { reads: 40, writes: 12 })) {
+            await importStorePage(env);
+        }
     } catch (error) {
         console.error("[scheduled] rate limit cleanup failed:", error);
     }
@@ -32,23 +38,22 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
 
     // 任务一：raw_mails 定时清理（替代原独立 dinshi worker），默认开启以保持原有行为
     const rawMailsEnabled = settings.enableRawMailsAutoCleanup !== false;
-    const rawMailsInterval = asPositiveInt(settings.rawMailsIntervalMinutes, 10);
+    const rawMailsInterval = cleanupInterval(settings.rawMailsIntervalMinutes, 10);
     const rawMailsOlderThan = asPositiveInt(settings.cleanRawMailsMinutes, 10);
-    if (rawMailsEnabled && await isTaskDueThisTick(env, SCHEDULED_TASK_RAW_MAILS, rawMailsInterval)) {
+    if (rawMailsEnabled && await isTaskDueThisTick(env, SCHEDULED_TASK_RAW_MAILS, rawMailsInterval, now)) {
         const deleted = await cleanupStaleRawMails(env, rawMailsOlderThan);
-        await markTaskRun(env, SCHEDULED_TASK_RAW_MAILS, deleted);
+        await markTaskRun(env, SCHEDULED_TASK_RAW_MAILS, deleted, now);
     } else {
         console.log("[scheduled] raw_mails cleanup skipped (disabled or not due).");
     }
 
     // 任务二：自动清理批次（含自定义 SQL），按整批间隔执行
-    const batchInterval = asPositiveInt(settings.autoCleanupIntervalMinutes, 60);
-    if (!await isTaskDueThisTick(env, SCHEDULED_TASK_AUTO_CLEANUP, batchInterval)) {
+    const batchInterval = cleanupInterval(settings.autoCleanupIntervalMinutes, 60);
+    if (!await isTaskDueThisTick(env, SCHEDULED_TASK_AUTO_CLEANUP, batchInterval, now)) {
         console.log("[scheduled] auto cleanup batch skipped (not due).");
         return;
     }
-    await markTaskRun(env, SCHEDULED_TASK_AUTO_CLEANUP);
-    console.log("autoCleanupSetting:", JSON.stringify(settings));
+    await markTaskRun(env, SCHEDULED_TASK_AUTO_CLEANUP, undefined, now);
     if (settings.enableMailsAutoCleanup) {
         await cleanup(
             { env: env, } as Context<HonoCustomType>,

@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context } from "hono";
 import { CONSTANTS } from '../constants.ts';
 import { getDomains, getJsonSetting, isDomainOrSubdomain, saveSetting, generateSecureHexToken } from '../utils.ts';
@@ -6,7 +7,6 @@ import {
     deleteSnapshotBinding,
     listSnapshotBindingRecords,
     snapshotBindKey,
-    SNAPSHOT_KV_EDGE_TTL,
     updateSnapshotBindingExpiry,
 } from '../telegram_api/mail_snapshot.ts';
 import type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
@@ -212,7 +212,7 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
         const idx = bots.findIndex(b => b.id === id);
         if (idx >= 0) {
             bots[idx].webhookSecret = webhookSecret;
-            await c.env.KV.put(CONSTANTS.TELEGRAM_BOTS_KEY, JSON.stringify(bots));
+            await saveSetting(c, CONSTANTS.TELEGRAM_BOTS_KEY, JSON.stringify(bots));
         }
         return c.json({ ok: true, webhookUrl });
     } catch (e) {
@@ -352,7 +352,7 @@ async function createSnapshotBinding(c: Context<HonoCustomType>): Promise<Respon
     // durationHours <= 0 表示永久有效；缺省 168 小时；上限 365 天
     const raw = Number(durationHours);
     const hours = Number.isFinite(raw) && raw <= 0 ? 0 : Math.max(1, Math.min(24 * 365, Math.floor(raw) || 168));
-    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    if (!c.env.DB) return c.json({ error: "D1 not available" }, 400);
     const origin = snapshotOrigin(c);
     if (!origin) return c.json({ error: "无法确定快照访问地址" }, 400);
     // 域名不在允许列表中默认拒绝；前端提醒后用户确认可忽略提醒继续绑定
@@ -387,10 +387,9 @@ function getSnapshotAllowedDomains(c: Context<HonoCustomType>): string[] {
 async function invalidateSnapshotBinding(c: Context<HonoCustomType>): Promise<Response> {
     const address = c.req.param("address") || "";
     const addr = decodeURIComponent(address);
-    // 先查到旧 token 再删，保证 D1/KV/反向索引清干净（KV 边缘缓存可能导致直接删时反查不到 token）
     let token: string | undefined;
     try {
-        const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+        const b = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(addr), "json");
         token = b?.token;
     } catch { /* ignore */ }
     await deleteSnapshotBinding(c, addr, token);
@@ -402,14 +401,14 @@ async function batchDeleteSnapshotBindings(c: Context<HonoCustomType>): Promise<
     const { addresses } = await c.req.json<{ addresses?: string[] }>();
     const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
     if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
-    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    if (!c.env.DB) return c.json({ error: "D1 not available" }, 400);
     let deleted = 0;
     const failed: string[] = [];
     for (const addr of list) {
         try {
             let token: string | undefined;
             try {
-                const b = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+                const b = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(addr), "json");
                 token = b?.token;
             } catch { /* ignore */ }
             await deleteSnapshotBinding(c, addr, token);
@@ -426,7 +425,7 @@ async function batchExtendSnapshotBindings(c: Context<HonoCustomType>): Promise<
     const { addresses, durationHours } = await c.req.json<{ addresses?: string[]; durationHours?: number }>();
     const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
     if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
-    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    if (!c.env.DB) return c.json({ error: "D1 not available" }, 400);
     const raw = Number(durationHours);
     const hours = Number.isFinite(raw) && raw <= 0 ? 0 : Math.max(1, Math.min(24 * 365, Math.floor(raw) || 168));
     let updated = 0;
@@ -453,7 +452,7 @@ async function batchReplaceSnapshotBindings(c: Context<HonoCustomType>): Promise
     const { addresses, durationHours, ignoreDomainWarning } = await c.req.json<{ addresses?: string[]; durationHours?: number; ignoreDomainWarning?: boolean }>();
     const list = [...new Set((addresses || []).map(a => (a || "").trim().toLowerCase()).filter(a => a.includes("@")))];
     if (!list.length) return c.json({ error: "请提供邮箱地址" }, 400);
-    if (!c.env.KV) return c.json({ error: "KV not available" }, 400);
+    if (!c.env.DB) return c.json({ error: "D1 not available" }, 400);
     const raw = Number(durationHours);
     const hours = Number.isFinite(raw) && raw <= 0 ? 0 : Math.max(1, Math.min(24 * 365, Math.floor(raw) || 168));
     const origin = snapshotOrigin(c);
@@ -505,7 +504,7 @@ export type BoundSnapshotCacheConfig = {
 
 /**
  * 读取绑定快照边缘缓存配置（D1 settings，无边缘缓存，网页改完即时生效）。
- * 默认关闭：每次打开都实时读 KV，新邮件秒级可见、更换链接秒级失效。
+ * 默认关闭：每次打开都实时读 D1，新邮件秒级可见、更换链接秒级失效。
  */
 export async function getBoundSnapshotCacheConfig(c: Context<HonoCustomType>): Promise<BoundSnapshotCacheConfig> {
     try {

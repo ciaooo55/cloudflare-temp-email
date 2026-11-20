@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context } from "hono";
 import { CONSTANTS } from '../constants.ts';
 import { AdminWebhookSettings, WebhookSettings, RawMailRow } from '../models/index.ts';
@@ -9,11 +10,11 @@ import i18n from '../i18n/index.ts';
 async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
     const msgs = i18n.getMessagesByContext(c);
     const { address } = c.get("jwtPayload")
-    const adminSettings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
+    const adminSettings = await workerStore(c.env).get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
     if (adminSettings?.enableAllowList && !adminSettings?.allowList.includes(address)) {
         return c.text(msgs.WebhookNotAllowedForUserMsg, 403);
     }
-    const settings = await c.env.KV.get<WebhookSettings>(
+    const settings = await workerStore(c.env).get<WebhookSettings>(
         `${CONSTANTS.WEBHOOK_KV_USER_SETTINGS_KEY}:${address}`, "json"
     ) || new WebhookSettings();
     return c.json(settings);
@@ -23,7 +24,7 @@ async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response>
 async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
     const msgs = i18n.getMessagesByContext(c);
     const { address } = c.get("jwtPayload")
-    const adminSettings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
+    const adminSettings = await workerStore(c.env).get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
     if (adminSettings?.enableAllowList && !adminSettings?.allowList.includes(address)) {
         return c.text(msgs.WebhookNotAllowedForUserMsg, 403);
     }
@@ -32,7 +33,7 @@ async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response
     if (settings.url && !isValidWebhookUrl(settings.url)) {
         return c.text(msgs.InvalidRequestBodyMsg || "Invalid webhook URL", 400);
     }
-    await c.env.KV.put(
+    await workerStore(c.env).put(
         `${CONSTANTS.WEBHOOK_KV_USER_SETTINGS_KEY}:${address}`,
         JSON.stringify(settings));
     return c.json({ success: true })

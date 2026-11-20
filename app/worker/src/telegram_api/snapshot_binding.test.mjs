@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createD1 } from "../../test-loader/d1.mjs";
+import { workerStore, WORKER_STORE_SCHEMA, WORKER_STORE_TRIGGER } from "../worker_store.ts";
 import {
     createMailSnapshot,
     createSnapshotBindingRecord,
@@ -12,41 +14,34 @@ import {
     refreshBoundSnapshotsForIncomingMail,
     snapshotBindKey,
     snapshotBindRevKey,
-    SNAPSHOT_KV_EDGE_TTL,
     SNAPSHOT_BIND_DELETED,
     SNAPSHOT_BIND_TOMBSTONE_TTL,
 } from "./mail_snapshot.ts";
 
-function makeKv() {
-    const store = new Map(); // key -> { value, expiresAtMs|null }
+function makeStore() {
+    const DB = createD1();
+    DB.sqlite.exec(WORKER_STORE_SCHEMA + WORKER_STORE_TRIGGER);
+    const store = workerStore({ DB });
     return {
-        store,
-        async get(key, type) {
-            const e = store.get(key);
-            if (!e) return null;
-            if (e.expiresAtMs && e.expiresAtMs <= Date.now()) { store.delete(key); return null; }
-            const t = typeof type === "object" && type !== null ? type.type : type;
-            if (t === "json") return JSON.parse(e.value);
-            return e.value;
-        },
-        async put(key, value, opts = {}) {
-            let expiresAtMs = null;
-            if (opts.expiration) expiresAtMs = opts.expiration * 1000;
-            else if (opts.expirationTtl) expiresAtMs = Date.now() + opts.expirationTtl * 1000;
-            store.set(key, { value: typeof value === "string" ? value : String(value), expiresAtMs, ttl: opts.expirationTtl || null });
-        },
-        async delete(key) { store.delete(key); },
-        async list({ prefix }) {
-            return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) };
+        ...store,
+        DB,
+        store: {
+            get(key) {
+                const row = DB.sqlite.prepare("SELECT value, expires_at FROM worker_store WHERE key = ?").get(key);
+                return row?.value != null ? {
+                    value: row.value, expiresAtMs: row.expires_at,
+                    ttl: row.expires_at === null ? null : row.expires_at / 1000 - Math.floor(Date.now() / 1000),
+                } : undefined;
+            },
         },
     };
 }
 
-const ctx = kv => ({ env: { KV: kv, SNAPSHOT_BASE_URL: "https://snap.example.com" } });
+const ctx = store => ({ env: { DB: store.DB, SNAPSHOT_BASE_URL: "https://snap.example.com" } });
 const mailCtx = (html, subject = "hi") => ({ parsedEmail: { html, text: "", subject } });
 
 test("createSnapshotBindingRecord writes binding, reverse index and placeholder", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const b = await createSnapshotBindingRecord(ctx(kv), "User@Example.com", 48, "https://snap.example.com");
     assert.equal(b.address, "user@example.com");
     assert.match(b.url, /^https:\/\/snap\.example\.com\/m\/[0-9a-f]{64}$/);
@@ -64,7 +59,7 @@ test("createSnapshotBindingRecord writes binding, reverse index and placeholder"
 });
 
 test("refreshBoundSnapshot overwrites content and lives for the binding duration", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const b = await createSnapshotBindingRecord(ctx(kv), "a@example.com", 24 * 7, "https://snap.example.com");
     const url = await refreshBoundSnapshot(ctx(kv), "a@example.com", mailCtx("<p>code 123456</p>"), 3600);
     assert.equal(url, b.url);
@@ -75,7 +70,7 @@ test("refreshBoundSnapshot overwrites content and lives for the binding duration
 });
 
 test("rebinding the same address kills the old URL", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const b1 = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
     const b2 = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
@@ -92,7 +87,7 @@ test("rebinding the same address kills the old URL", async () => {
 });
 
 test("expired binding is cleaned on read and returns null", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const b = await createSnapshotBindingRecord(c, "a@example.com", 1, "https://snap.example.com");
     // 人为调过期
@@ -107,7 +102,7 @@ test("expired binding is cleaned on read and returns null", async () => {
 });
 
 test("deleteSnapshotBinding removes binding, reverse index and html", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const b = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
     await deleteSnapshotBinding(c, "a@example.com");
@@ -117,7 +112,7 @@ test("deleteSnapshotBinding removes binding, reverse index and html", async () =
 });
 
 test("delete tombstone has short ttl and does not block rebinding", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const b1 = await createSnapshotBindingRecord(c, "a@example.com", 24, "https://snap.example.com");
     await deleteSnapshotBinding(c, "a@example.com");
@@ -133,7 +128,7 @@ test("delete tombstone has short ttl and does not block rebinding", async () => 
 });
 
 test("listSnapshotBindingRecords skips and cleans expired bindings", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const good = await createSnapshotBindingRecord(c, "good@example.com", 24, "https://snap.example.com");
     const bad = await createSnapshotBindingRecord(c, "bad@example.com", 24, "https://snap.example.com");
@@ -150,7 +145,7 @@ test("listSnapshotBindingRecords skips and cleans expired bindings", async () =>
 });
 
 test("createMailSnapshot honors a custom ttl", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const url = await createMailSnapshot(ctx(kv), null, mailCtx("<p>x</p>"), 7200);
     const token = url.split("/m/")[1];
     assert.match(token, /^[0-9a-f]{64}$/);
@@ -158,52 +153,27 @@ test("createMailSnapshot honors a custom ttl", async () => {
 });
 
 test("createMailSnapshot defaults to 24h", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const url = await createMailSnapshot(ctx(kv), null, mailCtx("<p>x</p>"));
     const token = url.split("/m/")[1];
     assert.equal(kv.store.get(`mailhtml:${token}`).ttl, DEFAULT_SNAPSHOT_TTL);
     assert.equal(DEFAULT_SNAPSHOT_TTL, 86400);
 });
 
-test("snapshot KV reads use short edge cache ttl (prompt refresh/invalidation)", async () => {
-    // KV.get 默认边缘缓存 60 秒会导致更换链接/新邮件延迟可见；
-    // 快照热路径读取必须带 cacheTtl（文档最小 30），否则回归旧延迟。
-    assert.equal(SNAPSHOT_KV_EDGE_TTL, 30);
+test("legacy snapshot KV fallback still uses a short edge TTL", async () => {
+    const ttl = 30;
+    const fixture = makeStore();
     const seen = [];
-    const base = (() => {
-        const kv = (function makeKv() {
-            const store = new Map();
-            return {
-                store,
-                async get(key, type) {
-                    seen.push([key, type]);
-                    const e = store.get(key);
-                    if (!e) return null;
-                    const t = typeof type === "object" && type !== null ? type.type : type;
-                    if (t === "json") return JSON.parse(e.value);
-                    return e.value;
-                },
-                async put(key, value, opts = {}) { store.set(key, { value, opts }); },
-                async delete(key) { store.delete(key); },
-            };
-        })();
-        return kv;
-    })();
-    const c = { env: { KV: base }, executionCtx: { waitUntil() {} } };
-    const b = await createSnapshotBindingRecord(c, "ttl@example.com", 24, "https://snap.example.com");
-    await refreshBoundSnapshot(c, "ttl@example.com", { parsedEmail: { html: "<p>new</p>", text: "t", subject: "s" } });
-    await getSnapshotBinding(c, "ttl@example.com");
-    await deleteSnapshotBinding(c, "ttl@example.com", b.token);
-    const reads = seen.filter(([k]) => k.startsWith("snapshot-bind:") || k.startsWith("snapshot-bindrev:"));
-    assert.ok(reads.length > 0, "expected snapshot KV reads");
-    for (const [key, type] of reads) {
-        assert.equal(typeof type, "object", `KV.get(${key}) should pass options object`);
-        assert.equal(type.cacheTtl, SNAPSHOT_KV_EDGE_TTL, `KV.get(${key}) cacheTtl`);
-    }
+    const address = "ttl@example.com";
+    const legacy = JSON.stringify({ address, token: "old", expiresAt: Date.now() + 60_000 });
+    const c = ctx(fixture);
+    c.env.KV = { async get(key, options) { seen.push([key, options]); return legacy; } };
+    assert.equal((await getSnapshotBinding(c, address)).token, "old");
+    assert.deepEqual(seen, [[snapshotBindKey(address), { cacheTtl: ttl }]]);
 });
 
 test("incoming forwarded mail refreshes the binding held by the original recipient", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     // 绑定挂在原始收件人（转发前的 iCloud 地址）名下，信封收件人是另一个地址
     const b = await createSnapshotBindingRecord(c, "orig@icloud.com", 0, "https://snap.example.com");
@@ -220,7 +190,7 @@ test("incoming forwarded mail refreshes the binding held by the original recipie
 });
 
 test("incoming direct mail refreshes only the envelope binding", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const b = await createSnapshotBindingRecord(c, "direct@example.com", 24, "https://snap.example.com");
     await refreshBoundSnapshotsForIncomingMail(c, "direct@example.com", mailCtx("<p>hi 111222</p>"));
@@ -228,7 +198,7 @@ test("incoming direct mail refreshes only the envelope binding", async () => {
 });
 
 test("getSnapshotBindingForMail falls back to the original recipient binding", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const b = await createSnapshotBindingRecord(c, "orig@icloud.com", 0, "https://snap.example.com");
     const bound = await getSnapshotBindingForMail(c, "envelope@looo.cloud", "orig@icloud.com");
@@ -237,7 +207,7 @@ test("getSnapshotBindingForMail falls back to the original recipient binding", a
 });
 
 test("getSnapshotBindingForMail prefers the envelope binding when both exist", async () => {
-    const kv = makeKv();
+    const kv = makeStore();
     const c = ctx(kv);
     const envBinding = await createSnapshotBindingRecord(c, "envelope@looo.cloud", 24, "https://snap.example.com");
     await createSnapshotBindingRecord(c, "orig@icloud.com", 24, "https://snap.example.com");

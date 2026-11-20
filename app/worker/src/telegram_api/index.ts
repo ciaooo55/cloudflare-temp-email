@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context, Hono } from 'hono'
 import { ServerResponse } from 'node:http'
 import { Writable } from 'node:stream'
@@ -28,9 +29,6 @@ const hasTelegramBot = async (c: Context<HonoCustomType>) => {
 
 api.use("/telegram/*", async (c, next) => {
     const msgs = i18n.getMessagesByContext(c);
-    if (!c.env.KV) {
-        return c.text(msgs.KVNotAvailableMsg, 400);
-    }
     if (!(await hasTelegramBot(c))) {
         return c.text(msgs.TgBotTokenRequiredMsg, 400);
     }
@@ -39,9 +37,6 @@ api.use("/telegram/*", async (c, next) => {
 
 api.use("/admin/telegram/*", async (c, next) => {
     const msgs = i18n.getMessagesByContext(c);
-    if (!c.env.KV) {
-        return c.text(msgs.KVNotAvailableMsg, 400);
-    }
     if (!(await hasTelegramBot(c))) {
         return c.text(msgs.TgBotTokenRequiredMsg, 400);
     }
@@ -90,7 +85,7 @@ api.post("/telegram/webhook/:botId", async (c) => {
 });
 
 api.post("/telegram/webhook", async (c) => {
-    const storedSecret = await c.env.KV.get(WEBHOOK_SECRET_KV_KEY);
+    const storedSecret = await workerStore(c.env).get(WEBHOOK_SECRET_KV_KEY);
     return handleTelegramWebhook(c, c.env.TELEGRAM_BOT_TOKEN, storedSecret);
 });
 
@@ -106,7 +101,7 @@ api.post("/admin/telegram/init", async (c) => {
     const webhookSecret = generateSecureHexToken(32);
     const bot = newTelegramBot(c, token);
     await bot.telegram.setWebhook(webhookUrl, { secret_token: webhookSecret })
-    await c.env.KV.put(WEBHOOK_SECRET_KV_KEY, webhookSecret);
+    await workerStore(c.env).put(WEBHOOK_SECRET_KV_KEY, webhookSecret);
     await initTelegramBotCommands(c, bot);
     return c.json({
         message: "webhook set successfully",

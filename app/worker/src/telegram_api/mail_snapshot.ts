@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import type { Context } from "hono";
 import type { TelegramSettings } from './settings.ts';
 import { generateSecureHexToken } from '../utils.ts';
@@ -149,7 +150,7 @@ export function buildSnapshotHtml(html: string, text: string, subject: string, m
 }
 
 export async function createMailSnapshot(c: Context<HonoCustomType>, settings: TelegramSettings | null | undefined, parsedEmailContext: ParsedEmailContext, ttlSeconds: number = DEFAULT_SNAPSHOT_TTL, address?: string): Promise<string | null> {
-    if (!c.env.KV) return null;
+    if (!c.env.DB) return null;
     const parsed = parsedEmailContext.parsedEmail;
     if (!parsed || (!parsed.html && !parsed.text)) return null;
     let origin = "";
@@ -163,7 +164,7 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
     }
     if (!origin) return null;
     const token = generateSecureHexToken(32);
-    await c.env.KV.put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
+    await workerStore(c.env).put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
         sender: parsed?.sender || "",
         recipient: address || parsedEmailContext.address || "",
         originalRecipient: parsedEmailContext.originalRecipient,
@@ -214,35 +215,10 @@ export async function refreshBoundSnapshot(
     parsedEmailContext: ParsedEmailContext,
     ttlSeconds: number = DEFAULT_SNAPSHOT_TTL
 ): Promise<string | null> {
-    if (!c.env.KV) return null;
+    if (!c.env.DB) return null;
     const addr = address.toLowerCase();
-    let binding: SnapshotBinding | null = null;
-    // 优先读 D1：无 30 秒边缘缓存，建完绑定立即发邮件也能找到；D1 miss 再回退 KV
-    if (c.env.DB) {
-        try {
-            const row = await c.env.DB.prepare(
-                "SELECT token, url, expires_at, created_at FROM snapshot_bindings WHERE address = ?"
-            ).bind(addr).first<{ token: string; url: string; expires_at: number; created_at: number }>();
-            if (row) {
-                binding = { address: addr, token: row.token, url: row.url, expiresAt: row.expires_at, createdAt: row.created_at };
-            }
-        } catch { /* ignore, fallback to KV */ }
-    }
-    if (!binding) {
-        try {
-            binding = await c.env.KV.get<SnapshotBinding>(`snapshot-bind:${addr}`, { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
-        } catch {
-            return null;
-        }
-    }
+    const binding = await getSnapshotBinding(c, addr);
     if (!binding) return null;
-    if (binding.expiresAt <= Date.now()) {
-        // 过期：清理绑定与快照（反向索引留删除标记，各 PoP 的旧链接直接 404）
-        try {
-            await deleteSnapshotBinding(c, addr, binding.token);
-        } catch { /* ignore */ }
-        return null;
-    }
     const parsed = parsedEmailContext.parsedEmail;
     // parsedEmail 可能为空（email/index.ts 里 commonParseMail 失败时不会赋值）：
     // 此时自己解析一次，保证快照一定写入，不静默跳过
@@ -261,35 +237,18 @@ export async function refreshBoundSnapshot(
         } catch { /* ignore, 下面会直接返回 */ }
     }
     if (!html && !text) return binding.url;
-    // 永久绑定：内容 KV 不设过期；普通绑定按剩余时长设置
-    const htmlKvOpts = isPermanentSnapshotBinding(binding.expiresAt)
+    const htmlOpts = isPermanentSnapshotBinding(binding.expiresAt)
         ? {}
         : { expirationTtl: Math.max(60, Math.floor((binding.expiresAt - Date.now()) / 1000)) };
     const finalParsed = parsedEmailContext.parsedEmail;
     const sender = finalParsed?.sender || "";
     const origRecipient = parsedEmailContext.originalRecipient;
     const snapshotHtml = buildSnapshotHtml(html, text, subject, { sender, recipient: addr, originalRecipient: origRecipient && origRecipient.toLowerCase() !== addr ? origRecipient : undefined, dateMs: Date.now() });
-    // 绑定快照内容同时写入 D1：KV 读取有 30 秒边缘缓存强制下限，
-    // 新邮件到达后 /m/ 必须秒级可见，D1 无此限制。D1 写入失败则删行，
-    // 保证 /m/ 回退到 KV（KV 里是新内容，不会读到 D1 的旧行）。
-    if (c.env.DB) {
-        try {
-            await c.env.DB.prepare(
-                "INSERT INTO bound_snapshot_html (token, html, updated_at) VALUES (?, ?, ?) " +
-                "ON CONFLICT(token) DO UPDATE SET html=excluded.html, updated_at=excluded.updated_at"
-            ).bind(binding.token, snapshotHtml, Date.now()).run();
-        } catch (e) {
-            console.error("bound snapshot D1 write failed", e);
-            try {
-                await c.env.DB.prepare("DELETE FROM bound_snapshot_html WHERE token = ?").bind(binding.token).run();
-            } catch { /* ignore */ }
-        }
-    }
     try {
-        await c.env.KV.put(
+        await workerStore(c.env).put(
             `${SNAPSHOT_HTML_KV_PREFIX}${binding.token}`,
             snapshotHtml,
-            htmlKvOpts
+            htmlOpts
         );
         // 内容已更新，清除边缘缓存保证及时刷新（否则 10 秒内看到的还是旧邮件）
         if (binding.url) {
@@ -331,31 +290,12 @@ export const snapshotBindRevKey = (token: string) => `snapshot-bindrev:${token}`
  */
 export const SNAPSHOT_BIND_DELETED = "__deleted__";
 export const SNAPSHOT_BIND_TOMBSTONE_TTL = 120;
-/** 快照相关 KV 读取的边缘缓存 TTL（秒）：KV.get 默认边缘缓存 60 秒，
- * 会导致更换链接/新邮件最多延迟 60 秒才可见；取文档允许的最小值 30。 */
-export const SNAPSHOT_KV_EDGE_TTL = 30;
 
 /** 读取邮箱的固定快照绑定；过期则清理并返回 null */
 export async function getSnapshotBinding(c: Context<HonoCustomType>, address: string): Promise<SnapshotBinding | null> {
-    if (!c.env.KV) return null;
-    // 优先读 D1（无边缘缓存），通知里的链接一定是最新；D1 miss 回退 KV
-    if (c.env.DB) {
-        try {
-            const row = await c.env.DB.prepare(
-                "SELECT token, url, expires_at, created_at FROM snapshot_bindings WHERE address = ?"
-            ).bind(address.toLowerCase()).first<{ token: string; url: string; expires_at: number; created_at: number }>();
-            if (row) {
-                const binding: SnapshotBinding = { address: address.toLowerCase(), token: row.token, url: row.url, expiresAt: row.expires_at, createdAt: row.created_at };
-                if (binding.expiresAt <= Date.now()) {
-                    await deleteSnapshotBinding(c, address, binding.token).catch(() => {});
-                    return null;
-                }
-                return binding;
-            }
-        } catch { /* ignore, fallback to KV */ }
-    }
+    if (!c.env.DB) return null;
     try {
-        const binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+        const binding = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(address), "json");
         if (!binding) return null;
         if (binding.expiresAt <= Date.now()) {
             await deleteSnapshotBinding(c, address, binding.token).catch(() => {});
@@ -389,36 +329,24 @@ export async function getSnapshotBindingForMail(
 /** 删除绑定：正向绑定 + 快照 HTML 删除，反向索引写入删除标记（短 TTL，见上）。
  * 更换/失效链接后，旧 token 在各 PoP 一律 404，不会再命中边缘缓存里的旧页面。 */
 export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address: string, token?: string): Promise<void> {
-    if (!c.env.KV) return;
+    if (!c.env.DB) return;
     // 需要 binding.url 来清除边缘缓存：token 直传时先经反向索引找到地址再读 binding
     let binding: SnapshotBinding | null = null;
     if (token) {
         try {
-            const addr = await c.env.KV.get(snapshotBindRevKey(token), { cacheTtl: SNAPSHOT_KV_EDGE_TTL });
-            if (addr && addr !== SNAPSHOT_BIND_DELETED) binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+            const addr = await workerStore(c.env).get(snapshotBindRevKey(token));
+            if (addr && addr !== SNAPSHOT_BIND_DELETED) binding = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(addr), "json");
         } catch { /* ignore */ }
     } else {
         try {
-            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(address), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+            binding = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(address), "json");
         } catch { /* ignore */ }
     }
     const t = token || binding?.token;
-    // D1 中的绑定快照内容一并清理，避免 /m/ 从 D1 读到已删除绑定的旧内容
-    if (t && c.env.DB) {
-        try {
-            await c.env.DB.prepare("DELETE FROM bound_snapshot_html WHERE token = ?").bind(t).run();
-        } catch { /* ignore */ }
-    }
-    // D1 绑定元数据也删
-    if (c.env.DB) {
-        try {
-            await c.env.DB.prepare("DELETE FROM snapshot_bindings WHERE address = ?").bind(address.toLowerCase()).run();
-        } catch { /* ignore */ }
-    }
-    await Promise.allSettled([
-        c.env.KV.delete(snapshotBindKey(address)),
-        t ? c.env.KV.put(snapshotBindRevKey(t), SNAPSHOT_BIND_DELETED, { expirationTtl: SNAPSHOT_BIND_TOMBSTONE_TTL }) : Promise.resolve(),
-        t ? c.env.KV.delete(`${SNAPSHOT_HTML_KV_PREFIX}${t}`) : Promise.resolve(),
+    if (t) await workerStore(c.env).put(snapshotBindRevKey(t), SNAPSHOT_BIND_DELETED, { expirationTtl: SNAPSHOT_BIND_TOMBSTONE_TTL });
+    await Promise.all([
+        workerStore(c.env).delete(snapshotBindKey(address)),
+        t ? workerStore(c.env).delete(`${SNAPSHOT_HTML_KV_PREFIX}${t}`) : Promise.resolve(),
     ]);
     // 清除边缘缓存，保证旧链接立即失效（防刷缓存不影响删除语义）
     if (binding?.url) {
@@ -430,11 +358,11 @@ export async function deleteSnapshotBinding(c: Context<HonoCustomType>, address:
 
 /** 列出全部有效绑定；顺手清理过期项 */
 export async function listSnapshotBindingRecords(c: Context<HonoCustomType>): Promise<SnapshotBinding[]> {
-    if (!c.env.KV) return [];
-    const { keys } = await c.env.KV.list({ prefix: "snapshot-bind:" });
+    if (!c.env.DB) return [];
+    const { keys } = await workerStore(c.env).list({ prefix: "snapshot-bind:" });
     const bindings: SnapshotBinding[] = [];
     for (const k of keys) {
-        const b = await c.env.KV.get<SnapshotBinding>(k.name, { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+        const b = k.value === null ? await workerStore(c.env).get<SnapshotBinding>(k.name, "json") : JSON.parse(k.value) as SnapshotBinding;
         if (!b) continue;
         if (b.expiresAt <= Date.now()) {
             await deleteSnapshotBinding(c, b.address, b.token).catch(() => {});
@@ -468,49 +396,19 @@ export async function createSnapshotBindingRecord(
         createdAt: now,
     };
     // 重新绑定：先销毁旧绑定，保证旧链接立即失效
-    // 优先从 D1 读旧 token（无边缘缓存），D1 miss 才回退 KV
-    try {
-        let oldToken: string | null = null;
-        if (c.env.DB) {
-            try {
-                const row = await c.env.DB.prepare(
-                    "SELECT token FROM snapshot_bindings WHERE address = ?"
-                ).bind(addr).first<{ token: string }>();
-                if (row?.token) oldToken = row.token;
-            } catch { /* ignore, fallback to KV */ }
-        }
-        if (!oldToken) {
-            const oldBinding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
-            if (oldBinding?.token) oldToken = oldBinding.token;
-        }
-        if (oldToken) {
-            await deleteSnapshotBinding(c, addr, oldToken).catch(() => {});
-        } else {
-            await deleteSnapshotBinding(c, addr).catch(() => {});
-        }
-    } catch {
-        await deleteSnapshotBinding(c, addr).catch(() => {});
-    }
+    const old = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(addr), "json");
+    if (old) await deleteSnapshotBinding(c, addr, old.token);
     const expiration = Math.floor(binding.expiresAt / 1000);
     // 永久有效：KV 不设过期时间，key 存活到手动删除为止
     const kvOpts = permanent ? {} : { expiration };
     const htmlOpts = permanent ? {} : { expirationTtl: hours * 3600 };
     await Promise.all([
-        c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), kvOpts),
-        c.env.KV.put(snapshotBindRevKey(token), addr, kvOpts),
-        c.env.KV.put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`,
+        workerStore(c.env).put(snapshotBindKey(addr), JSON.stringify(binding), kvOpts),
+        workerStore(c.env).put(snapshotBindRevKey(token), addr, kvOpts),
+        workerStore(c.env).put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`,
             buildSnapshotHtml("", `该快照已绑定 ${addr}，等待第一封新邮件到达后显示最新内容。`, "快照已绑定"),
             htmlOpts),
     ]);
-    // D1 也写一份：refreshBoundSnapshot 优先读 D1（无 30 秒边缘缓存），建完立即发邮件也能找到绑定
-    if (c.env.DB) {
-        try {
-            await c.env.DB.prepare(
-                "INSERT INTO snapshot_bindings (address, token, url, expires_at, created_at) VALUES (?, ?, ?, ?, ?) " +
-                "ON CONFLICT(address) DO UPDATE SET token=excluded.token, url=excluded.url, expires_at=excluded.expires_at, created_at=excluded.created_at"
-            ).bind(addr, token, binding.url, binding.expiresAt, binding.createdAt).run();
-        } catch { /* ignore, KV 为主 */ }
-    }
     return binding;
 }
 
@@ -524,35 +422,15 @@ export async function updateSnapshotBindingExpiry(
     hours: number
 ): Promise<SnapshotBinding | null> {
     const addr = address.trim().toLowerCase();
-    // 先读现有绑定（D1 优先，KV 回退），不存在或已过期则不处理
-    let binding: SnapshotBinding | null = null;
-    if (c.env.DB) {
-        try {
-            const row = await c.env.DB.prepare(
-                "SELECT token, url, expires_at, created_at FROM snapshot_bindings WHERE address = ?"
-            ).bind(addr).first<{ token: string; url: string; expires_at: number; created_at: number }>();
-            if (row) binding = { address: addr, token: row.token, url: row.url, expiresAt: row.expires_at, createdAt: row.created_at };
-        } catch { /* ignore, fallback to KV */ }
-    }
-    if (!binding) {
-        try {
-            binding = await c.env.KV.get<SnapshotBinding>(snapshotBindKey(addr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
-        } catch { /* ignore */ }
-    }
+    const binding = await workerStore(c.env).get<SnapshotBinding>(snapshotBindKey(addr), "json");
     if (!binding || binding.expiresAt <= Date.now()) return null;
     const permanent = hours <= 0;
     binding.expiresAt = permanent ? SNAPSHOT_BINDING_PERMANENT_MS : Date.now() + hours * 3600 * 1000;
     const kvOpts = permanent ? {} : { expiration: Math.floor(binding.expiresAt / 1000) };
     await Promise.all([
-        c.env.KV.put(snapshotBindKey(addr), JSON.stringify(binding), kvOpts),
-        c.env.KV.put(snapshotBindRevKey(binding.token), addr, kvOpts),
+        workerStore(c.env).put(snapshotBindKey(addr), JSON.stringify(binding), kvOpts),
+        workerStore(c.env).put(snapshotBindRevKey(binding.token), addr, kvOpts),
+        workerStore(c.env).setExpiry(`${SNAPSHOT_HTML_KV_PREFIX}${binding.token}`, permanent ? null : binding.expiresAt),
     ]);
-    if (c.env.DB) {
-        try {
-            await c.env.DB.prepare(
-                "UPDATE snapshot_bindings SET expires_at = ? WHERE address = ?"
-            ).bind(binding.expiresAt, addr).run();
-        } catch { /* ignore, KV 为主 */ }
-    }
     return binding;
 }

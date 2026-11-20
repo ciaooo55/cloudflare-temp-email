@@ -1,3 +1,4 @@
+import { workerStore } from "./worker_store.ts";
 import { Context, Hono } from 'hono'
 import { cors } from 'hono/cors';
 import { Jwt } from 'hono/utils/jwt'
@@ -8,7 +9,7 @@ import { api as openAuthApi } from './open_api/auth.ts';
 import { api as mailsApi } from './mails_api/index.ts'
 import { api as adminApi } from './admin_api/index.ts';
 import { api as apiSendMail } from './mails_api/send_mail_api.ts'
-import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml, deleteSnapshotBinding, SNAPSHOT_BIND_DELETED, SNAPSHOT_KV_EDGE_TTL, DEFAULT_SNAPSHOT_TTL, SNAPSHOT_HTML_KV_PREFIX } from './telegram_api/mail_snapshot.ts';
+import { snapshotBindKey, snapshotBindRevKey, sanitizeSnapshotHtml, SNAPSHOT_BIND_DELETED, DEFAULT_SNAPSHOT_TTL, SNAPSHOT_HTML_KV_PREFIX } from './telegram_api/mail_snapshot.ts';
 import { getBoundSnapshotCacheConfig, boundSnapshotCacheControl } from './admin_api/notify_settings.ts';
 import { api as telegramApi } from './telegram_api/index.ts'
 
@@ -18,6 +19,7 @@ import { email } from './email/index.ts';
 import { scheduled } from './scheduled.ts';
 import { getPasswords, getBooleanValue, getDomains, checkIsAdmin, getEnvStringList } from './utils.ts';
 import { checkAccessControl } from './ip_blacklist.ts';
+import { quotaRetryAfter, reserveHttpUsage } from './usage_budget.ts';
 
 const API_PATHS = [
 	"/api/",
@@ -77,11 +79,6 @@ app.use('/*', async (c, next) => {
 				return c.text(`IP=${reqIp} Rate limit exceeded for ${c.req.path}`, 429)
 			}
 		}
-		// Check access control (blacklist and daily limit)
-		const accessControlResponse = await checkAccessControl(c);
-		if (accessControlResponse) {
-			return accessControlResponse;
-		}
 	}
 	// webhook check
 	if (
@@ -89,9 +86,6 @@ app.use('/*', async (c, next) => {
 		|| c.req.path.startsWith("/admin/webhook")
 		|| c.req.path.startsWith("/admin/mail_webhook")
 	) {
-		if (!c.env.KV) {
-			return c.text(msgs.KVNotAvailableMsg, 400);
-		}
 		if (!getBooleanValue(c.env.ENABLE_WEBHOOK)) {
 			return c.text(msgs.WebhookNotEnabledMsg, 403);
 		}
@@ -206,6 +200,26 @@ app.use('/admin/*', async (c, next) => {
 	return c.json({ code: ErrorCode.AUTH_ADMIN_CREDENTIAL_INVALID, message: msgs.NeedAdminPasswordMsg }, 401)
 });
 
+app.use('/*', async (c, next) => {
+	const path = c.req.path.replace(/\/+$/, '');
+	if (!API_PATHS.some(prefix => c.req.path.startsWith(prefix))
+		|| ['/admin/db_initialize', '/admin/db_migration', '/admin/db_version', '/admin/storage_status'].includes(path)) {
+		return await next();
+	}
+	const readOnly = ['GET', 'HEAD', 'OPTIONS'].includes(c.req.method);
+	const allowed = await reserveHttpUsage(c.env, readOnly);
+	if (!allowed) {
+		c.header("Retry-After", String(quotaRetryAfter()));
+		return c.json({ message: "Daily storage budget paused this operation" }, 503);
+	}
+	if (c.req.path.startsWith("/api/new_address")
+		|| c.req.path.startsWith("/api/send_mail")
+		|| c.req.path.startsWith("/external/api/send_mail")) {
+		const result = await checkAccessControl(c);
+		if (result) return result;
+	}
+	return await next();
+});
 
 app.route('/', commonApi)
 app.route('/', openAuthApi)
@@ -235,11 +249,10 @@ app.get('/m/:token', async c => {
 	const token = c.req.param('token');
 	if (!/^[0-9a-f]{64}$/.test(token || '')) return c.text('Not Found', 404);
 	// 绑定快照边缘缓存配置（网页可调，默认关闭=实时读取）：
-	// 关闭时跳过 caches.default，KV 写入会直接失效各 PoP 的 KV 边缘缓存，
-	// 因此新邮件秒级可见、更换链接秒级失效；开启时按所选挡位缓存。
+	// 关闭时实时读取 D1；开启时按所选挡位缓存。
 	const boundCacheCfg = await getBoundSnapshotCacheConfig(c).catch(() => ({ enabled: false, ttlSeconds: 10 }));
 	const useEdgeCache = boundCacheCfg.enabled;
-	// 边缘缓存防刷：同一快照的重复访问优先走边缘缓存，减少 KV 读取与页面重复生成
+	// 边缘缓存防刷：同一快照的重复访问优先走边缘缓存，减少 D1 读取与页面重复生成
 	// 注意：请求仍会进入 Worker（按正常请求计费）；Cache API 按 PoP 独立缓存
 	const cache: Cache | null = useEdgeCache ? caches.default : null;
 	const cacheKey = new Request(c.req.url, { method: 'GET' });
@@ -248,9 +261,9 @@ app.get('/m/:token', async c => {
 	// 注意 caches.default 按 PoP 独立，删除时的 purge 到不了用户所在的 PoP，
 	// 所以必须在 serve 缓存之前先确认绑定仍然有效。
 	let isBoundSnapshot = false;
-	if (c.env.KV) {
+	if (c.env.DB) {
 		try {
-			const boundAddr = await c.env.KV.get(snapshotBindRevKey(token), { cacheTtl: SNAPSHOT_KV_EDGE_TTL });
+			const boundAddr = await workerStore(c.env).get(snapshotBindRevKey(token));
 			if (boundAddr === SNAPSHOT_BIND_DELETED) {
 				// 链接已被更换/失效/删除：直接 404，并清掉本 PoP 可能残留的旧缓存。
 				// 注意不能 fallback 到查缓存，否则各 PoP 边缘缓存里的旧页面会被继续 serving。
@@ -258,9 +271,8 @@ app.get('/m/:token', async c => {
 				return c.text('该快照链接已失效', 404);
 			}
 			if (boundAddr) {
-				const binding = await c.env.KV.get<{ expiresAt: number }>(snapshotBindKey(boundAddr), { type: "json", cacheTtl: SNAPSHOT_KV_EDGE_TTL });
-				if (!binding || binding.expiresAt <= Date.now()) {
-					await deleteSnapshotBinding(c, boundAddr, token).catch(() => {});
+				const binding = await workerStore(c.env).get<{ expiresAt: number; token: string }>(snapshotBindKey(boundAddr), "json");
+				if (!binding || binding.token !== token || binding.expiresAt <= Date.now()) {
 					try { if (cache) await cache.delete(cacheKey); } catch { /* ignore */ }
 					return c.text('该快照绑定已到期', 404);
 				}
@@ -268,35 +280,23 @@ app.get('/m/:token', async c => {
 			}
 		} catch (error) {
 			console.error('snapshot binding check failed', error);
+			return c.text('快照暂不可用', 503);
 		}
 	}
 	if (cache) {
 		try {
 			const cached = await cache.match(cacheKey);
-			if (cached) return cached;
+			if (cached && (cached.headers.get('X-Snapshot-Bound') === 'true') === isBoundSnapshot
+				&& cached.headers.has('X-Snapshot-Bound')) return cached;
 		} catch { /* cache miss, continue */ }
 	}
 	// 快照-邮箱绑定：绑定过期后快照链接失效（有效性已在上面校验，这里只读内容）
 	let html: string | null = null;
-	// 绑定快照优先从 D1 读取：KV 读取有 30 秒边缘缓存强制下限，
-	// 新邮件到达后必须秒级可见，D1 无此限制；D1 miss/异常则回退到 KV。
-	// 一次性快照内容不变，继续走 KV（不受影响）。
-	if (isBoundSnapshot && c.env.DB) {
-		try {
-			const row = await c.env.DB.prepare(
-				"SELECT html FROM bound_snapshot_html WHERE token = ?"
-			).bind(token).first<{ html: string }>();
-			html = row?.html ?? null;
-		} catch (error) {
-			console.error('bound snapshot D1 fetch failed', error);
-		}
-	}
-	if (!html) {
-		try {
-			html = c.env.KV ? await c.env.KV.get(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, { cacheTtl: SNAPSHOT_KV_EDGE_TTL }) : null;
-		} catch (error) {
-			console.error('snapshot fetch failed', error);
-		}
+	try {
+		html = await workerStore(c.env).get(`${SNAPSHOT_HTML_KV_PREFIX}${token}`);
+	} catch (error) {
+		console.error('snapshot fetch failed', error);
+		return c.text('快照暂不可用', 503);
 	}
 	if (!html) return c.text('邮件已过期或不存在', 404);
 	// 读取时二次消毒：存量快照可能是旧版消毒器生成的，新版规则在此处同样生效（纵深防御）
@@ -316,6 +316,7 @@ app.get('/m/:token', async c => {
 			'Content-Security-Policy': "default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; font-src http: https: data:",
 			'X-Content-Type-Options': 'nosniff',
 			'X-Robots-Tag': 'noindex, nofollow',
+			'X-Snapshot-Bound': String(isBoundSnapshot),
 			'Cache-Control': cacheControl,
 		},
 	});

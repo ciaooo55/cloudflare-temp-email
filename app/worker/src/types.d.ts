@@ -14,7 +14,11 @@ type SmtpImapProxyConfig = {
 type Bindings = {
     // bindings
     DB: D1Database
-    KV: KVNamespace
+    KV?: KVNamespace
+    D1_DAILY_READ_SOFT_LIMIT?: string | number
+    D1_DAILY_WRITE_SOFT_LIMIT?: string | number
+    D1_DAILY_READ_HARD_LIMIT?: string | number
+    D1_DAILY_WRITE_HARD_LIMIT?: string | number
     RATE_LIMITER: RateLimit
     SEND_MAIL: SendEmail
     ASSETS: Fetcher

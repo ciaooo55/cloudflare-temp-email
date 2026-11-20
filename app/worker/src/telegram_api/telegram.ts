@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 
 import { Context } from "hono";
 import { Telegraf, Context as TgContext, Markup } from "telegraf";
@@ -39,7 +40,7 @@ const getTgMessages = async (
 
     const uid = userId || ctx?.message?.from?.id?.toString() || ctx?.callbackQuery?.from?.id?.toString();
     if (uid) {
-        const savedLang = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:lang:${uid}`);
+        const savedLang = await workerStore(c.env).get(`${CONSTANTS.TG_KV_PREFIX}:lang:${uid}`);
         if (savedLang) { return i18n.getMessages(savedLang); }
     }
     return i18n.getMessages(c.env.DEFAULT_LANG || 'zh');
@@ -176,7 +177,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
             return await ctx.reply(msgs.TgUnableGetUserInfoMsg);
         }
 
-        const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
+        const settings = await workerStore(c.env).get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
         if (settings?.enableAllowList
             && !settings.allowList.includes(userId.toString())
         ) {
@@ -297,7 +298,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
             return await ctx.reply(msgs.TgUnableGetUserInfoMsg);
         }
         try {
-            const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+            const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
             const { addressList } = await jwtListToAddressData(c, jwtList, msgs);
             return await ctx.reply(`${msgs.TgAddressListMsg}\n\n`
                 + addressList.map(a => `${msgs.TgAddressMsg} ${a}`).join("\n")
@@ -314,10 +315,10 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
             return await ctx.reply(msgs.TgUnableGetUserInfoMsg);
         }
         try {
-            const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+            const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
             const { invalidJwtList } = await jwtListToAddressData(c, jwtList, msgs);
             const newJwtList = jwtList.filter(jwt => !invalidJwtList.includes(jwt));
-            await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify(newJwtList));
+            await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify(newJwtList));
             const { addressList } = await jwtListToAddressData(c, newJwtList, msgs);
             return await ctx.reply(`${msgs.TgCleanSuccessMsg}\n\n`
                 + `${msgs.TgCurrentAddressListMsg}\n\n`
@@ -345,11 +346,11 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         // @ts-ignore
         const lang = ctx?.message?.text.slice("/lang".length).trim().toLowerCase();
         if (lang === 'zh' || lang === 'en') {
-            await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:lang:${userId}`, lang);
+            await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:lang:${userId}`, lang);
             return await ctx.reply(`${msgs.TgLangSetSuccessMsg} ${lang === 'zh' ? '中文' : 'English'}`);
         }
 
-        const currentLang = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:lang:${userId}`);
+        const currentLang = await workerStore(c.env).get(`${CONSTANTS.TG_KV_PREFIX}:lang:${userId}`);
         return await ctx.reply(
             `${msgs.TgCurrentLangMsg} ${currentLang || 'auto'}\n`
             + `${msgs.TgSelectLangMsg}\n`
@@ -364,7 +365,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         if (!userId) {
             return await ctx.reply(msgs.TgUnableGetUserInfoMsg);
         }
-        const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+        const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
         const { addressList, addressIdMap } = await jwtListToAddressData(c, jwtList, msgs);
         if (!queryAddress && addressList.length > 0) {
             queryAddress = addressList[0];
@@ -391,7 +392,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         const { mail } = raw
             ? await parseMail(msgs, { rawEmail: raw }, queryAddress, created_at, false, mailRow?.metadata)
             : { mail: msgs.TgNoMoreMailsMsg };
-        const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
+        const settings = await workerStore(c.env).get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
         const miniAppButtons = buildMiniAppButtons(settings, mailId, msgs.TgViewMailBtnMsg);
         if (edit) {
             return await ctx.editMessageText(mail || msgs.TgNoMailMsg,
@@ -545,7 +546,7 @@ export async function sendMailNotifications(
     message_id: string | null,
     aiExtract?: ExtractResult | null
 ) {
-    const settings = await c.env.KV?.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
+    const settings = await workerStore(c.env).get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
     // 按域名解析推送目标：多个 TG bot / 多组 Bark 设备 keys（环境变量 + 网页配置合并）
     const push = resolvePushConfig(c.env, getMailDomain(address));
     let barkPushUrl = DEFAULT_BARK_PUSH_URL;
@@ -581,8 +582,8 @@ export async function sendMailNotifications(
     // TG 目标预检（需要 KV 做地址绑定查询）
     let tgUserId: string | null = null;
     let tgGlobalList: string[] = [];
-    if (push.telegramTokens.length && c.env.KV) {
-        tgUserId = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
+    if (push.telegramTokens.length && c.env.DB) {
+        tgUserId = await workerStore(c.env).get(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
         if (settings?.enableGlobalMailPush && settings?.globalMailPushList?.length) {
             tgGlobalList = settings.globalMailPushList;
         }

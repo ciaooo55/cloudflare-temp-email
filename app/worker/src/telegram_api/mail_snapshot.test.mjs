@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createD1 } from "../../test-loader/d1.mjs";
+import { WORKER_STORE_SCHEMA } from "../worker_store.ts";
 import { buildSnapshotHtml, buildCompactMailMessage, createMailSnapshot, extractVerificationCode, extractVerificationCodeWithSubject, extractVerificationLink } from "./mail_snapshot.ts";
 
 test("prefers the snapshot domain over the Mini App URL", async () => {
+    const DB = createD1();
+    DB.sqlite.exec(WORKER_STORE_SCHEMA);
     const context = {
         env: {
-            KV: { put: async () => {} },
+            DB,
             SNAPSHOT_BASE_URL: "https://snapshot.example.com"
         }
     };

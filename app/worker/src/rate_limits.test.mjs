@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { checkInboundRateLimit } from "./email/inbound_rate_limit.ts";
 import { cleanupExpiredRateLimits, consumeRateLimit } from "./rate_limits.ts";
 import { getTaskRunInfo, isTaskDueThisTick, markTaskRun, SCHEDULED_TASK_RAW_MAILS } from "./scheduled_tasks.ts";
+import { WORKER_STORE_SCHEMA } from "./worker_store.ts";
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
@@ -14,6 +15,7 @@ function createD1(t) {
     const DB = {
         prepare(sql) {
             return {
+                async first() { return sqlite.prepare(sql).get() ?? null; },
                 bind(...params) {
                     return {
                         async first(column) {
@@ -76,6 +78,9 @@ test("inbound limits reset per minute and enforce pair and sender limits without
     assert.match((await check("sender@example.com", "last@example.com")).reason, /sender 100\/99.*offense #1/);
     assert.equal((await check("SENDER@example.com", "another@example.com")).reason, "sender temporarily blocked");
     assert.equal((await check("", "one@example.com")).blocked, false);
+    assert.equal((await checkInboundRateLimit("SENDER@example.com", "another@example.com", { DB }, false)).blocked, true);
+    assert.equal((await checkInboundRateLimit("different@example.com", "another@example.com", { DB }, false)).blocked, false);
+    assert.equal(await DB.prepare("SELECT count FROM worker_rate_limits WHERE key = ?").bind("inbound_sender:different@example.com").first(), null);
 });
 
 test("inbound pair limit escalates bans, does not extend active bans, and expires offenses", async (t) => {
@@ -97,6 +102,7 @@ test("inbound pair limit escalates bans, does not extend active bans, and expire
 test("cron imports an existing KV timestamp once, then reads and writes only D1", async (t) => {
     const { DB, sqlite } = createD1(t);
     sqlite.exec("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)");
+    sqlite.exec(WORKER_STORE_SCHEMA);
     t.mock.method(Date, "now", () => 5 * MIN);
     const legacy = { at: 4 * MIN, affected: 2 };
     const get = t.mock.fn(async () => legacy);
@@ -106,6 +112,8 @@ test("cron imports an existing KV timestamp once, then reads and writes only D1"
     assert.deepEqual(await getTaskRunInfo(env, SCHEDULED_TASK_RAW_MAILS), legacy);
     await markTaskRun({ DB }, SCHEDULED_TASK_RAW_MAILS, 5);
     assert.deepEqual(await getTaskRunInfo(env, SCHEDULED_TASK_RAW_MAILS), { at: 5 * MIN, affected: 5 });
+    sqlite.exec("INSERT INTO worker_store_import (id, complete) VALUES (1, 1)");
+    assert.equal(await getTaskRunInfo(env, "unset"), null);
     assert.equal(get.mock.callCount(), 1);
     assert.equal(put.mock.callCount(), 0);
 });

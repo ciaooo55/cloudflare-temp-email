@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- perf: |Worker| 剩余 KV 数据改用 D1，支持可续跑的分批迁移；新增每日预算保护，优先保留收信，并将定时检查和最短清理间隔调整为 5 分钟
 - fix: |统计| 修复管理后台“统计”页 500 报错（`no such table: users`）且所有计数显示为 0：多用户体系移除后 schema 与迁移中已无 `users` 表，统计接口仍查询该表导致整个批量查询失败；移除 `userCount` 查询、前端“用户总数”卡片及对应多语言文案
 - perf: |Worker| 将收信、IP 每日请求及 Webhook 限流计数和定时任务执行状态改存 D1，减少免费套餐的 KV 读写；部署时短期限流状态会重新计数，快照和 Telegram 等现有 KV 数据不变
 - fix: |依赖| 修复 `app/worker/pnpm-lock.yaml` 损坏：补上缺失的 `@sindresorhus/is@7.2.0` 条目并清掉已不再引用的残留条目，`pnpm install --frozen-lockfile` 恢复可用（`package.json` 与实际解析版本均未变）

@@ -77,6 +77,8 @@ api.post('/admin/send_mail_by_binding', sendMailByBindingAdmin)
 api.get('admin/db_version', db_api.getVersion)
 api.post('admin/db_initialize', db_api.initialize)
 api.post('admin/db_migration', db_api.migrate)
+api.get('/admin/storage_status', db_api.getStorageStatus)
+api.post('/admin/storage_import', db_api.importStoragePage)
 
 // generic admin config
 api.get('/admin/config/:key', config_api.get)

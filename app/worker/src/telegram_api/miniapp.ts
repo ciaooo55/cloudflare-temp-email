@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context } from "hono";
 import { verifyAddressToken } from '../address_auth.ts';
 import { CONSTANTS } from '../constants.ts';
@@ -92,7 +93,7 @@ async function getTelegramBindAddress(c: Context<HonoCustomType>): Promise<Respo
     try {
         const userId = await checkTelegramAuth(c, initData);
         // get the address list from the KV
-        const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+        const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
         const res = [];
         for (const jwt of jwtList) {
             try {
@@ -175,13 +176,13 @@ async function getMail(c: Context<HonoCustomType>): Promise<Response> {
             return c.json(await resolveRawEmailRow(result));
         }
         const userId = await checkTelegramAuth(c, initData);
-        const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+        const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
         const { addressList, addressIdMap } = await jwtListToAddressData(c, jwtList, msgs);
         const result = await c.env.DB.prepare(
             `SELECT * FROM raw_mails where id = ?`
         ).bind(mailId).first();
         if (!result) return c.json(null);
-        const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
+        const settings = await workerStore(c.env).get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
         const superUser = settings?.enableGlobalMailPush && settings?.globalMailPushList.includes(userId);
         if (!superUser) {
             if (!(result.address as string in addressIdMap)) {

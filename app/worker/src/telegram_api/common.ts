@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context } from "hono";
 import { Jwt } from "hono/utils/jwt";
 import { validateAddressPayload, verifyAddressToken } from '../address_auth.ts';
@@ -26,7 +27,7 @@ export const tgUserNewAddress = async (
     // Parse address parameter - handle empty or whitespace-only address
     const trimmedAddress = address ? address.trim() : "";
     const [name, domain] = trimmedAddress.includes("@") ? trimmedAddress.split("@") : [trimmedAddress, null];
-    const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+    const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
     if (jwtList.length >= getIntValue(c.env.TG_MAX_ADDRESS, 5)) {
         throw Error(msgs.TgMaxAddressReachedMsg);
     }
@@ -48,8 +49,8 @@ export const tgUserNewAddress = async (
         sourceMeta: `tg:${userId}`
     });
     // for mail push to telegram
-    await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify([...jwtList, res.jwt]));
-    await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${res.address}`, userId.toString());
+    await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify([...jwtList, res.jwt]));
+    await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${res.address}`, userId.toString());
     return res;
 }
 
@@ -82,23 +83,23 @@ export const bindTelegramAddress = async (
     msgs: LocaleMessages
 ): Promise<string> => {
     const { address } = await verifyAddressToken(c, jwt);
-    const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+    const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
     const { addressIdMap } = await jwtListToAddressData(c, jwtList, msgs);
     if (address as string in addressIdMap) {
-        await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${address}`, userId.toString());
+        await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${address}`, userId.toString());
         return address as string;
     }
     if (jwtList.length >= getIntValue(c.env.TG_MAX_ADDRESS, 5)) {
         throw Error(msgs.TgMaxAddressReachedCleanMsg);
     }
-    await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify([...jwtList, jwt]));
+    await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify([...jwtList, jwt]));
     // for mail push to telegram
-    await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${address}`, userId.toString());
+    await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${address}`, userId.toString());
     return address as string;
 }
 
 const getTelegramBindings = async (c: Context<HonoCustomType>, userId: string) => {
-    const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+    const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
     return Promise.all(jwtList.map(async (jwt) => {
         try {
             return { jwt, payload: await Jwt.verify(jwt, c.env.JWT_SECRET, "HS256") };
@@ -114,9 +115,9 @@ const removeTelegramBinding = async (
     bindings: Awaited<ReturnType<typeof getTelegramBindings>>
 ): Promise<boolean> => {
     const newJwtList = bindings.filter(({ payload }) => payload?.address !== address).map(({ jwt }) => jwt);
-    await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify(newJwtList));
-    const owner = await c.env.KV.get<string>(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
-    if (owner === userId) await c.env.KV.delete(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
+    await workerStore(c.env).put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify(newJwtList));
+    const owner = await workerStore(c.env).get<string>(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
+    if (owner === userId) await workerStore(c.env).delete(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
     return true;
 }
 
@@ -141,8 +142,8 @@ export const unbindTelegramAddress = async (
 export const unbindTelegramByAddress = async (
     c: Context<HonoCustomType>, address: string
 ): Promise<boolean> => {
-    if (!c.env.KV) return true;
-    const userId = await c.env.KV.get<string>(`${CONSTANTS.TG_KV_PREFIX}:${address}`)
+    if (!c.env.DB) return true;
+    const userId = await workerStore(c.env).get<string>(`${CONSTANTS.TG_KV_PREFIX}:${address}`)
     if (userId) {
         const bindings = await getTelegramBindings(c, userId);
         return await removeTelegramBinding(c, userId, address, bindings);
@@ -155,7 +156,7 @@ export const deleteTelegramAddress = async (
     c: Context<HonoCustomType>, userId: string, address: string,
     msgs: LocaleMessages
 ): Promise<boolean> => {
-    const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+    const jwtList = await workerStore(c.env).get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
     const { addressIdMap } = await jwtListToAddressData(c, jwtList, msgs);
     if (!(address in addressIdMap)) {
         throw Error(msgs.TgAddressNotYoursMsg);
