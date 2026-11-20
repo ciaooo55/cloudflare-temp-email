@@ -15,6 +15,14 @@
 - fix: |privacy| Require per-message image consent, reset it when switching messages, sanitize previews and sandbox mail iframes
 - perf: |mail| Reuse unchanged parsed messages, preserve selection on refresh, pause polling in hidden tabs, release attachment/download URLs and fix empty counts and duplicate refreshes
 
+- fix: |mail| Normalize internationalized domain blacklist rules and sender domains to Punycode for matching
+
+- fix: |mail| Reject disabled mailboxes on the admin binding send endpoint too
+
+- fix: |mail| Check mailbox blacklist rules before reserving the daily D1 budget so rejected mail does not consume shared budget
+
+- feat: |mail| Add mailbox-specific sender domain blocks (including subdomains) and disabled mailboxes that reject all inbound and outbound mail, preserving the global sender blacklist
+
 - perf: |mail| Parse inbound MIME only when needed, reuse the stored mail ID for notifications, and remove redundant send-limit and admin balance reads
 - perf: |mail| Cache D1 blacklist reads during budget prechecks, skipping only unpromoted legacy KV values to avoid duplicate queries
 - perf: |mail| Check the sender blacklist before reserving daily D1 usage so rejected mail is not charged; promote legacy KV blacklists only after budget admission

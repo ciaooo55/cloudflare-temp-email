@@ -15,6 +15,8 @@ const sendAddressBlockList = ref([])
 const noLimitSendAddressList = ref([])
 const verifiedAddressList = ref([])
 const fromBlockList = ref([])
+const blockedMailboxList = ref([])
+const mailboxDomainBlockList = ref([])
 const emailRuleSettings = ref({
     blockReceiveUnknowAddressEmail: false
 })
@@ -116,6 +118,8 @@ const fetchData = async ({ suppressErrorMessage = false } = {}) => {
         sendAddressBlockList.value = res.sendBlockList || []
         verifiedAddressList.value = res.verifiedAddressList || []
         fromBlockList.value = res.fromBlockList || []
+        blockedMailboxList.value = res.blockedMailboxList || []
+        mailboxDomainBlockList.value = res.mailboxDomainBlockList || []
         noLimitSendAddressList.value = res.noLimitSendAddressList || []
         emailRuleSettings.value = {
             blockReceiveUnknowAddressEmail: res.emailRuleSettings?.blockReceiveUnknowAddressEmail || false
@@ -158,6 +162,8 @@ const save = async () => {
             sendBlockList: sendAddressBlockList.value || [],
             verifiedAddressList: verifiedAddressList.value || [],
             fromBlockList: fromBlockList.value || [],
+            blockedMailboxList: blockedMailboxList.value || [],
+            mailboxDomainBlockList: mailboxDomainBlockList.value || [],
             noLimitSendAddressList: noLimitSendAddressList.value || [],
             emailRuleSettings: emailRuleSettings.value,
             addressCreationSettings: {
@@ -260,6 +266,19 @@ onMounted(async () => {
             <n-form-item-row :label="t('fromBlockList')" :feedback="t('manualInputPrompt')">
                 <n-select v-model:value="fromBlockList" filterable multiple tag :placeholder="t('fromBlockList')">
                 </n-select>
+            </n-form-item-row>
+            <n-form-item-row :label="t('blockedMailboxList')" :feedback="t('manualInputPrompt')">
+                <n-select v-model:value="blockedMailboxList" filterable multiple tag :placeholder="t('blockedMailboxList')" />
+            </n-form-item-row>
+            <n-form-item-row :label="t('mailboxDomainBlockList')">
+                <n-dynamic-input v-model:value="mailboxDomainBlockList" :on-create="() => ({ address: '', domain: '' })">
+                    <template #default="{ value }">
+                        <n-space :wrap="false">
+                            <n-input v-model:value="value.address" :placeholder="t('mailboxAddress')" :aria-label="t('mailboxAddress')" />
+                            <n-input v-model:value="value.domain" :placeholder="t('blockedSenderDomain')" :aria-label="t('blockedSenderDomain')" />
+                        </n-space>
+                    </template>
+                </n-dynamic-input>
             </n-form-item-row>
             <n-form-item-row :label="t('block_receive_unknow_address_email')">
                 <n-switch v-model:value="emailRuleSettings.blockReceiveUnknowAddressEmail" :round="false" />

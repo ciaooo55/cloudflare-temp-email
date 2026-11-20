@@ -2004,8 +2004,24 @@ export const MESSAGE_REGISTRY = {
       "zh": "仅影响新建邮箱时的域名校验。例如开启后，foo.example.com 可以匹配已配置的基础域名 example.com。"
     },
     "fromBlockList": {
-      "en": "Block Keywords for receive email",
-      "zh": "接收邮件地址屏蔽关键词"
+      "en": "Global sender blacklist (keywords)",
+      "zh": "全局发件人黑名单（关键词）"
+    },
+    "blockedMailboxList": {
+      "en": "Disabled mailboxes (reject all mail)",
+      "zh": "停用邮箱（拒收所有邮件）"
+    },
+    "mailboxDomainBlockList": {
+      "en": "Mailbox-specific domain blacklist",
+      "zh": "邮箱级域名拉黑"
+    },
+    "mailboxAddress": {
+      "en": "Mailbox address",
+      "zh": "邮箱地址"
+    },
+    "blockedSenderDomain": {
+      "en": "Sender domain (includes subdomains)",
+      "zh": "发件人域名（含子域名）"
     },
     "manualInputPrompt": {
       "en": "Type and press Enter to add",

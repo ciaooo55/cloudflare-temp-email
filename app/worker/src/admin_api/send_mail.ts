@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { isMailboxBlocked } from '../email/black_list.ts';
 import { isSendMailBindingEnabled } from '../common.ts';
 import i18n from '../i18n/index.ts';
 import { sendMail } from '../mails_api/send_mail_api.ts';
@@ -77,6 +78,9 @@ export const sendMailByBindingAdmin = async (c: Context<HonoCustomType>) => {
         return c.text(msgs.EnableSendMailForDomainMsg, 400)
     }
     try {
+        if (await isMailboxBlocked(fromMail, c.env)) {
+            return c.text(msgs.AddressBlockedMsg, 403)
+        }
         const sendLimitConfig = await ensureSendMailLimit(c);
         await c.env.SEND_MAIL.send({
             from,
