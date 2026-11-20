@@ -8,6 +8,13 @@
 
 ## v1.13.0(main)
 
+- fix: |i18n| Translate workspace groups and original-address labels in German, Spanish, Portuguese and Japanese instead of falling back to Chinese
+- perf: |frontend| Load challenge scripts and extra locales on demand, share startup settings requests and fingerprint work, precache only the shell and parse ordinary mail without downloading WASM
+- feat: |reader| Open each message as text with codes and original addresses, derive text for HTML-only mail, show images only on click, and group tools by daily mail, mailboxes, rules, notifications and system
+- feat: |frontend| Introduce a responsive grouped workspace, consolidate duplicate setup links and remove obsolete appearance options while preserving all admin tools, verification codes and original addresses
+- fix: |privacy| Require per-message image consent, reset it when switching messages, sanitize previews and sandbox mail iframes
+- perf: |mail| Reuse unchanged parsed messages, preserve selection on refresh, pause polling in hidden tabs, release attachment/download URLs and fix empty counts and duplicate refreshes
+
 - fix: |mail| Normalize internationalized domain blacklist rules and sender domains to Punycode for matching
 
 - fix: |mail| Reject disabled mailboxes on the admin binding send endpoint too

@@ -1,4 +1,17 @@
 export const ptBRMessages = {
+  "views.Admin.workspace": "Espaço de e-mail",
+  "views.Admin.notifications": "Notificações e integrações",
+  "views.Admin.dailyMail": "E-mail diário",
+  "views.Admin.dailyMailHint": "Leia primeiro o texto, os códigos e os endereços originais. As imagens só aparecem se você escolher.",
+  "views.Admin.mailboxesHint": "Encontre ou crie caixas de e-mail e confira mensagens de endereços não registrados.",
+  "views.Admin.mailRules": "Regras de e-mail e segurança",
+  "views.Admin.mailRulesHint": "Gerencie padrões da caixa, permissões de envio, extração de códigos e acesso à API.",
+  "views.Admin.notificationsHint": "Configure notificações, integrações Webhook e snapshots de e-mail salvos.",
+  "views.Admin.systemHint": "Uso, banco de dados e implantação. As ferramentas carregam apenas quando abertas.",
+  "views.Admin.privacyFirst": "Imagens só ao clicar",
+  "components.MailContentRenderer.originalSender": "Remetente original",
+  "components.MailContentRenderer.originalRecipient": "Destinatário original",
+  "components.MailBox.originalRecipient": "Destinatário original",
   "components.WebhookComponent.randomMail": "E-mail aleatório",
   "components.WebhookComponent.specifiedMail": "Especificar ID",
   "components.WebhookComponent.mailId": "ID do e-mail",
@@ -361,7 +374,7 @@ export const ptBRMessages = {
   "components.AddressCredentialModal.username": "Nome de usuário",
   "components.MailContentRenderer.markAsRead": "Marcar como lido",
   "components.MailContentRenderer.markAsUnread": "Marcar como não lido",
-  "components.MailContentRenderer.loadRemoteImages": "Carregar imagens",
+  "components.MailContentRenderer.loadRemoteImages": "Mostrar imagens",
   "components.MailContentRenderer.remoteImagesBlocked": "{count} recursos externos foram bloqueados para proteger sua privacidade",
   "views.common.Appearance.autoLoadRemoteImages": "Carregar automaticamente imagens externas no corpo do e-mail"
 }

@@ -10,7 +10,6 @@ export const useGlobalState = createGlobalState(
         const toggleDark = useToggle(isDark)
         const loading = ref(false);
         const announcement = useLocalStorage('announcement', '');
-        const useSimpleIndex = useLocalStorage('useSimpleIndex', false);
         const openSettings = ref({
             fetched: false,
             title: '',
@@ -74,7 +73,7 @@ export const useGlobalState = createGlobalState(
         const adminAuth = useStorage('adminAuth', '');
         const jwt = useStorage('jwt', '');
         const addressPassword = useSessionStorage('addressPassword', '');
-        const adminTab = useSessionStorage('adminTab', "account");
+        const adminTab = useSessionStorage('adminTab', "mails");
         // 兼容旧版本拼写错误的 tab 名（qucickSetup → quickSetup），避免老用户打开后 tab 定位到不存在的面板
         if (adminTab.value === "qucickSetup") adminTab.value = "quickSetup";
         const adminMailTabAddress = ref("");
@@ -83,12 +82,9 @@ export const useGlobalState = createGlobalState(
         const mailListView = useStorage('mailListView', false);
         const mailListPreviewLineClamp = useStorage('mailListPreviewLineClamp', 2);
         const useIframeShowMail = useStorage('useIframeShowMail', false);
-        const preferShowTextMail = useStorage('preferShowTextMail', false);
         const preferredLocale = useStorage('preferredLocale', '');
-        const globalTabplacement = useStorage('globalTabplacement', 'top');
         const useSideMargin = useStorage('useSideMargin', true);
         const useUTCDate = useStorage('useUTCDate', false);
-        const autoLoadRemoteImages = useStorage('autoLoadRemoteImages', true);
         const autoRefresh = useStorage('autoRefresh', false);
         const configAutoRefreshInterval = useStorage("configAutoRefreshInterval", 60);
         const showAdminPage = computed(() =>
@@ -118,18 +114,14 @@ export const useGlobalState = createGlobalState(
             mailListView,
             mailListPreviewLineClamp,
             useIframeShowMail,
-            preferShowTextMail,
             preferredLocale,
-            globalTabplacement,
             useSideMargin,
             useUTCDate,
-            autoLoadRemoteImages,
             autoRefresh,
             configAutoRefreshInterval,
             telegramApp,
             isTelegram,
             showAdminPage,
-            useSimpleIndex,
             addressPassword,
             browserFingerprint,
         }

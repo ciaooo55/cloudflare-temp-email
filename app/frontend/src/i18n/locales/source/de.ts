@@ -1,4 +1,17 @@
 export const deMessages = {
+  "views.Admin.workspace": "E-Mail-Arbeitsbereich",
+  "views.Admin.notifications": "Benachrichtigungen & Integrationen",
+  "views.Admin.dailyMail": "E-Mail im Alltag",
+  "views.Admin.dailyMailHint": "Zuerst Text, Codes und Originaladressen lesen. Bilder werden erst auf Wunsch angezeigt.",
+  "views.Admin.mailboxesHint": "Postfächer finden oder erstellen und E-Mails an nicht registrierte Adressen prüfen.",
+  "views.Admin.mailRules": "E-Mail-Regeln & Sicherheit",
+  "views.Admin.mailRulesHint": "Postfachstandards, Sendeberechtigungen, Code-Extraktion und API-Zugriffsregeln verwalten.",
+  "views.Admin.notificationsHint": "Benachrichtigungen, Webhook-Integrationen und gespeicherte E-Mail-Snapshots einrichten.",
+  "views.Admin.systemHint": "Nutzung, Datenbank und Bereitstellung. Werkzeuge werden erst beim Öffnen geladen.",
+  "views.Admin.privacyFirst": "Bilder erst nach Klick",
+  "components.MailContentRenderer.originalSender": "Originalabsender",
+  "components.MailContentRenderer.originalRecipient": "Originalempfänger",
+  "components.MailBox.originalRecipient": "Originalempfänger",
   "components.WebhookComponent.randomMail": "Zufällige E-Mail",
   "components.WebhookComponent.specifiedMail": "ID angeben",
   "components.WebhookComponent.mailId": "E-Mail-ID",
@@ -361,7 +374,7 @@ export const deMessages = {
   "components.AddressCredentialModal.username": "Benutzername",
   "components.MailContentRenderer.markAsRead": "Als gelesen markieren",
   "components.MailContentRenderer.markAsUnread": "Als ungelesen markieren",
-  "components.MailContentRenderer.loadRemoteImages": "Bilder laden",
+  "components.MailContentRenderer.loadRemoteImages": "Bilder anzeigen",
   "components.MailContentRenderer.remoteImagesBlocked": "{count} externe Ressourcen wurden zum Schutz deiner Privatsphäre blockiert",
   "views.common.Appearance.autoLoadRemoteImages": "Externe Bilder im E-Mail-Inhalt automatisch laden"
 }

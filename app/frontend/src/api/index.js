@@ -71,9 +71,12 @@ const apiFetch = async (path, options = {}) => {
     }
 }
 
+let pendingOpenSettings;
 const getOpenSettings = async (message, notification) => {
     try {
-        const res = await api.fetch("/open_api/settings");
+        pendingOpenSettings ||= api.fetch("/open_api/settings", { showLoading: false })
+            .finally(() => { pendingOpenSettings = undefined; });
+        const res = await pendingOpenSettings;
         const domains = Array.isArray(res["domains"]) ? res["domains"] : [];
         const domainLabels = res["domainLabels"] || [];
         if (domains.length < 1) {
@@ -119,7 +122,7 @@ const getOpenSettings = async (message, notification) => {
                 || openSettings.value.alwaysShowAnnouncement)
         ) {
             announcement.value = openSettings.value.announcement;
-            notification.info({
+            notification?.info({
                 content: () => {
                     return h("div", {
                         innerHTML: sanitizeHtml(announcement.value)

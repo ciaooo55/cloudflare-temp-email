@@ -7,10 +7,10 @@ import { useGlobalState } from '../store'
 import { api } from '../api'
 import { getRouterPathWithLang, hashPassword } from '../utils'
 import Turnstile from '../components/Turnstile.vue'
+import { useIsMobile } from '../utils/composables'
+import { adminGroups, normalizeAdminSection } from '../utils/admin-navigation'
 
-// Admin tab views are lazy-loaded: each chunk is fetched only when its tab is first opened,
-// keeping the admin first-screen bundle small. (n-tab-pane uses displayDirective="if",
-// so inactive panes are not rendered and their chunks are not requested.)
+// Only the active tool is mounted and its chunk downloaded.
 const SenderAccess = defineAsyncComponent(() => import('./admin/SenderAccess.vue'));
 const Statistics = defineAsyncComponent(() => import("./admin/Statistics.vue"));
 const SendBox = defineAsyncComponent(() => import('./admin/SendBox.vue'));
@@ -34,7 +34,7 @@ const AiExtractSettings = defineAsyncComponent(() => import('./admin/AiExtractSe
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
-  globalTabplacement, showAdminPage,
+  showAdminPage,
   openSettings
 } = useGlobalState()
 const message = useMessage()
@@ -100,10 +100,34 @@ onMounted(async () => {
   // make sure openSettings is fetched for turnstile check
   if (!openSettings.value.fetched) await api.getOpenSettings(message);
 })
+
+const isMobile = useIsMobile()
+const sections = {
+  account: Account, account_create: CreateAccount, account_settings: AccountSettings,
+  senderAccess: SenderAccess, ipBlacklistSettings: IpBlacklistSettings,
+  aiExtractSettings: AiExtractSettings, webhook: Webhook,
+  mails: Mails, unknow: MailsUnknown, sendBox: SendBox, sendMail: SendMail,
+  mailWebhook: MailWebhook, telegram: Telegram, bark: Bark, snapshot: Snapshot,
+  statistics: Statistics, database: DatabaseManager, workerconfig: WorkerConfig,
+  maintenance_tasks: Maintenance, appearance: Appearance, about: About
+}
+adminTab.value = normalizeAdminSection(adminTab.value)
+const navigation = computed(() => adminGroups.map(group => ({
+  key: group.key, label: t(group.label),
+  children: group.items.map(([key, label]) => ({ key, label: t(label) }))
+})))
+const mobileOptions = computed(() => navigation.value.map(group => ({
+  type: 'group', label: group.label,
+  children: group.children.map(item => ({ label: item.label, value: item.key }))
+})))
+const activeLabel = computed(() => navigation.value.flatMap(group => group.children)
+  .find(item => item.key === adminTab.value)?.label || '')
+const activeGroup = computed(() => adminGroups.find(group => group.items.some(([key]) => key === adminTab.value)))
+const activeComponent = computed(() => sections[adminTab.value])
 </script>
 
 <template>
-  <div v-if="openSettings.fetched">
+  <div v-if="openSettings.fetched" class="admin-workspace">
     <n-modal v-model:show="showAdminPasswordModal" :closable="false" :closeOnEsc="false" :maskClosable="false"
       preset="dialog" :title="t('accessHeader')">
       <p>{{ t('accessTip') }}</p>
@@ -115,93 +139,27 @@ onMounted(async () => {
         </n-button>
       </template>
     </n-modal>
-    <n-tabs v-if="showAdminPage" type="card" v-model:value="adminTab" :placement="globalTabplacement">
-      <n-tab-pane name="quickSetup" :tab="t('quickSetup')">
-        <n-tabs key="quick-setup-tabs" type="bar" justify-content="center" animated>
-          <n-tab-pane name="database" :tab="t('database')">
-            <DatabaseManager />
-          </n-tab-pane>
-          <n-tab-pane name="account_settings" :tab="t('mailbox_settings')">
-            <AccountSettings />
-          </n-tab-pane>
-          <n-tab-pane name="workerconfig" :tab="t('workerconfig')">
-            <WorkerConfig />
-          </n-tab-pane>
-        </n-tabs>
-      </n-tab-pane>
-      <n-tab-pane name="account" :tab="t('mailbox_management')">
-        <n-tabs key="account-tabs" type="bar" justify-content="center" animated>
-          <n-tab-pane name="account" :tab="t('mailbox_list')">
-            <Account />
-          </n-tab-pane>
-          <n-tab-pane name="account_create" :tab="t('mailbox_create')">
-            <CreateAccount />
-          </n-tab-pane>
-          <n-tab-pane name="account_settings" :tab="t('mailbox_settings')">
-            <AccountSettings />
-          </n-tab-pane>
-          <n-tab-pane name="senderAccess" :tab="t('senderAccess')">
-            <SenderAccess />
-          </n-tab-pane>
-          <n-tab-pane name="ipBlacklistSettings" :tab="t('ipBlacklistSettings')">
-            <IpBlacklistSettings />
-          </n-tab-pane>
-          <n-tab-pane name="aiExtractSettings" :tab="t('aiExtractSettings')">
-            <AiExtractSettings />
-          </n-tab-pane>
-          <n-tab-pane name="webhook" :tab="t('webhookSettings')">
-            <Webhook />
-          </n-tab-pane>
-        </n-tabs>
-      </n-tab-pane>
-      <n-tab-pane name="mails" :tab="t('mails')">
-        <n-tabs key="mails-tabs" type="bar" justify-content="center" animated>
-          <n-tab-pane name="mails" :tab="t('mails')">
-            <Mails />
-          </n-tab-pane>
-          <n-tab-pane name="unknow" :tab="t('unknow')">
-            <MailsUnknown />
-          </n-tab-pane>
-          <n-tab-pane name="sendBox" :tab="t('sendBox')">
-            <SendBox />
-          </n-tab-pane>
-          <n-tab-pane name="sendMail" :tab="t('sendMail')">
-            <SendMail />
-          </n-tab-pane>
-          <n-tab-pane name="mailWebhook" :tab="t('mailWebhook')">
-            <MailWebhook />
-          </n-tab-pane>
-        </n-tabs>
-      </n-tab-pane>
-      <n-tab-pane name="telegram" :tab="t('telegram')">
-        <Telegram />
-      </n-tab-pane>
-      <n-tab-pane name="bark" :tab="t('bark')">
-        <Bark />
-      </n-tab-pane>
-      <n-tab-pane name="snapshot" :tab="t('snapshot')">
-        <Snapshot />
-      </n-tab-pane>
-      <n-tab-pane name="statistics" :tab="t('statistics')">
-        <Statistics />
-      </n-tab-pane>
-      <n-tab-pane name="maintenance" :tab="t('maintenance')">
-        <n-tabs key="maintenance-tabs" type="bar" justify-content="center" animated>
-          <n-tab-pane name="database" :tab="t('database')">
-            <DatabaseManager />
-          </n-tab-pane>
-          <n-tab-pane name="workerconfig" :tab="t('workerconfig')">
-            <WorkerConfig />
-          </n-tab-pane>
-          <n-tab-pane name="maintenance_tasks" :tab="t('maintenanceTasks')">
-            <Maintenance />
-          </n-tab-pane>
-        </n-tabs>
-      </n-tab-pane>
-      <n-tab-pane name="appearance" :tab="t('appearance')">
-        <Appearance />
-      </n-tab-pane>
-      <n-tab-pane name="adminAccount" :tab="t('adminAccount')">
+
+    <div v-if="showAdminPage" class="workspace-grid">
+      <aside v-if="!isMobile" class="workspace-sidebar">
+        <div class="workspace-brand">{{ t('workspace') }}</div>
+        <n-menu v-model:value="adminTab" :options="navigation"
+          :default-expanded-keys="['mail', 'mailboxes']" :indent="16" />
+      </aside>
+      <main class="workspace-content">
+        <n-select v-if="isMobile" v-model:value="adminTab" :options="mobileOptions"
+          :aria-label="t('workspace')" filterable class="workspace-mobile-nav" />
+        <div class="workspace-heading">
+          <div>
+            <n-text depth="3" class="workspace-eyebrow">{{ activeGroup && t(activeGroup.label) }}</n-text>
+            <h1>{{ activeLabel }}</h1>
+            <p class="workspace-description">{{ activeGroup && t(activeGroup.description) }}</p>
+          </div>
+          <n-tag round :bordered="false" type="success">{{ t('privacyFirst') }}</n-tag>
+        </div>
+        <section class="workspace-panel" :aria-label="activeLabel">
+          <component :is="activeComponent" v-if="activeComponent" :key="adminTab" />
+          <template v-else-if="adminTab === 'adminAccount'">
         <div style="display: flex; justify-content: center; padding: 20px;">
           <n-card style="width: 100%; max-width: 600px;">
             <n-space vertical>
@@ -217,11 +175,11 @@ onMounted(async () => {
             </n-space>
           </n-card>
         </div>
-      </n-tab-pane>
-      <n-tab-pane name="about" :tab="t('about')">
-        <About />
-      </n-tab-pane>
-    </n-tabs>
+
+          </template>
+        </section>
+      </main>
+    </div>
     <n-modal v-model:show="showLogoutModal" preset="dialog" :title="t('logoutConfirmTitle')">
       <p>{{ t('logoutConfirmContent') }}</p>
       <template #action>
@@ -230,18 +188,26 @@ onMounted(async () => {
         </n-button>
       </template>
     </n-modal>
+
   </div>
 </template>
 
 <style scoped>
-.n-pagination {
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
-/* 顶部导航标签不换行、不挤压截断，超宽时横向滚动 */
-:deep(.n-tabs-tab) {
-  white-space: nowrap;
-  flex-shrink: 0;
+.workspace-grid { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 28px; align-items: start; }
+.workspace-sidebar { position: sticky; top: 20px; text-align: left; padding: 12px 0; }
+.workspace-brand { padding: 0 24px 14px; font-size: 12px; letter-spacing: .08em; opacity: .55; }
+.workspace-content { min-width: 0; text-align: left; padding: 24px 0; }
+.workspace-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 22px; }
+.workspace-heading h1 { font-size: 26px; line-height: 1.3; margin: 5px 0 0; font-weight: 650; letter-spacing: -.03em; }
+.workspace-eyebrow { font-size: 12px; }
+.workspace-description { margin: 8px 0 0; opacity: .65; font-size: 13px; max-width: 48em; }
+.workspace-panel { min-height: 65vh; }
+.workspace-sidebar :deep(.n-menu-item-content) { border-radius: 8px; }
+.workspace-mobile-nav { margin-bottom: 20px; }
+@media (max-width: 767px) {
+  .workspace-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .workspace-content { padding-top: 16px; }
+  .workspace-heading { margin-bottom: 16px; }
+  .workspace-heading h1 { font-size: 22px; }
 }
 </style>

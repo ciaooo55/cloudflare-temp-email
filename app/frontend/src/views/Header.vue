@@ -128,7 +128,7 @@ const menuOptions = computed(() => [
                 icon: () => h(NIcon, { component: AdminPanelSettingsFilled }),
             }
         ),
-        show: showAdminPage.value,
+        show: showAdminPage.value && !route.path.includes("admin"),
         key: "admin"
     },
     {
@@ -177,26 +177,6 @@ useHead({
     ]
 });
 
-const logoClickCount = ref(0);
-const logoClick = async () => {
-    if (route.path.includes("admin")) {
-        logoClickCount.value = 0;
-        return;
-    }
-    if (logoClickCount.value >= 5) {
-        logoClickCount.value = 0;
-        message.info("Change to admin Page");
-        loading.value = true;
-        await router.push(getRouterPathWithLang('/admin', locale.value));
-        loading.value = false;
-    } else {
-        logoClickCount.value++;
-    }
-    if (logoClickCount.value > 0) {
-        message.info(`Click ${5 - logoClickCount.value + 1} times to enter the admin page`);
-    }
-}
-
 onMounted(async () => {
     await api.getOpenSettings(message, notification);
 });
@@ -204,14 +184,14 @@ onMounted(async () => {
 
 <template>
     <div>
-        <n-page-header>
+        <n-page-header class="workspace-header">
             <template #title>
                 <h3>{{ openSettings.title || t('title') }}</h3>
             </template>
             <template #avatar>
-                <div @click="logoClick">
+                <router-link :to="getRouterPathWithLang('/admin', locale)">
                     <n-avatar style="margin-left: 10px;" src="/logo.png" />
-                </div>
+                </router-link>
             </template>
             <template #extra>
                 <n-space align="center" class="header-extra">
@@ -288,6 +268,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.workspace-header { padding: 14px 4px; border-bottom: 1px solid rgba(128,128,128,.16); }
+.workspace-header h3 { font-weight: 650; letter-spacing: -.025em; margin: 0; }
+
 :deep(.n-page-header) {
     align-items: center;
     flex-wrap: nowrap;

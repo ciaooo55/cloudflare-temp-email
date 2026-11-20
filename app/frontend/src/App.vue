@@ -19,6 +19,12 @@ const {
 const adClient = APP_CONFIG.GOOGLE_AD_CLIENT;
 const adSlot = APP_CONFIG.GOOGLE_AD_SLOT;
 const { locale } = useI18n({ useScope: 'global' });
+const themeOverrides = {
+  common: {
+    primaryColor: '#168577', primaryColorHover: '#21998a', primaryColorPressed: '#10685e',
+    borderRadius: '8px', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  }
+};
 const theme = computed(() => isDark.value ? darkTheme : null)
 const localeConfig = computed(() => getNaiveLocaleConfig(isSupportedLocale(locale.value) ? locale.value : DEFAULT_LOCALE))
 const isMobile = useIsMobile()
@@ -81,13 +87,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <n-config-provider :locale="localeConfig.locale" :date-locale="localeConfig.dateLocale" :theme="theme">
+  <n-config-provider :locale="localeConfig.locale" :date-locale="localeConfig.dateLocale" :theme="theme" :theme-overrides="themeOverrides">
     <n-global-style />
     <n-spin description="loading..." :show="loading">
       <n-notification-provider container-style="margin-top: 60px;">
         <n-message-provider container-style="margin-top: 20px;">
           <n-dialog-provider>
-          <n-grid x-gap="12" :cols="gridMaxCols">
+          <n-grid class="app-shell" :class="{ 'app-shell-dark': isDark }" x-gap="12" :cols="gridMaxCols">
             <n-gi v-if="showSideMargin" span="1">
               <div class="side" v-if="showAd">
                 <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
@@ -97,7 +103,7 @@ onMounted(async () => {
             <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
               <div class="main">
                 <n-space vertical>
-                  <n-layout style="min-height: 80vh;">
+                  <n-layout style="min-height: 80vh; background: transparent;">
                     <Header />
                     <router-view></router-view>
                   </n-layout>
@@ -143,10 +149,10 @@ onMounted(async () => {
   height: 100vh;
 }
 
-.main {
-  height: 100vh;
-  text-align: center;
-}
+.main { min-height: 100vh; text-align: center; padding: 0 24px; }
+.app-shell { background: #f5f7f8; }
+.app-shell-dark { background: #14181c; }
+@media (max-width: 767px) { .main { padding: 0 12px; } }
 
 .n-grid {
   height: 100%;

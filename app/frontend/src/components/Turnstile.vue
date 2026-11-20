@@ -1,9 +1,10 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, onBeforeUnmount } from "vue";
 import { useScopedI18n } from '@/i18n/app'
 import { useGlobalState } from '../store'
 import { getTurnstileLocale } from '../i18n/locale-registry'
 import { DEFAULT_LOCALE, isSupportedLocale } from '../i18n/utils'
+import { loadTurnstile } from '../utils/turnstile'
 const { openSettings, isDark } = useGlobalState()
 
 const cfToken = defineModel('value')
@@ -14,6 +15,7 @@ const containerId = `cf-turnstile-${Math.random().toString(36).slice(2, 9)}`
 const cfTurnstileId = ref("")
 const turnstileLoading = ref(false)
 let turnstileRenderQueue = Promise.resolve()
+let disposed = false
 
 const refresh = () => rerenderTurnstile()
 defineExpose({ refresh })
@@ -31,16 +33,15 @@ const checkCfTurnstile = async (remove) => {
     if (!openSettings.value.cfTurnstileSiteKey) return;
     turnstileLoading.value = true;
     try {
+        await loadTurnstile();
+        if (disposed || !openSettings.value.cfTurnstileSiteKey) return;
         let container = document.getElementById(containerId);
         let count = 100;
         while (!container && count-- > 0) {
             container = document.getElementById(containerId);
             await new Promise(r => setTimeout(r, 10));
         }
-        count = 100;
-        while (!window.turnstile && count-- > 0) {
-            await new Promise(r => setTimeout(r, 10));
-        }
+        if (disposed || !container) return;
         if (remove && cfTurnstileId.value) {
             window.turnstile.remove(cfTurnstileId.value);
         }
@@ -65,6 +66,10 @@ const checkCfTurnstile = async (remove) => {
 }
 
 watch([isDark, locale, () => openSettings.value.cfTurnstileSiteKey], rerenderTurnstile, { immediate: true })
+onBeforeUnmount(() => {
+    disposed = true;
+    if (cfTurnstileId.value) window.turnstile?.remove(cfTurnstileId.value);
+})
 </script>
 
 <template>
