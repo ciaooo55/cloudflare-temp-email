@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { getJsonSetting } from './utils.ts';
 import { CONSTANTS } from './constants.ts';
+import { consumeRateLimit } from './rate_limits.ts';
 
 /**
  * IP Blacklist Settings stored in database
@@ -234,21 +235,18 @@ async function checkDailyLimit(
     settings: IpBlacklistSettings,
     reqIp: string
 ): Promise<Response | null> {
-    if (!settings.enableDailyLimit || !settings.dailyRequestLimit || !c.env.KV) {
+    if (!settings.enableDailyLimit || !settings.dailyRequestLimit || !c.env.DB) {
         return null;
     }
 
-    const daily_count_key = `limit|${reqIp}|${new Date().toISOString().slice(0, 10)}`;
+    const now = Date.now();
+    const dayMs = 86_400_000;
+    const dayStart = Math.floor(now / dayMs) * dayMs;
     const dailyLimit = settings.dailyRequestLimit;
-    const current_count = parseInt(await c.env.KV.get(daily_count_key) || "0", 10);
-
-    if (current_count && current_count >= dailyLimit) {
+    if (!(await consumeRateLimit(c.env.DB, `limit|${reqIp}`, dailyLimit, now, dayStart, dayStart + dayMs))) {
         console.warn(`Blocked IP ${reqIp} exceeded daily limit of ${dailyLimit} requests for path: ${c.req.path}`);
         return c.text(`IP=${reqIp} Exceeded daily limit of ${dailyLimit} requests`, 429);
     }
-
-    // Increment counter with 24-hour expiration
-    await c.env.KV.put(daily_count_key, ((current_count || 0) + 1).toString(), { expirationTtl: 24 * 60 * 60 });
     return null;
 }
 

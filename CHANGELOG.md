@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- perf: |Worker| 将收信、IP 每日请求及 Webhook 限流计数和定时任务执行状态改存 D1，减少免费套餐的 KV 读写；部署时短期限流状态会重新计数，快照和 Telegram 等现有 KV 数据不变
 - fix: |依赖| 修复 `app/worker/pnpm-lock.yaml` 损坏：补上缺失的 `@sindresorhus/is@7.2.0` 条目并清掉已不再引用的残留条目，`pnpm install --frozen-lockfile` 恢复可用（`package.json` 与实际解析版本均未变）
 - feat: |邮件| 邮件详情页显示原始接收邮箱并支持快捷复制：解析邮件时从原始邮件 To 头提取原始收件地址，详情页信息区在 TO 后新增“原始收件”标签，带一键复制按钮（口径与后端转发邮件原始收件人一致）
 - fix: |依赖| 升级 worker 的 `hono` 4.13.7 → 4.13.18（同一小版本内的补丁升级），修复 `pnpm audit` 报告的 5 条 hono 安全公告（修复版本为 4.13.11 / 4.13.16）
