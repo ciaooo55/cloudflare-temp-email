@@ -1,10 +1,26 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { sendMailByBindingAdmin } from './send_mail.ts';
+import { registerHooks } from 'node:module';
 import { createD1 } from '../../test-loader/d1.mjs';
 import { WORKER_STORE_SCHEMA } from '../worker_store.ts';
 import { CONSTANTS } from '../constants.ts';
 import i18n from '../i18n/index.ts';
+
+const hooks = registerHooks({
+    resolve(specifier, context, next) {
+        if (context.parentURL === new URL('./send_mail.ts', import.meta.url).href) {
+            if (specifier === '../mails_api/send_mail_api.ts') {
+                return { url: 'data:text/javascript,export function sendMail() { throw new Error("Unexpected sendMail"); }', shortCircuit: true };
+            }
+            if (specifier === '../mails_api/send_mail_limit_utils.ts') {
+                return { url: 'data:text/javascript,export async function ensureSendMailLimit() {} export async function increaseSendMailLimitCount() {}', shortCircuit: true };
+            }
+        }
+        return next(specifier, context);
+    },
+});
+const { sendMailByBindingAdmin } = await import('./send_mail.ts');
+hooks.deregister();
 
 const setup = (rules, from = 'box@example.com') => {
     const DB = createD1();
