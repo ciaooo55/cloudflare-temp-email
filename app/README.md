@@ -16,6 +16,14 @@ Cloudflare 临时邮箱的核心服务，包含前端和后端。当前 Cloudfla
 - 后端：本地用 `~/workspace/cf-worker/deploy.py` 部署（不要用 GitHub Actions）
 - 前端：push 到 main 后 Cloudflare Pages 自动构建部署
 
+## 邮箱黑名单 / Mailbox blacklists
+
+**中文**：后台账号设置中的全局发件人黑名单继续按关键词拦截所有邮箱的来信。“邮箱级域名拉黑”仅对指定收件邮箱生效，匹配信封发件人或 From 头中的域名及其子域名；域名前可带 `@`。“停用邮箱”拒收所有来信并禁止该邮箱发信。邮箱和域名均忽略大小写与首尾空格。
+
+**English**: In admin Account Settings, the global sender blacklist continues to reject matching sender keywords for every mailbox. Mailbox-specific domain rules reject envelope or From-header sender domains and their subdomains only for the specified recipient; a leading `@` is optional. Disabled mailboxes reject all inbound mail and cannot send. Addresses and domains are case-insensitive and trimmed.
+
+`GET/POST /admin/account_settings` 使用 / uses `mailboxDomainBlockList: [{ address, domain }]` 和 / and `blockedMailboxList: [address]`. POST 仅更新传入的数组，空数组清空对应规则，无效条目会丢弃；两者共用一个 `worker_store` 键 `email_mailbox_block_rules`，每封来信仅额外读取一次设置。 / POST updates only supplied arrays; empty arrays clear that list and invalid entries are discarded. Both lists share the `worker_store` key `email_mailbox_block_rules`, requiring only one extra settings read per inbound message.
+
 ## 免费套餐：D1 预算、定时任务和 KV 迁移 / Free plan: D1 budgets, cron and KV migration
 
 | Worker 变量 / Variable | 默认值 / Default |

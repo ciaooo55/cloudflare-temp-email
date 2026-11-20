@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- feat: |mail| Add mailbox-specific sender domain blocks (including subdomains) and disabled mailboxes that reject all inbound and outbound mail, preserving the global sender blacklist
+
 - perf: |mail| Cache D1 blacklist reads during budget prechecks, skipping only unpromoted legacy KV values to avoid duplicate queries
 - perf: |mail| Check the sender blacklist before reserving daily D1 usage so rejected mail is not charged; promote legacy KV blacklists only after budget admission
 - fix: |Worker| Keep receiving mail before the new D1 tables are created and keep legacy D1-only snapshot bindings and HTML readable after KV import

@@ -3,7 +3,7 @@ import { Context } from "hono";
 import { getJsonSetting, normalizeAddressDomain } from '../utils.ts';
 import { sendMailNotifications } from '../telegram_api/index.ts';
 import { refreshBoundSnapshotsForIncomingMail } from '../telegram_api/mail_snapshot.ts';
-import { isBlocked } from './black_list.ts';
+import { isBlocked, isBlockedForRecipient } from './black_list.ts';
 import { checkInboundRateLimit } from './inbound_rate_limit.ts';
 import { triggerWebhook, triggerAnotherWorker, commonParseMail } from '../common.ts';
 import { checkIfJunkMail } from './check_junk.ts';
@@ -48,6 +48,11 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     const toAddress = normalizeAddressDomain(recipient);
     if (await isBlocked(message, env, admission === "full")) {
         message.setReject("Reject from address");
+        console.log(`Reject message from ${message.from} to ${toAddress}`);
+        return;
+    }
+    if (await isBlockedForRecipient(message, toAddress, env, admission === "full")) {
+        message.setReject("Reject blocked mailbox or sender domain");
         console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
     }
