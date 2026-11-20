@@ -2,7 +2,7 @@
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import { useScopedI18n } from '@/i18n/app'
-import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useSessionStorage } from '@vueuse/core'
 import { SendRound } from '@vicons/material'
 import { api } from '../../api'
@@ -15,7 +15,7 @@ const message = useMessage()
 const isPreview = ref(false)
 const editorRef = shallowRef()
 const sending = ref(false)
-const { autoLoadRemoteImages, isDark } = useGlobalState()
+const { isDark } = useGlobalState()
 
 const sendMailModel = useSessionStorage('sendMailByAdminModel', {
     fromName: "",
@@ -35,11 +35,16 @@ const contentTypes = computed(() => [
     { label: t('rich text'), value: 'rich' },
 ])
 
+const { t: imageText } = useScopedI18n('components.MailContentRenderer')
+const showPreviewImages = ref(false)
+watch(() => sendMailModel.value.content, () => { showPreviewImages.value = false })
+const blockedPreview = computed(() => blockRemoteContent(sendMailModel.value.content || ''))
+
 const previewContent = computed(() => {
     const content = `${sendMailModel.value.content ?? ''}`
-    return autoLoadRemoteImages.value
+    return showPreviewImages.value
         ? sanitizeHtml(content)
-        : blockRemoteContent(content).html
+        : blockedPreview.value.html
 })
 
 const normalizeSendMailText = (content) => {
@@ -225,6 +230,9 @@ const handleCreated = (editor) => {
                     </div>
 
                     <div v-if="isPreview && sendMailModel.contentType !== 'text'" class="compose-preview">
+                        <n-button v-if="blockedPreview.blocked && !showPreviewImages" size="small" @click="showPreviewImages = true">
+                            {{ imageText('loadRemoteImages') }}
+                        </n-button>
                         <ShadowHtmlComponent :htmlContent="previewContent" :isDark="isDark" />
                     </div>
                     <div v-else-if="sendMailModel.contentType === 'rich'" class="rich-editor">

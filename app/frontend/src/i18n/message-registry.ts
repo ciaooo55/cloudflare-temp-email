@@ -159,6 +159,7 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "components.MailContentRenderer": {
+    "originalSender": { "en": "Original From", "zh": "原始发件" },
     "attachments": {
       "en": "View Attachments",
       "zh": "查看附件"
@@ -435,6 +436,9 @@ export const MESSAGE_REGISTRY = {
     },
   },
   "views.Admin": {
+    "workspace": { "en": "Mail workspace", "zh": "邮箱工作台" },
+    "notifications": { "en": "Notifications & snapshots", "zh": "通知与快照" },
+    "privacyFirst": { "en": "Images load on click", "zh": "图片仅点击后加载" },
     "about": {
       "en": "About",
       "zh": "关于"

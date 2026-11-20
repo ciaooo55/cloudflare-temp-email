@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest'
+import { adminGroups, normalizeAdminSection } from '../admin-navigation'
+
+describe('admin workspace navigation', () => {
+    const keys = adminGroups.flatMap(group => group.items.map(([key]) => key))
+
+    it('keeps each working admin tool accessible exactly once', () => {
+        expect(new Set(keys).size).toBe(keys.length)
+        expect(keys).toHaveLength(22)
+        expect(keys).toEqual(expect.arrayContaining([
+            'mails', 'unknow', 'sendBox', 'sendMail', 'mailWebhook',
+            'account', 'account_create', 'account_settings', 'senderAccess',
+            'ipBlacklistSettings', 'aiExtractSettings', 'webhook',
+            'telegram', 'bark', 'snapshot', 'statistics', 'database',
+            'workerconfig', 'maintenance_tasks', 'appearance', 'adminAccount', 'about',
+        ]))
+    })
+
+    it('migrates duplicate and legacy setup tabs without stranding existing sessions', () => {
+        for (const tab of ['qucickSetup', 'quickSetup', 'maintenance']) {
+            expect(normalizeAdminSection(tab)).toBe('database')
+        }
+        for (const tab of keys) expect(normalizeAdminSection(tab)).toBe(tab)
+        expect(normalizeAdminSection('removed')).toBe('mails')
+    })
+})

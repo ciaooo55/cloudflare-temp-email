@@ -3,16 +3,9 @@ import { useScopedI18n } from '@/i18n/app'
 
 import { useIsMobile } from '../../utils/composables'
 import { useGlobalState } from '../../store'
-const props = defineProps({
-    showUseSimpleIndex: {
-        type: Boolean,
-        default: false
-    }
-})
-
 const {
     mailboxSplitSize, mailListView, mailListPreviewLineClamp, useIframeShowMail, preferShowTextMail, configAutoRefreshInterval,
-    globalTabplacement, useSideMargin, useUTCDate, useSimpleIndex, autoLoadRemoteImages
+    useSideMargin, useUTCDate
 } = useGlobalState()
 const isMobile = useIsMobile()
 
@@ -51,9 +44,6 @@ const { t } = useScopedI18n('views.common.Appearance')
                     60: '60', 120: '120', 180: '180', 240: '240'
                 }" />
             </n-form-item-row>
-            <n-form-item-row v-if="props.showUseSimpleIndex" :label="t('useSimpleIndex')">
-                <n-switch v-model:value="useSimpleIndex" :round="false" />
-            </n-form-item-row>
             <n-form-item-row :label="t('preferShowTextMail')">
                 <n-switch v-model:value="preferShowTextMail" :round="false" />
             </n-form-item-row>
@@ -63,19 +53,8 @@ const { t } = useScopedI18n('views.common.Appearance')
             <n-form-item-row :label="t('useUTCDate')">
                 <n-switch v-model:value="useUTCDate" :round="false" />
             </n-form-item-row>
-            <n-form-item-row :label="t('autoLoadRemoteImages')">
-                <n-switch v-model:value="autoLoadRemoteImages" :round="false" />
-            </n-form-item-row>
             <n-form-item-row v-if="!isMobile" :label="t('useSideMargin')">
                 <n-switch v-model:value="useSideMargin" :round="false" />
-            </n-form-item-row>
-            <n-form-item-row :label="t('globalTabplacement')">
-                <n-radio-group v-model:value="globalTabplacement">
-                    <n-radio-button value="top" :label="t('top')" />
-                    <n-radio-button value="left" :label="t('left')" />
-                    <n-radio-button value="right" :label="t('right')" />
-                    <n-radio-button value="bottom" :label="t('bottom')" />
-                </n-radio-group>
             </n-form-item-row>
         </n-card>
     </div>

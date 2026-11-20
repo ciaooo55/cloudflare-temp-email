@@ -8,6 +8,10 @@
 
 ## v1.13.0(main)
 
+- feat: |frontend| Introduce a responsive grouped workspace, consolidate duplicate setup links and remove obsolete appearance options while preserving all admin tools, verification codes and original addresses
+- fix: |privacy| Require per-message image consent, reset it when switching messages, sanitize previews and sandbox mail iframes
+- perf: |mail| Reuse unchanged parsed messages, preserve selection on refresh, pause polling in hidden tabs, release attachment/download URLs and fix empty counts and duplicate refreshes
+
 - perf: |mail| Cache D1 blacklist reads during budget prechecks, skipping only unpromoted legacy KV values to avoid duplicate queries
 - perf: |mail| Check the sender blacklist before reserving daily D1 usage so rejected mail is not charged; promote legacy KV blacklists only after budget admission
 - fix: |Worker| Keep receiving mail before the new D1 tables are created and keep legacy D1-only snapshot bindings and HTML readable after KV import

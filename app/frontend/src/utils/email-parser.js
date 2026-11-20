@@ -21,7 +21,7 @@ export function extractOriginalRecipient(raw) {
 
 export async function processItem(item) {
     // Try to parse the email using mail-parser-wasm
-    item.originalSource = item.source;
+    item.originalSource = item.originalSource || item.source;
     item.originalRecipient = extractOriginalRecipient(item.raw);
     try {
         const { parse_message } = await import('mail-parser-wasm');
@@ -96,3 +96,8 @@ export function getDownloadEmlUrl(raw) {
         ))
 }
 
+export function releaseMailResources(mail) {
+    for (const attachment of mail?.attachments || []) {
+        if (attachment.url) URL.revokeObjectURL(attachment.url);
+    }
+}

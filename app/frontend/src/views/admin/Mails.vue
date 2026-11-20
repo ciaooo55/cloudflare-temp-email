@@ -22,7 +22,8 @@ const fetchMailData = async (limit, offset) => {
         `/admin/mails`
         + `?limit=${limit}`
         + `&offset=${offset}`
-        + (adminMailTabAddress.value ? `&address=${adminMailTabAddress.value}` : '')
+        + (adminMailTabAddress.value ? `&address=${encodeURIComponent(adminMailTabAddress.value)}` : ''),
+        { showLoading: false }
     );
 }
 

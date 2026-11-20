@@ -5,7 +5,7 @@ import { useScopedI18n } from '@/i18n/app'
 import { useGlobalState } from '../store'
 import { CloudDownloadRound, ArrowBackIosNewFilled, ArrowForwardIosFilled, InboxRound } from '@vicons/material'
 import { useIsMobile } from '../utils/composables'
-import { processItem } from '../utils/email-parser'
+import { processItem, releaseMailResources } from '../utils/email-parser'
 import { utcToLocalDate } from '../utils';
 import { buildReplyModel, buildForwardModel } from '../utils/mail-actions'
 import MailContentRenderer from "./MailContentRenderer.vue";
@@ -73,6 +73,7 @@ const {
 } = useGlobalState()
 const autoRefreshInterval = ref(configAutoRefreshInterval.value)
 const rawData = ref([])
+const refreshing = ref(false)
 const timer = ref(null)
 
 const count = ref(0)
@@ -183,7 +184,7 @@ const setupAutoRefresh = async (autoRefresh) => {
   if (autoRefresh) {
     clearInterval(timer.value);
     timer.value = setInterval(async () => {
-      if (loading.value) return;
+      if (loading.value || refreshing.value || document.hidden) return;
       autoRefreshInterval.value--;
       if (autoRefreshInterval.value <= 0) {
         autoRefreshInterval.value = configAutoRefreshInterval.value;
@@ -206,33 +207,53 @@ watch([page, pageSize], async ([page, pageSize], [oldPage, oldPageSize]) => {
   }
 })
 
+let refreshVersion = 0;
+let disposed = false;
 const refresh = async () => {
-  loading.value = true;
+  const version = ++refreshVersion;
+  refreshing.value = true;
   try {
     const { results, count: totalCount } = await props.fetchMailData(
       pageSize.value, (page.value - 1) * pageSize.value
     );
-    rawData.value = await Promise.all(results.map(async (item) => {
-      item.checked = false;
-      return await processItem(item);
+    if (disposed || version !== refreshVersion) return;
+    const previous = new Map(rawData.value.map(mail => [mail.id, mail]));
+    const next = await Promise.all(results.map(async (item) => {
+      const cached = previous.get(item.id);
+      if (cached && cached.raw === item.raw) {
+        return { ...cached, ...item, source: cached.source, checked: cached.checked };
+      }
+      return processItem({ ...item, checked: false });
     }));
-    if (totalCount > 0) {
-      count.value = totalCount;
+    if (disposed || version !== refreshVersion) {
+      next.forEach(mail => {
+        if (mail.attachments !== previous.get(mail.id)?.attachments) releaseMailResources(mail);
+      });
+      return;
     }
-    curMail.value = null;
-    if (!isMobile.value && !mailListView.value && data.value.length > 0) {
+    rawData.value.forEach(mail => {
+      if (!next.some(item => item.attachments === mail.attachments)) releaseMailResources(mail);
+    });
+    const selectedId = curMail.value?.id;
+    rawData.value = next;
+    count.value = Number(totalCount) || 0;
+    curMail.value = next.find(mail => mail.id === selectedId) || null;
+    if (!curMail.value && !isMobile.value && !mailListView.value && data.value.length > 0) {
       curMail.value = data.value[0];
     }
   } catch (error) {
     message.error(error.message || "error");
     console.error(error);
   } finally {
-    loading.value = false;
+    if (version === refreshVersion) refreshing.value = false;
   }
 };
 
 const backFirstPageAndRefresh = async () => {
-  page.value = 1;
+  if (page.value !== 1) {
+    page.value = 1;
+    return;
+  }
   await refresh();
 }
 
@@ -364,7 +385,11 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  clearInterval(timer.value)
+  disposed = true;
+  refreshVersion++;
+  clearInterval(timer.value);
+  rawData.value.forEach(releaseMailResources);
+  if (multiActionDownloadZip.value.url) URL.revokeObjectURL(multiActionDownloadZip.value.url);
 })
 </script>
 
@@ -409,7 +434,7 @@ onBeforeUnmount(() => {
               {{ t('autoRefresh') }}
             </template>
           </n-switch>
-          <n-button @click="backFirstPageAndRefresh" type="primary" tertiary>
+          <n-button @click="backFirstPageAndRefresh" :loading="refreshing" type="primary" tertiary>
             {{ t('refresh') }}
           </n-button>
           <n-input v-if="showFilterInput" v-model:value="localFilterKeyword"
@@ -417,7 +442,7 @@ onBeforeUnmount(() => {
             clearable />
         </n-space>
       </div>
-      <n-split class="left" direction="horizontal" :max="0.75" :min="0" :resize-trigger-size="8"
+      <n-split class="left mailbox-split" direction="horizontal" :max="0.75" :min="0" :resize-trigger-size="8"
         :default-size="mailboxSplitSize" :on-update:size="onSpiltSizeChange" v-if="!mailListView || curMail">
         <template #resize-trigger>
           <div class="split-handle">
@@ -425,14 +450,14 @@ onBeforeUnmount(() => {
           </div>
         </template>
         <template #1>
-          <div style="overflow: auto; min-height: 60vh; max-height: 100vh;">
+          <div class="mail-list-scroll">
             <n-list hoverable clickable>
               <n-list-item v-for="row in data" v-bind:key="row.id" @click="() => clickRow(row)"
                 :class="[mailItemClass(row), { 'mail-list-unread': enableMailReadStatus && row.is_unread === 1 }]">
                 <template #prefix v-if="multiActionMode">
                   <n-checkbox v-model:checked="row.checked" />
                 </template>
-                <n-thing :title="row.subject">
+                <n-thing class="mail-list-thing" :title="row.subject">
                   <template #description>
                     <n-tag type="info">
                       ID: {{ row.id }}
@@ -646,6 +671,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.mailbox-split { border: 1px solid rgba(128,128,128,.14); border-radius: 12px; overflow: hidden; }
+.mailbox-split :deep(.n-list-item) { padding: 18px 14px; }
+.mailbox-split :deep(.n-tag) { border: 0; background: transparent; padding-left: 0; }
+.mailbox-split :deep(.n-thing-header__title) { font-size: 15px; }
+.mailbox-split :deep(.n-list-item__main),
+.mailbox-split :deep(.n-thing-main),
+.mailbox-split :deep(.n-thing-main__description) { min-width: 0; max-width: 100%; }
+.mailbox-split :deep(.n-thing-header__title) { overflow-wrap: anywhere; }
+.mailbox-split :deep(.n-tag) { max-width: 100%; }
+.mailbox-split :deep(.n-tag__content) { min-width: 0; overflow: hidden; }
+.mailbox-split :deep(.n-ellipsis) { max-width: 100% !important; }
+
 .left {
   text-align: left;
 }
@@ -692,11 +729,18 @@ onBeforeUnmount(() => {
 }
 
 .mail-list-thing :deep(.n-thing-main),
+.mail-list-thing :deep(.n-thing-avatar-header-wrapper),
+.mail-list-thing :deep(.n-thing-header-wrapper),
 .mail-list-thing :deep(.n-thing-header),
 .mail-list-thing :deep(.n-thing-header__title),
 .mail-list-thing :deep(.n-thing-main__description),
 .mail-list-thing :deep(.n-thing-main__content) {
   min-width: 0;
+}
+
+.mail-list-thing :deep(.n-thing-avatar-header-wrapper),
+.mail-list-thing :deep(.n-thing-header-wrapper) {
+  width: 100%;
 }
 
 .mail-list-meta {
