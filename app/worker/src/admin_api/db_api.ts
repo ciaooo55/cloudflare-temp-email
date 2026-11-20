@@ -1,6 +1,8 @@
 import { Context } from "hono";
 import { CONSTANTS } from '../constants.ts';
 import utils from '../utils.ts';
+import { getStoreImportStatus, importStorePage, WORKER_STORE_SCHEMA, WORKER_STORE_TRIGGER } from '../worker_store.ts';
+import { getUsageStatus, USAGE_BUDGET_SCHEMA } from '../usage_budget.ts';
 
 const DB_INIT_QUERIES = `
 CREATE TABLE IF NOT EXISTS raw_mails (
@@ -65,17 +67,23 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+${WORKER_STORE_SCHEMA}
+${USAGE_BUDGET_SCHEMA}
 `
+
+async function initializeSchema(db: D1Database) {
+    await db.exec(DB_INIT_QUERIES.replace(/[\r\n]/g, "").split(";").map(query => query.trim()).join(";\n"));
+    await db.prepare(WORKER_STORE_TRIGGER).run();
+}
+
+const needsLegacyMigration = (version: string | null, maxPatch: number) => {
+    const match = version?.match(/^v0\.0\.(\d+)$/);
+    return !!match && Number(match[1]) <= maxPatch;
+};
 
 export default {
     initialize: async (c: Context<HonoCustomType>) => {
-        // remove all \r and \n characters from the query string
-        // split by ; and join with a ;\n
-        const query = DB_INIT_QUERIES.replace(/[\r\n]/g, "")
-            .split(";")
-            .map((query) => query.trim())
-            .join(";\n");
-        await c.env.DB.exec(query);
+        await initializeSchema(c.env.DB);
 
         const version = await utils.getSetting(c, CONSTANTS.DB_VERSION_KEY);
         if (version) {
@@ -86,7 +94,7 @@ export default {
     },
     migrate: async (c: Context<HonoCustomType>) => {
         const version = await utils.getSetting(c, CONSTANTS.DB_VERSION_KEY);
-        if (version && version <= "v0.0.2") {
+        if (needsLegacyMigration(version, 2)) {
             // migration to v0.0.3: add password column
             const tableInfo = await c.env.DB.prepare(
                 `PRAGMA table_info(address)`
@@ -98,7 +106,7 @@ export default {
                 await c.env.DB.exec(`ALTER TABLE address ADD COLUMN password TEXT;`);
             }
         }
-        if (version && version <= "v0.0.3") {
+        if (needsLegacyMigration(version, 3)) {
             // migration to v0.0.4: add metadata column
             const tableInfo = await c.env.DB.prepare(
                 `PRAGMA table_info(raw_mails)`
@@ -110,7 +118,7 @@ export default {
                 await c.env.DB.exec(`ALTER TABLE raw_mails ADD COLUMN metadata TEXT;`);
             }
         }
-        if (version && version <= "v0.0.4") {
+        if (needsLegacyMigration(version, 4)) {
             // migration to v0.0.5: add source_meta column
             const tableInfo = await c.env.DB.prepare(
                 `PRAGMA table_info(address)`
@@ -123,11 +131,11 @@ export default {
                 await c.env.DB.exec(`CREATE INDEX IF NOT EXISTS idx_address_source_meta ON address(source_meta);`);
             }
         }
-        if (version && version <= "v0.0.5") {
+        if (needsLegacyMigration(version, 5)) {
             // migration to v0.0.6: add message_id index on raw_mails
             await c.env.DB.exec(`CREATE INDEX IF NOT EXISTS idx_raw_mails_message_id ON raw_mails(message_id);`);
         }
-        if (version && version <= "v0.0.6") {
+        if (needsLegacyMigration(version, 6)) {
             // migration to v0.0.7: add raw_blob column for gzip compressed email storage
             const tableInfo = await c.env.DB.prepare(
                 `PRAGMA table_info(raw_mails)`
@@ -139,7 +147,7 @@ export default {
                 await c.env.DB.exec(`ALTER TABLE raw_mails ADD COLUMN raw_blob BLOB;`);
             }
         }
-        if (version && version <= "v0.0.7") {
+        if (needsLegacyMigration(version, 7)) {
             const tableInfo = await c.env.DB.prepare(`PRAGMA table_info(raw_mails)`).all();
             if (!tableInfo.results?.some((col: any) => col.name === 'is_unread')) {
                 await c.env.DB.exec(
@@ -148,13 +156,7 @@ export default {
             }
         }
         if (version != CONSTANTS.DB_VERSION) {
-            // remove all \r and \n characters from the query string
-            // split by ; and join with a ;\n
-            const query = DB_INIT_QUERIES.replace(/[\r\n]/g, "")
-                .split(";")
-                .map((query) => query.trim())
-                .join(";\n");
-            await c.env.DB.exec(query);
+            await initializeSchema(c.env.DB);
             // Update the version in the settings table
             await utils.saveSetting(c, CONSTANTS.DB_VERSION_KEY, CONSTANTS.DB_VERSION);
             return c.json({
@@ -178,4 +180,9 @@ export default {
             database_size: sizeResult.meta.size_after ?? null
         });
     },
+    getStorageStatus: async (c: Context<HonoCustomType>) => {
+        const [legacy, budget] = await Promise.all([getStoreImportStatus(c.env), getUsageStatus(c.env)]);
+        return c.json({ kvMigrationComplete: legacy.complete, kvBound: !!c.env.KV, budget });
+    },
+    importStoragePage: async (c: Context<HonoCustomType>) => c.json(await importStorePage(c.env)),
 }

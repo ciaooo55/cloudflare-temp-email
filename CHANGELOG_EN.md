@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- perf: |Worker| Move remaining KV data to D1 with a resumable import, add daily budgets that prioritize inbound mail, and use a five-minute cron cadence and minimum cleanup interval
+
 - perf: |Worker| Move inbound mail, daily IP and webhook rate limits and scheduled-task run state to D1 to reduce free-tier KV usage; transient rate-limit state resets at rollout, while existing snapshots, Telegram data and other KV settings are unchanged
 - fix: |deps| Repair the broken `app/worker/pnpm-lock.yaml`: add the missing `@sindresorhus/is@7.2.0` entry and drop orphaned entries so `pnpm install --frozen-lockfile` works again (`package.json` and resolved versions are unchanged)
 - feat: |mail| Show the original receiving address in the mail detail view with one-click copy: the original recipient is extracted from the raw mail's To header while parsing, and the detail header gains an "Original To" tag with a copy button (same definition as the backend's forwarded-mail original recipient)

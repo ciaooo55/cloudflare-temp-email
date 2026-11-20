@@ -12,6 +12,7 @@ import { extractEmailInfo } from './ai_extract.ts';
 import { EmailRuleSettings } from '../models/index.ts';
 import { CONSTANTS } from '../constants.ts';
 import { storeRawMail } from './storage.ts';
+import { reserveInboundUsage } from '../usage_budget.ts';
 
 
 async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Promise<string> {
@@ -33,16 +34,21 @@ async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Pr
 }
 
 async function email(message: ForwardableEmailMessage, env: Bindings, ctx: ExecutionContext) {
+    const admission = await reserveInboundUsage(env).catch(() => "paused");
+    if (admission === "paused") {
+        message.setReject("Mail temporarily paused: storage budget unavailable");
+        return;
+    }
     const recipient = await getRecipient(message, env);
     const toAddress = normalizeAddressDomain(recipient);
-    if (await isBlocked(message, env)) {
+    if (await isBlocked(message, env, admission === "full")) {
         message.setReject("Reject from address");
         console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
     }
     // inbound rate limit: anti mail-bomb (pair 30/min, sender 99/min, graduated bans)
     try {
-        const rl = await checkInboundRateLimit(message.from, toAddress, env);
+        const rl = await checkInboundRateLimit(message.from, toAddress, env, admission === "full");
         if (rl.blocked) {
             message.setReject("Rate limit exceeded");
             console.log(`Reject rate-limited message from ${message.from} to ${toAddress}: ${rl.reason}`);
@@ -124,6 +130,8 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         message.setReject(`Failed save message to ${toAddress}`);
         return;
     }
+
+    if (admission === "receive-only") return;
 
     // AI email content extraction
     const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);

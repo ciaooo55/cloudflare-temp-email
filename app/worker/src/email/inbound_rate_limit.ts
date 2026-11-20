@@ -53,18 +53,21 @@ const RECORD_OFFENSE = `
 `;
 
 export async function checkInboundRateLimit(
-    sender: string, recipient: string, env: Bindings
+    sender: string, recipient: string, env: Bindings, record = true
 ): Promise<{ blocked: boolean; reason?: string }> {
     if (!env.DB) return { blocked: false };
     const s = sender.toLowerCase().trim().slice(0, 200);
     if (!s) return { blocked: false }; // bounce / empty envelope sender: exempt
-    const r = recipient.toLowerCase().trim().slice(0, 200);
-
     const now = Date.now();
+    const banKey = `inbound_ban:${s}`;
+    if (!record) {
+        const active = await env.DB.prepare(ACTIVE_BAN).bind(banKey, now).first();
+        return active ? { blocked: true, reason: "sender temporarily blocked" } : { blocked: false };
+    }
+    const r = recipient.toLowerCase().trim().slice(0, 200);
     const bucket = Math.floor(now / 60_000) * 60_000;
     const pairKey = `inbound_pair:${JSON.stringify([s, r])}`;
     const senderKey = `inbound_sender:${s}`;
-    const banKey = `inbound_ban:${s}`;
     const [pair, senderTotal, offenseResult] = await withRateLimitTable(env.DB, () => env.DB.batch<{
         count: number;
         blocked_until?: number;

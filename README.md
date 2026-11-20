@@ -205,7 +205,7 @@
 - **后端**: TypeScript + Cloudflare Workers
 - **邮件解析**: Rust WASM (mail-parser-wasm)
 - **数据库**: Cloudflare D1 (SQLite)
-- **存储**: Cloudflare KV + R2 (可选 S3)
+- **存储**: Cloudflare D1 + R2（可选 S3）；旧版 KV 可按[迁移说明](app/README.md)导入 D1
 - **代理服务**: Python SMTP/IMAP Proxy Server
 
 ### 主要组件

@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { addressParser } from "postal-mime";
 
 import { CONSTANTS } from '../constants.ts';
@@ -15,15 +16,15 @@ const parseSenderAddresses = (headers: Headers): string[] => {
     }
 };
 
-export const isBlocked = async (message: Pick<ForwardableEmailMessage, "from" | "headers">, env: Bindings): Promise<boolean> => {
+export const isBlocked = async (message: Pick<ForwardableEmailMessage, "from" | "headers">, env: Bindings, promoteLegacy = true): Promise<boolean> => {
     const senders = [message.from, ...parseSenderAddresses(message.headers)];
     if (env.BLACK_LIST && env.BLACK_LIST.split(",").some(word => senders.some(sender => sender.includes(word)))) {
         return true;
     }
-    if (!env.KV) {
+    if (!env.DB) {
         return false;
     }
-    const blockList = await env.KV.get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, 'json') || [];
+    const blockList = await workerStore(env).get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, { type: 'json', promoteLegacy }) || [];
     if (blockList.some(word => senders.some(sender => sender.includes(word)))) {
         return true;
     }

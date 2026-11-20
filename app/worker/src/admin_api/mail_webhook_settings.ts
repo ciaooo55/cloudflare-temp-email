@@ -1,3 +1,4 @@
+import { workerStore } from "../worker_store.ts";
 import { Context } from "hono";
 import { CONSTANTS } from '../constants.ts';
 import { WebhookSettings, RawMailRow } from '../models/index.ts';
@@ -5,7 +6,7 @@ import i18n from '../i18n/index.ts';
 import { sendTestWebhook } from '../utils/webhook.ts';
 
 async function getWebhookSettings(c: Context<HonoCustomType>): Promise<Response> {
-    const settings = await c.env.KV.get<WebhookSettings>(
+    const settings = await workerStore(c.env).get<WebhookSettings>(
         CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY, "json"
     ) || new WebhookSettings();
     return c.json(settings);
@@ -29,7 +30,7 @@ async function saveWebhookSettings(c: Context<HonoCustomType>): Promise<Response
             return c.text("headers is not valid JSON", 400);
         }
     }
-    await c.env.KV.put(
+    await workerStore(c.env).put(
         CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY,
         JSON.stringify(settings));
     return c.json({ success: true })
