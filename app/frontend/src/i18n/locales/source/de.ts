@@ -309,7 +309,6 @@ export const deMessages = {
   "views.admin.CreateAccount.enableRandomSubdomain": "Zufällige Subdomain verwenden",
   "views.common.Appearance.useSimpleIndex": "Einfachen Index verwenden",
   "views.common.Appearance.useUTCDate": "UTC-Datum verwenden",
-  "views.admin.Statistics.userCount": "Benutzeranzahl",
   "components.AiExtractInfo.authCode": "Bestätigungscode",
   "views.admin.AccountSettings.verified_address_list": "Liste verifizierter Adressen (kann E-Mails über die interne cf-API senden)",
   "components.MailContentRenderer.attachments": "Anhänge anzeigen",

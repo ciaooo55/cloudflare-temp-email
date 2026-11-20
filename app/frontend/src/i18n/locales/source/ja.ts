@@ -309,7 +309,6 @@ export const jaMessages = {
   "views.admin.CreateAccount.enableRandomSubdomain": "ランダムサブドメインを使用",
   "views.common.Appearance.useSimpleIndex": "シンプルインデックスを使う",
   "views.common.Appearance.useUTCDate": "UTC 日時を使う",
-  "views.admin.Statistics.userCount": "ユーザー数",
   "components.AiExtractInfo.authCode": "認証コード",
   "views.admin.AccountSettings.verified_address_list": "検証済みアドレス一覧 (cf internal api でメール送信可能)",
   "components.MailContentRenderer.attachments": "添付ファイルを表示",

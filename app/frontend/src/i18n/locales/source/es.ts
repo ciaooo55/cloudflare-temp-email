@@ -309,7 +309,6 @@ export const esMessages = {
   "views.admin.CreateAccount.enableRandomSubdomain": "Usar subdominio aleatorio",
   "views.common.Appearance.useSimpleIndex": "Usar índice simple",
   "views.common.Appearance.useUTCDate": "Usar fecha UTC",
-  "views.admin.Statistics.userCount": "Cantidad de usuarios",
   "components.AiExtractInfo.authCode": "Código de verificación",
   "views.admin.AccountSettings.verified_address_list": "Lista de direcciones verificadas (puede enviar correo mediante la API interna de cf)",
   "components.MailContentRenderer.attachments": "Ver adjuntos",
