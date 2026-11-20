@@ -4,6 +4,7 @@ import { useScopedI18n } from '@/i18n/app'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 import MailBox from '../../components/MailBox.vue'
+import { processSentItem } from '../../utils/email-parser'
 const { adminSendBoxTabAddress } = useGlobalState()
 const { t } = useScopedI18n('views.admin.SendBox')
 const mailboxKey = ref(0)
@@ -17,7 +18,7 @@ const fetchMailData = async (limit, offset) => {
 const deleteMail = id => api.fetch('/admin/sendbox/' + id, { method: 'DELETE' })
 </script>
 <template>
-  <MailBox :key="mailboxKey" :enableUserDeleteEmail="true" :fetchMailData="fetchMailData" :deleteMail="deleteMail" :showEMailTo="false" :showFilterInput="true">
+  <MailBox :key="mailboxKey" :enableUserDeleteEmail="true" :fetchMailData="fetchMailData" :deleteMail="deleteMail" :showEMailTo="false" :showFilterInput="true" :processMail="processSentItem">
     <template #filters>
       <n-input-group class="address-query">
         <n-input v-model:value="address" :placeholder="t('queryTip')" :aria-label="t('queryTip')" clearable @keydown.enter="search" />

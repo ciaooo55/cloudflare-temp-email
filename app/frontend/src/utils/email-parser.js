@@ -109,6 +109,25 @@ export function refreshParsedItem(cached, incoming) {
     return item;
 }
 
+export function processSentItem(item) {
+    let data;
+    try { data = JSON.parse(item.raw); } catch { return processItem(item); }
+    const content = Array.isArray(data.content) ? data.content : [];
+    const text = data.version === 'v2' ? (data.is_html ? '' : data.content || '')
+        : content.find(part => part.type === 'text/plain')?.value || '';
+    const html = data.version === 'v2' ? (data.is_html ? data.content || '' : '')
+        : content.find(part => part.type === 'text/html')?.value || '';
+    const recipients = data.version === 'v2' ? data.to_mail || ''
+        : (data.personalizations || []).flatMap(part => (part.to || []).map(to => to.email)).join(', ');
+    const senderName = data.from_name || data.from?.name;
+    const sender = data.from?.email || item.address;
+    const parsed = { ...item, subject: data.subject || 'No Subject', source: senderName ? senderName + ' <' + sender + '>' : sender,
+        originalSource: item.address, originalRecipient: recipients, listSource: recipients,
+        text, message: html || text, attachments: [], rawFormat: 'json' };
+    addVerificationCode(parsed);
+    return parsed;
+}
+
 export function getDownloadEmlUrl(raw) {
     return URL.createObjectURL(
         new Blob([raw], { type: 'text/plain' }

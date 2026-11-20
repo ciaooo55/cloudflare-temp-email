@@ -194,7 +194,7 @@ const handleSaveToS3 = async (filename, blob) => {
         {{ mail.is_unread === 1 ? t('markAsRead') : t('markAsUnread') }}
       </n-button>
 
-      <n-button tag="a" target="_blank" tertiary type="info" size="small" :download="mail.id + '.eml'"
+      <n-button tag="a" target="_blank" tertiary type="info" size="small" :download="mail.id + (mail.rawFormat === 'json' ? '.json' : '.eml')"
         :href="emlUrl">
         <template #icon>
           <n-icon :component="CloudDownloadRound" />

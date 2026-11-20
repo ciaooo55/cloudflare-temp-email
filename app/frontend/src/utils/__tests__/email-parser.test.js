@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PostalMime from 'postal-mime'
-import { processItem, refreshParsedItem, releaseMailResources } from '../email-parser'
+import { processItem, processSentItem, refreshParsedItem, releaseMailResources } from '../email-parser'
 
 const wasmParse = vi.hoisted(() => vi.fn())
 vi.mock('mail-parser-wasm', () => ({ parse_message: wasmParse }))
@@ -13,6 +13,23 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
+    it('reads current JSON sent messages without treating them as MIME', () => {
+        const raw = JSON.stringify({ version: 'v2', subject: 'Sent subject', to_mail: 'recipient@example.com', content: 'Sent body', is_html: false });
+        const parsed = processSentItem({ address: 'sender@example.com', raw });
+        expect(parsed.subject).toBe('Sent subject');
+        expect(parsed.text).toBe('Sent body');
+        expect(parsed.originalRecipient).toBe('recipient@example.com');
+        expect(parsed.source).toBe('sender@example.com');
+        expect(parsed.rawFormat).toBe('json');
+        expect(parsed.raw).toBe(raw);
+    })
+    it('reads legacy JSON sent messages including HTML and multiple recipients', () => {
+        const raw = JSON.stringify({ subject: 'Legacy sent', personalizations: [{ to: [{ email: 'first@example.com' }, { email: 'second@example.com' }] }], content: [{ type: 'text/html', value: '<p>Legacy body</p>' }] });
+        const parsed = processSentItem({ address: 'sender@example.com', raw });
+        expect(parsed.subject).toBe('Legacy sent');
+        expect(parsed.message).toBe('<p>Legacy body</p>');
+        expect(parsed.originalRecipient).toBe('first@example.com, second@example.com');
+    })
     it('keeps locally extracted codes when refreshing historical mail with empty server metadata', async () => {
         const incoming = { source: 'envelope@example.com', raw: 'Subject: Verification code\r\n\r\nYour verification code is 123456.', metadata: null };
         const parsed = await processItem({ ...incoming });

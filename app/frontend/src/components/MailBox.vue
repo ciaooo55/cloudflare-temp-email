@@ -12,6 +12,7 @@ import AiExtractInfo from './AiExtractInfo.vue'
 
 const props = defineProps({
   fetchMailData: { type: Function, required: true },
+  processMail: { type: Function, default: processItem },
   deleteMail: { type: Function, default: async () => {} },
   enableUserDeleteEmail: Boolean,
   showEMailTo: { type: Boolean, default: true },
@@ -36,7 +37,7 @@ const seconds = ref(configAutoRefreshInterval.value)
 const data = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return query ? rawData.value.filter(mail =>
-    [mail.subject, mail.text, mail.source, mail.address].some(value => String(value || '').toLowerCase().includes(query))
+    [mail.subject, mail.text, mail.source, mail.address, mail.originalRecipient].some(value => String(value || '').toLowerCase().includes(query))
   ) : rawData.value
 })
 const drawerOpen = computed({ get: () => !!curMail.value, set: value => { if (!value) curMail.value = null } })
@@ -56,7 +57,7 @@ const refresh = async () => {
       const cached = previous.get(item.id)
       return cached && cached.raw === item.raw
         ? refreshParsedItem(cached, item)
-        : processItem({ ...item })
+        : props.processMail({ ...item })
     }))
     if (disposed || currentVersion !== version) {
       next.forEach(mail => { if (mail.attachments !== previous.get(mail.id)?.attachments) releaseMailResources(mail) })
@@ -117,7 +118,7 @@ const downloadSelected = async () => {
   if (!selected.value.length) return
   const { default: JSZip } = await import('jszip')
   const zip = new JSZip()
-  rawData.value.filter(mail => selected.value.includes(mail.id)).forEach(mail => zip.file(mail.id + '.eml', mail.raw))
+  rawData.value.filter(mail => selected.value.includes(mail.id)).forEach(mail => zip.file(mail.id + (mail.rawFormat === 'json' ? '.json' : '.eml'), mail.raw))
   const url = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }))
   const link = document.createElement('a')
   link.href = url
@@ -192,7 +193,7 @@ onBeforeUnmount(() => {
           <button v-for="row in data" :key="row.id" type="button" class="message-row"
             :class="{ selected: curMail?.id === row.id || selected.includes(row.id), unread: enableMailReadStatus && row.is_unread === 1 }"
             @click="openMail(row)">
-            <div class="message-sender"><span>{{ row.source }}</span><time>{{ utcToLocalDate(row.created_at, useUTCDate) }}</time></div>
+            <div class="message-sender"><span>{{ row.listSource || row.source }}</span><time>{{ utcToLocalDate(row.created_at, useUTCDate) }}</time></div>
             <div class="message-subject">{{ row.subject }}</div>
             <div class="message-preview">{{ row.text || row.subject }}</div>
             <div class="message-recipient" v-if="showEMailTo">{{ row.address }}</div>
