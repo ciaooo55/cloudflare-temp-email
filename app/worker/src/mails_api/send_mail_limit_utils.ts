@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import i18n from '../i18n/index.ts';
-import { SendMailLimitConfig } from '../models/index.ts';
+import type { SendMailLimitConfig } from '../models/index.ts';
 import { CONSTANTS } from '../constants.ts';
 import { getJsonObjectValue, getSetting } from '../utils.ts';
 
@@ -70,13 +70,21 @@ export const getSendMailLimitConfigToSave = (
     };
 }
 
-export const getSendMailLimitConfig = async (
-    c: Context<HonoCustomType>
-): Promise<SendMailLimitConfig | null> => {
-    return getSendMailLimitConfigToSave(getJsonObjectValue<SendMailLimitConfig>(
-        await getSetting(c, CONSTANTS.SEND_MAIL_LIMIT_CONFIG_KEY)
-    ));
-}
+const readSendMailLimitConfig = async (c: Context<HonoCustomType>): Promise<SendMailLimitConfig | null> => {
+    const value = await c.env.DB.prepare(
+        `SELECT value FROM settings WHERE key = ?`
+    ).bind(CONSTANTS.SEND_MAIL_LIMIT_CONFIG_KEY).first<string>("value");
+    return getSendMailLimitConfigToSave(getJsonObjectValue<SendMailLimitConfig>(value));
+};
+
+export const getSendMailLimitConfig = async (c: Context<HonoCustomType>): Promise<SendMailLimitConfig | null> => {
+    try {
+        return await readSendMailLimitConfig(c);
+    } catch (error) {
+        console.warn("Failed to read send mail limit config", error);
+        return null;
+    }
+};
 
 const getDailyCountKey = (date: Date = new Date()): string => {
     const yyyy = date.getUTCFullYear();
@@ -127,12 +135,12 @@ const cleanupSendMailLimitCount = async (
 
 export const ensureSendMailLimit = async (
     c: Context<HonoCustomType>
-): Promise<void> => {
+): Promise<SendMailLimitConfig | null | undefined> => {
     try {
         const msgs = i18n.getMessagesByContext(c);
-        const config = await getSendMailLimitConfig(c);
+        const config = await readSendMailLimitConfig(c);
         if (!config || (!config.dailyEnabled && !config.monthlyEnabled)) {
-            return;
+            return config;
         }
         if (config.dailyEnabled && config.dailyLimit !== null && config.dailyLimit !== -1) {
             const current = await getCount(c, getDailyCountKey());
@@ -146,11 +154,13 @@ export const ensureSendMailLimit = async (
                 throw new SendMailLimitError(msgs.ServerSendMailMonthlyLimitMsg);
             }
         }
+        return config;
     } catch (error) {
         if (error instanceof SendMailLimitError) {
             throw error;
         }
         console.warn("Failed to ensure send mail limit", error);
+        return undefined;
     }
 }
 
@@ -168,10 +178,10 @@ const increaseCount = async (
 }
 
 export const increaseSendMailLimitCount = async (
-    c: Context<HonoCustomType>
+    c: Context<HonoCustomType>, checkedConfig: SendMailLimitConfig | null | undefined
 ): Promise<void> => {
     try {
-        const config = await getSendMailLimitConfig(c);
+        const config = checkedConfig === undefined ? await getSendMailLimitConfig(c) : checkedConfig;
         if (!config || (!config.dailyEnabled && !config.monthlyEnabled)) {
             return;
         }

@@ -151,8 +151,6 @@ export function buildSnapshotHtml(html: string, text: string, subject: string, m
 
 export async function createMailSnapshot(c: Context<HonoCustomType>, settings: TelegramSettings | null | undefined, parsedEmailContext: ParsedEmailContext, ttlSeconds: number = DEFAULT_SNAPSHOT_TTL, address?: string): Promise<string | null> {
     if (!c.env.DB) return null;
-    const parsed = parsedEmailContext.parsedEmail;
-    if (!parsed || (!parsed.html && !parsed.text)) return null;
     let origin = "";
     for (const value of [c.env.SNAPSHOT_BASE_URL, settings?.miniAppUrl]) {
         try {
@@ -163,6 +161,8 @@ export async function createMailSnapshot(c: Context<HonoCustomType>, settings: T
         } catch { /* invalid optional URL */ }
     }
     if (!origin) return null;
+    const parsed = parsedEmailContext.parsedEmail ?? await commonParseMail(parsedEmailContext);
+    if (!parsed || (!parsed.html && !parsed.text)) return null;
     const token = generateSecureHexToken(32);
     await workerStore(c.env).put(`${SNAPSHOT_HTML_KV_PREFIX}${token}`, buildSnapshotHtml(parsed.html || "", parsed.text || "", parsed.subject || "", {
         sender: parsed?.sender || "",

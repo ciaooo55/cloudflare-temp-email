@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
 import { test } from "node:test";
+import PostalMime from "postal-mime";
 import { createD1 } from "../../test-loader/d1.mjs";
 import { CONSTANTS } from "../constants.ts";
 import { USAGE_BUDGET_SCHEMA } from "../usage_budget.ts";
@@ -40,6 +41,28 @@ test("mail remains writable before or during migration, even with zero configure
         assert.deepEqual(await deliver(env), []);
         assert.deepEqual({ ...DB.sqlite.prepare("SELECT raw, address FROM raw_mails").get() }, { raw, address: "inbox@example.com" });
     }
+});
+
+test("inbound mail only parses MIME when the RPC needs the body", async t => {
+    const DB = createD1();
+    DB.sqlite.exec(WORKER_STORE_SCHEMA + USAGE_BUDGET_SCHEMA);
+    DB.sqlite.exec("CREATE TABLE raw_mails (source TEXT, address TEXT, raw TEXT, message_id TEXT); CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);");
+    const parse = t.mock.method(PostalMime, "parse");
+    const calls = [];
+    const env = {
+        DB,
+        ANOTHER_WORKER_LIST: [{ binding: "TEST_RPC", keywords: ["test mail"] }],
+        TEST_RPC: { rpcEmail: body => calls.push(JSON.parse(body)) },
+    };
+
+    assert.deepEqual(await deliver(env), []);
+    assert.equal(parse.mock.callCount(), 0);
+    assert.deepEqual(calls, []);
+
+    assert.deepEqual(await deliver({ ...env, ENABLE_ANOTHER_WORKER: true }), []);
+    assert.equal(parse.mock.callCount(), 1);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].rawEmail, raw);
 });
 
 test("mail still checks the legacy KV blacklist before D1 migration", async () => {

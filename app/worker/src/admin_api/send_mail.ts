@@ -77,7 +77,7 @@ export const sendMailByBindingAdmin = async (c: Context<HonoCustomType>) => {
         return c.text(msgs.EnableSendMailForDomainMsg, 400)
     }
     try {
-        await ensureSendMailLimit(c);
+        const sendLimitConfig = await ensureSendMailLimit(c);
         await c.env.SEND_MAIL.send({
             from,
             to,
@@ -90,7 +90,7 @@ export const sendMailByBindingAdmin = async (c: Context<HonoCustomType>) => {
             ...(attachments && attachments.length ? { attachments } : {}),
             ...(headers ? { headers } : {}),
         });
-        await increaseSendMailLimitCount(c);
+        await increaseSendMailLimitCount(c, sendLimitConfig);
     } catch (e) {
         console.error("Admin raw send_mail failed", e);
         return c.text(getAdminSendMailErrorMessage(msgs, e), 400)

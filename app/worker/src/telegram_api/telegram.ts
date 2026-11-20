@@ -543,7 +543,7 @@ async function sendBarkPush(env: Bindings, mail: {
 export async function sendMailNotifications(
     c: Context<HonoCustomType>, address: string,
     parsedEmailContext: ParsedEmailContext,
-    message_id: string | null,
+    mailId: number | undefined,
     aiExtract?: ExtractResult | null
 ) {
     const settings = await workerStore(c.env).get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
@@ -590,6 +590,7 @@ export async function sendMailNotifications(
     }
     const wantBark = push.barkKeys.length > 0;
     const wantTg = !!(tgUserId || tgGlobalList.length);
+    if (!wantBark && !wantTg) return;
 
     // 邮件快照只建一次，TG 和 Bark 共用；TTL 取网页配置（默认 24h）
     // 若该地址有绑定的固定快照，直接用绑定链接（内容已由 refreshBoundSnapshot 更新），不再新建一次性快照
@@ -626,9 +627,6 @@ export async function sendMailNotifications(
     })() : null;
 
     const tgTask = wantTg ? (async () => {
-        const mailId = await c.env.DB.prepare(
-            `SELECT id FROM raw_mails where address = ? and message_id = ?`
-        ).bind(address, message_id).first<string>("id");
         for (const token of push.telegramTokens) {
             try {
             const bot = newTelegramBot(c, token);
