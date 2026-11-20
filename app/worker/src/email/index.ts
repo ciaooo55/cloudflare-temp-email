@@ -34,6 +34,11 @@ async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Pr
 }
 
 async function email(message: ForwardableEmailMessage, env: Bindings, ctx: ExecutionContext) {
+    if (await isBlocked(message, env, false)) {
+        message.setReject("Reject from address");
+        console.log(`Reject message from ${message.from} to ${normalizeAddressDomain(await getRecipient(message, env))}`);
+        return;
+    }
     const admission = await reserveInboundUsage(env).catch(() => "paused");
     if (admission === "paused") {
         message.setReject("Mail temporarily paused: storage budget unavailable");

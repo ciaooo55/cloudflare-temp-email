@@ -119,6 +119,7 @@ async function lookup(env: Bindings, key: string, promoteLegacy: boolean, retrie
             FROM (SELECT 1) LEFT JOIN worker_store s ON s.key = ?`).bind(key).first<Row>()
         : await db.prepare("SELECT * FROM worker_store WHERE key = ?").bind(key).first<Row>();
     let value: string | null = null;
+    let unpromotedLegacy = false;
     if (row?.key && (row.expires_at === null || row.expires_at > now)) {
         if (row.chunks) {
             const { results } = await db.prepare(`SELECT c.value FROM worker_store_chunk c JOIN worker_store s USING (key)
@@ -143,6 +144,7 @@ async function lookup(env: Bindings, key: string, promoteLegacy: boolean, retrie
         if (html) value = await legacySnapshotHtml(env, key.slice(HTML_PREFIX.length), now);
         if (value === null && env.KV && !row?.complete) {
             value = await env.KV.get(key, forward || reverse || html ? { cacheTtl: 30 } : undefined);
+            unpromotedLegacy = value !== null && !promoteLegacy;
             if (value !== null && promoteLegacy && LEGACY_KEYS.has(key)) await write(db, key, value, null, true);
         }
         if (value === null && reverse && (await getLegacySnapshotTables(db)).has("snapshot_bindings")) {
@@ -150,7 +152,7 @@ async function lookup(env: Bindings, key: string, promoteLegacy: boolean, retrie
                 .bind(key.slice(REVERSE_PREFIX.length)).first<string>("address");
         }
     }
-    cache?.set(key, { value, until: now + CACHE_TTL });
+    if (!unpromotedLegacy) cache?.set(key, { value, until: now + CACHE_TTL });
     return value;
 }
 
