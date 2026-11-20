@@ -23,4 +23,14 @@ describe('admin workspace navigation', () => {
         for (const tab of keys) expect(normalizeAdminSection(tab)).toBe(tab)
         expect(normalizeAdminSection('removed')).toBe('mails')
     })
+
+    it('separates daily mail from rules and integrations without duplicating pages', () => {
+        expect(adminGroups.find(group => group.key === 'mail').items.map(([key]) => key))
+            .toEqual(['mails', 'sendMail', 'sendBox'])
+        expect(adminGroups.find(group => group.key === 'notifications').items.map(([key]) => key))
+            .toContain('mailWebhook')
+        expect(adminGroups.find(group => group.key === 'rules').items.map(([key]) => key))
+            .toContain('account_settings')
+        expect(adminGroups.every(group => group.description)).toBe(true)
+    })
 })

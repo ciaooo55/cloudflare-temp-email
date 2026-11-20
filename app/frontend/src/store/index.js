@@ -82,7 +82,6 @@ export const useGlobalState = createGlobalState(
         const mailListView = useStorage('mailListView', false);
         const mailListPreviewLineClamp = useStorage('mailListPreviewLineClamp', 2);
         const useIframeShowMail = useStorage('useIframeShowMail', false);
-        const preferShowTextMail = useStorage('preferShowTextMail', false);
         const preferredLocale = useStorage('preferredLocale', '');
         const useSideMargin = useStorage('useSideMargin', true);
         const useUTCDate = useStorage('useUTCDate', false);
@@ -115,7 +114,6 @@ export const useGlobalState = createGlobalState(
             mailListView,
             mailListPreviewLineClamp,
             useIframeShowMail,
-            preferShowTextMail,
             preferredLocale,
             useSideMargin,
             useUTCDate,

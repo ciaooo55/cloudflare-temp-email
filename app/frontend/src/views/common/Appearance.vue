@@ -4,7 +4,7 @@ import { useScopedI18n } from '@/i18n/app'
 import { useIsMobile } from '../../utils/composables'
 import { useGlobalState } from '../../store'
 const {
-    mailboxSplitSize, mailListView, mailListPreviewLineClamp, useIframeShowMail, preferShowTextMail, configAutoRefreshInterval,
+    mailboxSplitSize, mailListView, mailListPreviewLineClamp, useIframeShowMail, configAutoRefreshInterval,
     useSideMargin, useUTCDate
 } = useGlobalState()
 const isMobile = useIsMobile()
@@ -43,9 +43,6 @@ const { t } = useScopedI18n('views.common.Appearance')
                 <n-slider v-model:value="configAutoRefreshInterval" :min="30" :max="300" :step="1" :marks="{
                     60: '60', 120: '120', 180: '180', 240: '240'
                 }" />
-            </n-form-item-row>
-            <n-form-item-row :label="t('preferShowTextMail')">
-                <n-switch v-model:value="preferShowTextMail" :round="false" />
             </n-form-item-row>
             <n-form-item-row :label="t('useIframeShowMail')">
                 <n-switch v-model:value="useIframeShowMail" :round="false" />

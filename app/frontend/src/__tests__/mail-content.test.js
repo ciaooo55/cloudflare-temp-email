@@ -62,23 +62,43 @@ describe('per-message image consent', () => {
     it('ignores legacy auto-load preferences and loads only after a click, resetting for another mail', async () => {
         const props = mount()
         const body = () => host.querySelector('.mail-html').shadowRoot
-        expect(body().querySelector('img').src).not.toContain('https://images.example.com')
-        expect(body().textContent).toContain('Code 123456')
+        expect(host.querySelector('.mail-html')).toBeNull()
+        expect(host.querySelector('.mail-text').textContent).toContain('Code 123456')
         expect(host.textContent).toContain('original@example.com')
         expect(host.textContent).toContain('envelope@example.com')
+        const html = [...host.querySelectorAll('button')].find(el => el.textContent.trim() === 'showHtmlMail')
+        html.click()
+        await nextTick()
+        expect(body().querySelector('img').src).not.toContain('https://images.example.com')
         const load = [...host.querySelectorAll('button')].find(el => el.textContent.trim() === 'loadRemoteImages')
         load.click()
         await nextTick()
         expect(body().querySelector('img').src).toBe('https://images.example.com/tracker.png')
         props.mail = mail(2, 'second@example.com')
         await nextTick()
-        expect(body().querySelector('img').src).not.toContain('https://images.example.com')
+        expect(host.querySelector('.mail-html')).toBeNull()
+        expect(host.querySelector('.mail-text').textContent).toContain('Code 123456')
+        expect(host.textContent).toContain('loadRemoteImages')
+    })
+
+    it('derives readable text for HTML-only mail without rendering images or style text', async () => {
+        const props = mount()
+        props.mail = { ...mail(3, 'html@example.com'), text: '',
+            message: '<style>.secret { color: red }</style><p>Your code</p><p>654321<br>Expires soon</p><img src="https://images.example.com/tracker.png">' }
+        await nextTick()
+        expect(host.querySelector('.mail-text').textContent).toBe('Your code\n654321\nExpires soon')
+        expect(host.querySelector('img')).toBeNull()
+        const load = [...host.querySelectorAll('button')].find(el => el.textContent.trim() === 'loadRemoteImages')
+        load.click()
+        await nextTick()
+        expect(host.querySelector('.mail-html').shadowRoot.querySelector('img').src)
+            .toBe('https://images.example.com/tracker.png')
     })
 
     it('reuses the EML download URL across view changes and releases it on unmount', async () => {
         mount()
         expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
-        const toggle = [...host.querySelectorAll('button')].find(el => el.textContent === 'showTextMail')
+        const toggle = [...host.querySelectorAll('button')].find(el => el.textContent.trim() === 'showHtmlMail')
         toggle.click()
         await nextTick()
         expect(URL.createObjectURL).toHaveBeenCalledTimes(1)

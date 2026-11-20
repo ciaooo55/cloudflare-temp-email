@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest';
-import { sanitizeHtml } from '../sanitize-html';
+import { sanitizeHtml, htmlToPlainText } from '../sanitize-html';
 
 describe('sanitizeHtml', () => {
     it('preserves safe announcement markup', () => {
@@ -21,5 +21,15 @@ describe('sanitizeHtml', () => {
     it('returns an empty string for non-string values', () => {
         expect(sanitizeHtml(null)).toBe('');
         expect(sanitizeHtml({ value: '<strong>unsafe ref</strong>' })).toBe('');
+    });
+});
+
+describe('htmlToPlainText', () => {
+    it('keeps readable lines and decodes entities without resource elements', () => {
+        expect(htmlToPlainText('<style>body{color:red}</style><p>Code &amp; login</p><div>123456<br>Done</div>'))
+            .toBe('Code & login\n123456\nDone');
+    });
+    it('handles empty input', () => {
+        expect(htmlToPlainText(null)).toBe('');
     });
 });

@@ -205,8 +205,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "标为未读"
     },
     "loadRemoteImages": {
-      "en": "Load Images",
-      "zh": "加载图片"
+      "en": "Show Images",
+      "zh": "显示图片"
     },
     "remoteImagesBlocked": {
       "en": "{count} remote resources blocked to protect your privacy",
@@ -437,7 +437,14 @@ export const MESSAGE_REGISTRY = {
   },
   "views.Admin": {
     "workspace": { "en": "Mail workspace", "zh": "邮箱工作台" },
-    "notifications": { "en": "Notifications & snapshots", "zh": "通知与快照" },
+    "notifications": { "en": "Notifications & integrations", "zh": "通知与集成" },
+    "dailyMail": { "en": "Daily mail", "zh": "日常收发" },
+    "dailyMailHint": { "en": "Read codes and original addresses first. Images stay blocked until you choose to show them.", "zh": "先看文字、验证码和原始收发地址；图片仅在点击「显示图片」后加载。" },
+    "mailboxesHint": { "en": "Find or create mailboxes, and review mail received for unregistered addresses.", "zh": "查找或创建邮箱，集中查看未注册地址收到的邮件。" },
+    "mailRules": { "en": "Mail rules & security", "zh": "收发规则与安全" },
+    "mailRulesHint": { "en": "Manage mailbox defaults, sending access, code extraction and API access rules.", "zh": "统一管理邮箱默认规则、发件权限、验证码提取与接口访问限制。" },
+    "notificationsHint": { "en": "Configure delivery notifications, webhook integrations and saved mail snapshots.", "zh": "配置收信通知、Webhook 集成与邮件快照，不与日常阅读混在一起。" },
+    "systemHint": { "en": "Usage, database and deployment tools. Panels load only when opened.", "zh": "用量、数据库、部署配置与维护工具按需打开，不拖慢日常收发。" },
     "privacyFirst": { "en": "Images load on click", "zh": "图片仅点击后加载" },
     "about": {
       "en": "About",

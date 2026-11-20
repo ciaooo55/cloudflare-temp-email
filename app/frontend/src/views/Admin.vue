@@ -122,6 +122,7 @@ const mobileOptions = computed(() => navigation.value.map(group => ({
 })))
 const activeLabel = computed(() => navigation.value.flatMap(group => group.children)
   .find(item => item.key === adminTab.value)?.label || '')
+const activeGroup = computed(() => adminGroups.find(group => group.items.some(([key]) => key === adminTab.value)))
 const activeComponent = computed(() => sections[adminTab.value])
 </script>
 
@@ -150,8 +151,9 @@ const activeComponent = computed(() => sections[adminTab.value])
           :aria-label="t('workspace')" filterable class="workspace-mobile-nav" />
         <div class="workspace-heading">
           <div>
-            <n-text depth="3" class="workspace-eyebrow">{{ t('workspace') }}</n-text>
+            <n-text depth="3" class="workspace-eyebrow">{{ activeGroup && t(activeGroup.label) }}</n-text>
             <h1>{{ activeLabel }}</h1>
+            <p class="workspace-description">{{ activeGroup && t(activeGroup.description) }}</p>
           </div>
           <n-tag round :bordered="false" type="success">{{ t('privacyFirst') }}</n-tag>
         </div>
@@ -198,6 +200,7 @@ const activeComponent = computed(() => sections[adminTab.value])
 .workspace-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 22px; }
 .workspace-heading h1 { font-size: 26px; line-height: 1.3; margin: 5px 0 0; font-weight: 650; letter-spacing: -.03em; }
 .workspace-eyebrow { font-size: 12px; }
+.workspace-description { margin: 8px 0 0; opacity: .65; font-size: 13px; max-width: 48em; }
 .workspace-panel { min-height: 65vh; }
 .workspace-sidebar :deep(.n-menu-item-content) { border-radius: 8px; }
 .workspace-mobile-nav { margin-bottom: 20px; }

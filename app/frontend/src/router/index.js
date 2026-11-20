@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import i18n from '../i18n'
+import i18n, { ensureLocaleMessages } from '../i18n'
 import { useGlobalState } from '../store'
 import {
     DEFAULT_LOCALE,
@@ -37,9 +37,14 @@ const router = createRouter({
     ]
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
     const routeLocale = resolveSupportedLocale(to.path.split('/')[1])
     const resolvedLocale = routeLocale || DEFAULT_LOCALE
+    try {
+        await ensureLocaleMessages(resolvedLocale)
+    } catch (error) {
+        console.error('Failed to load locale; using fallback messages', error)
+    }
     i18n.global.locale.value = resolvedLocale
 
     if (routeLocale) {

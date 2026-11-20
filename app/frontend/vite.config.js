@@ -40,8 +40,8 @@ export default defineConfig({
       },
       workbox: {
         disableDevLogs: true,
-        // 静态资源文件名带哈希、内容不可变，全部预缓存：刷新时不再重复下载 3MB 文件
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,wasm}'],
+        // Precache the shell only; lazy tools are cached when actually opened.
+        globPatterns: ['index.html', 'assets/index-*.{js,css}', '*.{ico,png,svg}'],
         runtimeCaching: [
           {
             // 页面导航：优先网络（保证拿到最新版），断网时回退缓存
@@ -51,8 +51,10 @@ export default defineConfig({
           },
           {
             // 静态资源：缓存优先（哈希文件名，部署后自动换新名失效）
-            urlPattern: ({ request }) =>
-              ['script', 'style', 'image', 'font', 'wasm'].includes(request.destination),
+            urlPattern: ({ request, url, sameOrigin }) => sameOrigin && (
+              ['script', 'style', 'image', 'font'].includes(request.destination)
+              || url.pathname.endsWith('.wasm')
+            ),
             handler: 'CacheFirst',
             options: {
               cacheName: 'asset-cache',

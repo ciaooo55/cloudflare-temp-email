@@ -2,22 +2,18 @@ import { MESSAGE_REGISTRY, getMessageSource } from './message-registry'
 
 import type { MessageKey, MessageNamespace } from './message-registry'
 
-import { deMessages } from './locales/source/de'
-import { esMessages } from './locales/source/es'
-import { jaMessages } from './locales/source/ja'
-import { ptBRMessages } from './locales/source/ptBR'
-
 import type { SupportedLocale } from './locale-registry'
 
 type LocaleTree = Record<string, unknown>
 type SourceLocale = Extract<SupportedLocale, 'en' | 'zh'>
 type AdditionalLocale = Exclude<SupportedLocale, SourceLocale>
 
-const additionalLocaleSources: Record<AdditionalLocale, Record<string, string>> = {
-  es: esMessages,
-  'pt-BR': ptBRMessages,
-  ja: jaMessages,
-  de: deMessages,
+const additionalLocaleSources: Partial<Record<AdditionalLocale, Record<string, string>>> = {}
+const localeLoaders = {
+  es: () => import('./locales/source/es').then(module => module.esMessages),
+  'pt-BR': () => import('./locales/source/ptBR').then(module => module.ptBRMessages),
+  ja: () => import('./locales/source/ja').then(module => module.jaMessages),
+  de: () => import('./locales/source/de').then(module => module.deMessages),
 }
 
 const setNestedValue = (target: LocaleTree, path: string, value: unknown) => {
@@ -56,7 +52,7 @@ const buildSourceLocaleMessages = (locale: SourceLocale) => {
 const buildAdditionalLocaleMessages = (locale: AdditionalLocale) => {
   const messages: LocaleTree = {}
 
-  for (const [key, value] of Object.entries(additionalLocaleSources[locale])) {
+  for (const [key, value] of Object.entries(additionalLocaleSources[locale] || {})) {
     setNestedValue(messages, key, value)
   }
 
@@ -66,10 +62,16 @@ const buildAdditionalLocaleMessages = (locale: AdditionalLocale) => {
 export const I18N_MESSAGES: Record<SupportedLocale, LocaleTree> = {
   zh: buildSourceLocaleMessages('zh'),
   en: buildSourceLocaleMessages('en'),
-  es: buildAdditionalLocaleMessages('es'),
-  'pt-BR': buildAdditionalLocaleMessages('pt-BR'),
-  ja: buildAdditionalLocaleMessages('ja'),
-  de: buildAdditionalLocaleMessages('de'),
+  es: {},
+  'pt-BR': {},
+  ja: {},
+  de: {},
+}
+
+export const loadLocaleMessages = async (locale: SupportedLocale) => {
+  if (locale === 'zh' || locale === 'en') return I18N_MESSAGES[locale]
+  additionalLocaleSources[locale] ||= await localeLoaders[locale]()
+  return buildAdditionalLocaleMessages(locale)
 }
 
 export const getLocalizedMessage = (
@@ -77,5 +79,5 @@ export const getLocalizedMessage = (
   namespace: MessageNamespace,
   key: string,
 ) => {
-  return additionalLocaleSources[locale][`${namespace}.${key}`]
+  return additionalLocaleSources[locale]?.[`${namespace}.${key}`]
 }
