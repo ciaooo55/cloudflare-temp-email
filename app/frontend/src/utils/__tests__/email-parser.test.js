@@ -12,6 +12,10 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('lightweight MIME parsing', () => {
+    it('extracts verification codes locally when historical mail has no metadata', async () => {
+        const parsed = await processItem({ raw: 'Subject: Verification code 654321\r\nContent-Type: text/plain\r\n\r\nUse this code to log in.' })
+        expect(JSON.parse(parsed.metadata).ai_extract).toMatchObject({ type: 'auth_code', result: '654321' })
+    })
     it('preserves headers, original addresses and text without loading WASM', async () => {
         const parsed = await processItem({ source: 'envelope@example.com', raw: [
             'From: Sender <from@example.com>', 'To: Original <original+tag@example.com>',

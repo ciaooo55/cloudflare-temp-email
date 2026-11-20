@@ -1,16 +1,14 @@
 import { Context } from "hono";
 
-import { getJsonSetting, normalizeAddressDomain } from '../utils.ts';
+import { normalizeAddressDomain } from '../utils.ts';
 import { sendMailNotifications } from '../telegram_api/index.ts';
 import { refreshBoundSnapshotsForIncomingMail } from '../telegram_api/mail_snapshot.ts';
 import { isBlocked, isBlockedForRecipient } from './black_list.ts';
 import { checkInboundRateLimit } from './inbound_rate_limit.ts';
-import { triggerWebhook, triggerAnotherWorker } from '../common.ts';
+import { triggerAnotherWorker } from '../common.ts';
 import { checkIfJunkMail } from './check_junk.ts';
 import { removeAttachmentIfNeed } from './check_attachment.ts';
-import { extractEmailInfo } from './ai_extract.ts';
-import type { EmailRuleSettings } from '../models/index.ts';
-import { CONSTANTS } from '../constants.ts';
+import { extractEmailInfo } from './code_extract.ts';
 import { storeRawMail } from './storage.ts';
 import { reserveInboundUsage } from '../usage_budget.ts';
 
@@ -96,24 +94,6 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         console.error("check junk mail error", error);
     }
 
-    // check if unknown address mail
-    try {
-        const emailRuleSettings = await getJsonSetting<EmailRuleSettings>(
-            { env: env } as Context<HonoCustomType>, CONSTANTS.EMAIL_RULE_SETTINGS_KEY
-        );
-        if (emailRuleSettings?.blockReceiveUnknowAddressEmail) {
-            const db_address_id = await env.DB.prepare(
-                `SELECT id FROM address where name = ? `
-            ).bind(toAddress).first("id");
-            if (!db_address_id) {
-                message.setReject("Unknown address");
-                console.log(`Unknown address mail from ${message.from} to ${toAddress}`);
-                return;
-            }
-        }
-    } catch (error) {
-        console.error("check unknown address mail error", error);
-    }
 
     // remove attachment if configured or size > 2MB
     try {
@@ -143,8 +123,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     if (admission === "receive-only") return;
 
-    // AI email content extraction
-    const aiExtractResult = await extractEmailInfo(parsedEmailContext, env, message_id, toAddress);
+    const extractResult = await extractEmailInfo(parsedEmailContext, env, message_id);
 
     // bound snapshot: overwrite the fixed snapshot url with the newest mail
     try {
@@ -159,20 +138,11 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     try {
         await sendMailNotifications(
             { env: env } as Context<HonoCustomType>,
-            toAddress, parsedEmailContext, storedMailId, aiExtractResult);
+            toAddress, parsedEmailContext, storedMailId, extractResult);
     } catch (error) {
         console.error("send mail notifications error", error);
     }
 
-    // send webhook
-    try {
-        await triggerWebhook(
-            { env: env } as Context<HonoCustomType>,
-            toAddress, parsedEmailContext, storedMailId, aiExtractResult
-        );
-    } catch (error) {
-        console.error("send webhook error", error);
-    }
 
     // trigger another worker
     try {

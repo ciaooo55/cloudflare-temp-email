@@ -1,28 +1,23 @@
 export const adminGroups = [
-    { key: 'mail', label: 'dailyMail', description: 'dailyMailHint', items: [
+    { key: 'mail', label: 'dailyMail', items: [
         ['mails', 'mails'], ['sendMail', 'sendMail'], ['sendBox', 'sendBox'],
     ] },
-    { key: 'mailboxes', label: 'mailbox_management', description: 'mailboxesHint', items: [
-        ['account', 'mailbox_list'], ['account_create', 'mailbox_create'],
-        ['unknow', 'unknow'],
+    { key: 'mailboxes', label: 'mailbox_management', items: [
+        ['account', 'mailbox_list'], ['snapshot', 'snapshot'],
     ] },
-    { key: 'rules', label: 'mailRules', description: 'mailRulesHint', items: [
+    { key: 'rules', label: 'mailRules', items: [
         ['account_settings', 'mailbox_settings'], ['senderAccess', 'senderAccess'],
-        ['aiExtractSettings', 'aiExtractSettings'], ['ipBlacklistSettings', 'ipBlacklistSettings'],
+        ['ipBlacklistSettings', 'ipBlacklistSettings'],
     ] },
-    { key: 'notifications', label: 'notifications', description: 'notificationsHint', items: [
-        ['telegram', 'telegram'], ['bark', 'bark'], ['mailWebhook', 'mailWebhook'],
-        ['webhook', 'webhookSettings'], ['snapshot', 'snapshot'],
+    { key: 'notifications', label: 'notifications', items: [
+        ['telegram', 'telegram'], ['bark', 'bark'],
     ] },
-    { key: 'system', label: 'maintenance', description: 'systemHint', items: [
-        ['statistics', 'statistics'], ['database', 'database'], ['workerconfig', 'workerconfig'],
-        ['maintenance_tasks', 'maintenanceTasks'], ['appearance', 'appearance'],
-        ['adminAccount', 'adminAccount'], ['about', 'about'],
+    { key: 'system', label: 'maintenance', items: [
+        ['statistics', 'statistics'], ['maintenance_tasks', 'maintenanceTasks'],
     ] },
 ]
 
 export function normalizeAdminSection(section) {
-    if (['qucickSetup', 'quickSetup', 'maintenance'].includes(section)) return 'database'
     return adminGroups.some(group => group.items.some(([key]) => key === section)) ? section : 'mails'
 }
 

@@ -18,6 +18,20 @@ Cloudflare 临时邮箱的核心服务，包含前端和后端。当前 Cloudfla
 
 ## 邮箱黑名单 / Mailbox blacklists
 
+## 简化邮箱界面 / Simplified mailbox workspace
+
+**中文**：界面固定深色，打开即进入收件箱。移除创建邮箱、未知收件人、AI 设置、邮件 Webhook、Webhook 设置、数据库管理、Worker 配置、外观、管理员账号和关于页面；保留访问密码与 Turnstile 防护。版本显示在页脚，统计仅显示收信、发信和邮箱总数。
+
+域名内地址无需提前创建即可收信：旧的“未创建邮箱拒收”设置不再参与收信处理。邮箱列表通过 `GET /admin/address?include_received=1` 合并已登记、已收信和已发信地址，不会写入邮箱记录；默认接口行为仍兼容现有客户端。验证码统一使用本地规则，前端也可从历史正文提取，不调用 Cloudflare AI 或自定义 AI 服务。旧提取元数据仍可读。
+
+已移除 `/admin/new_address`、`/admin/mails_unknow`、`/admin/worker/configs`、`/admin/ai_extract/*`、`/admin/mail_webhook/*`、`/admin/webhook/*`、`/api/webhook/*` 和邮件 Webhook 附件下载入口。Telegram 自身的 Webhook 属于机器人收消息通道，仍保留；邮件发送、邮箱凭据 API、数据库初始化/升级、存储迁移与预算保护接口仍供既有客户端和运维使用。现有 D1、KV、密钥及配置值不被删除。
+
+**English**: The dark-only UI always opens Inbox. Removed pages: mailbox creation, unknown recipients, AI settings, mail Webhook, Webhook settings, database management, Worker config, appearance, admin account and About. Password/Turnstile protection stays. The footer watermarks the version; statistics show only received mail, sent mail and mailbox totals.
+
+Domain addresses receive without creation: the legacy reject-unregistered setting no longer gates inbound delivery. `GET /admin/address?include_received=1` lists registered, received and sent addresses without inserting mailbox records; the default endpoint remains compatible with existing clients. Local rules extract codes in the Worker and historical frontend messages without external AI calls, preserving stored metadata compatibility.
+
+The endpoints listed above are removed. Telegram's own inbound Webhook, sending/mailbox-credential APIs, D1 initialization/migrations, storage imports and budget guards remain operational dependencies. No existing D1/KV data, secrets or configuration values are deleted.
+
 **中文**：后台账号设置中的全局发件人黑名单继续按关键词拦截所有邮箱的来信。“邮箱级域名拉黑”仅对指定收件邮箱生效，匹配信封发件人或 From 头中的域名及其子域名；域名前可带 `@`。“停用邮箱”拒收所有来信并禁止该邮箱发信。邮箱和域名均忽略大小写与首尾空格。
 
 **English**: In admin Account Settings, the global sender blacklist continues to reject matching sender keywords for every mailbox. Mailbox-specific domain rules reject envelope or From-header sender domains and their subdomains only for the specified recipient; a leading `@` is optional. Disabled mailboxes reject all inbound mail and cannot send. Addresses and domains are case-insensitive and trimmed.

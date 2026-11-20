@@ -111,7 +111,7 @@ const openLink = () => {
 
 <template>
   <div v-if="aiExtract && aiExtract.result" class="ai-extract-info">
-    <n-alert v-if="!compact" type="success" closable :theme-overrides="alertThemeOverrides">
+    <n-alert v-if="!compact" type="success" :theme-overrides="alertThemeOverrides">
       <template #icon>
         <n-icon :component="typeIcon" />
       </template>
@@ -119,7 +119,7 @@ const openLink = () => {
         {{ typeLabel }}
       </template>
       <n-space align="center">
-        <n-text v-if="aiExtract.type === 'auth_code'" strong style="font-size: 18px; font-family: monospace;">
+        <n-text v-if="aiExtract.type === 'auth_code'" strong style="font-size: 30px; letter-spacing: .12em; font-family: ui-monospace, monospace;">
           {{ aiExtract.result }}
         </n-text>
         <n-ellipsis v-else style="max-width: 400px;">

@@ -1,13 +1,12 @@
 import { computed, ref } from "vue";
 import {
-    createGlobalState, useStorage, useDark, useToggle,
+    createGlobalState, useStorage,
     useLocalStorage, useSessionStorage
 } from '@vueuse/core'
 
 export const useGlobalState = createGlobalState(
     () => {
-        const isDark = useDark()
-        const toggleDark = useToggle(isDark)
+        const isDark = ref(true)
         const loading = ref(false);
         const announcement = useLocalStorage('announcement', '');
         const openSettings = ref({
@@ -96,7 +95,6 @@ export const useGlobalState = createGlobalState(
         const browserFingerprint = ref('');
         return {
             isDark,
-            toggleDark,
             loading,
             settings,
             sendMailModel,

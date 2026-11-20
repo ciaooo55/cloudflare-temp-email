@@ -8,6 +8,10 @@
 
 ## v1.13.0(main)
 
+- feat: |frontend| Replace ten selected non-daily pages with a dark-only mail workspace and mobile layout, always open the mail list, watermark the version and simplify statistics to three totals
+- refactor: |mail| Receive and list domain mailboxes without creation, remove unknown-recipient classification, AI and mail Webhook runtime code, and extract verification codes locally while preserving notifications, three blocking levels and sending APIs
+- refactor: |operations| Remove database/Worker configuration pages while retaining D1 initialization, migration and quota-protection operations; preserve existing data and settings
+
 - fix: |frontend| Give mobile workspace navigation groups stable unique keys to prevent repeated or reordered headings while scrolling or filtering
 - fix: |i18n| Translate workspace groups and original-address labels in German, Spanish, Portuguese and Japanese instead of falling back to Chinese
 - perf: |frontend| Load challenge scripts and extra locales on demand, share startup settings requests and fingerprint work, precache only the shell and parse ordinary mail without downloading WASM

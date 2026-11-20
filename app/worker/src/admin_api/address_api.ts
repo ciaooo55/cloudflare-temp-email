@@ -2,11 +2,23 @@ import { Context } from 'hono'
 import { Jwt } from 'hono/utils/jwt'
 
 import i18n from '../i18n/index.ts'
-import { getBooleanValue } from '../utils.ts'
-import { newAddress, handleListQuery } from '../common.ts'
+import { handleListQuery } from '../common.ts'
 
 const listAddresses = async (c: Context<HonoCustomType>) => {
-    const { limit, offset, query, sort_by, sort_order } = c.req.query();
+    const { limit, offset, query, sort_by, sort_order, include_received } = c.req.query();
+    if (include_received === '1') {
+        const mailboxNames = `(SELECT name FROM address UNION SELECT address AS name FROM raw_mails UNION SELECT address AS name FROM sendbox)`;
+        const filter = query ? ' WHERE instr(lower(n.name), lower(?)) > 0' : '';
+        return await handleListQuery(c,
+            `SELECT a.id, n.name, a.source_meta, a.created_at,`
+            + ` COALESCE((SELECT MAX(created_at) FROM raw_mails WHERE address = n.name), a.updated_at) AS updated_at,`
+            + ` (SELECT COUNT(*) FROM raw_mails WHERE address = n.name) AS mail_count,`
+            + ` (SELECT COUNT(*) FROM sendbox WHERE address = n.name) AS send_count`
+            + ` FROM ${mailboxNames} n LEFT JOIN address a ON a.name = n.name${filter}`,
+            `SELECT COUNT(*) AS count FROM ${mailboxNames} n${filter}`,
+            query ? [query] : [], limit, offset, 'n.name ASC'
+        );
+    }
     const allowedSortColumns: Record<string, string> = {
         'id': 'a.id',
         'name': 'a.name',
@@ -45,27 +57,6 @@ const listAddresses = async (c: Context<HonoCustomType>) => {
     );
 };
 
-const createNewAddress = async (c: Context<HonoCustomType>) => {
-    const { name, domain, enablePrefix, enableRandomSubdomain } = await c.req.json();
-    const msgs = i18n.getMessagesByContext(c);
-    if (!name) {
-        return c.text(msgs.RequiredFieldMsg, 400)
-    }
-    try {
-        const res = await newAddress(c, {
-            name, domain, enablePrefix,
-            enableRandomSubdomain: getBooleanValue(enableRandomSubdomain),
-            checkLengthByConfig: false,
-            addressPrefix: null,
-            checkAllowDomains: false,
-            enableCheckNameRegex: false,
-            sourceMeta: 'admin'
-        });
-        return c.json(res);
-    } catch (e) {
-        return c.text(`${msgs.FailedCreateAddressMsg}: ${(e as Error).message}`, 400)
-    }
-};
 
 const deleteAddress = async (c: Context<HonoCustomType>) => {
     const msgs = i18n.getMessagesByContext(c);
@@ -156,6 +147,6 @@ const resetPassword = async (c: Context<HonoCustomType>) => {
 };
 
 export default {
-    listAddresses, createNewAddress, deleteAddress, clearInbox, clearSentItems,
+    listAddresses, deleteAddress, clearInbox, clearSentItems,
     showPassword, resetPassword
 };

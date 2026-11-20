@@ -165,31 +165,18 @@ const handleSaveToS3 = async (filename, blob) => {
 <template>
   <div class="mail-content-renderer">
     <AiExtractInfo :key="mail.id" :metadata="mail.metadata" />
-    <!-- 邮件信息标签 -->
-    <n-space>
-      <n-tag type="info">
-        ID: {{ mail.id }}
-      </n-tag>
-      <n-tag type="info">
-        {{ utcToLocalDate(mail.created_at, useUTCDate) }}
-      </n-tag>
-      <n-tag type="info">
-        FROM: {{ mail.source }}
-      </n-tag>
-      <n-tag type="info" class="mail-address">
-        {{ t('originalSender') }}: {{ mail.originalSource || mail.source }}
-      </n-tag>
-      <n-tag v-if="showEMailTo" type="info" class="mail-address">
-        TO: {{ mail.address }}
-      </n-tag>
-      <n-tag v-if="originalRecipient" type="info" class="mail-address">
-        {{ t('originalRecipient') }}: {{ originalRecipient }}
+    <dl class="message-addresses">
+      <div><dt>From</dt><dd>{{ mail.source }}</dd></div>
+      <div><dt>{{ t('originalSender') }}</dt><dd>{{ mail.originalSource || mail.source }}</dd></div>
+      <div v-if="showEMailTo"><dt>To</dt><dd>{{ mail.address }}</dd></div>
+      <div v-if="originalRecipient"><dt>{{ t('originalRecipient') }}</dt><dd>{{ originalRecipient }}
         <n-button text size="tiny" type="primary" style="margin-left: 4px;" @click="copyOriginalRecipient">
           {{ t('copy') }}
         </n-button>
-      </n-tag>
-
-      <!-- 操作按钮 -->
+      </dd></div>
+      <div><dt>Date</dt><dd>{{ utcToLocalDate(mail.created_at, useUTCDate) }}</dd></div>
+    </dl>
+    <n-space class="message-actions" size="small">
       <n-popconfirm v-if="enableUserDeleteEmail" @positive-click="handleDelete">
         <template #trigger>
           <n-button tertiary type="error" size="small">{{ t('delete') }}</n-button>
@@ -315,6 +302,12 @@ const handleSaveToS3 = async (filename, blob) => {
   flex-direction: column;
   gap: 16px;
 }
+.message-addresses { margin: 0; display: grid; gap: 8px; padding-bottom: 20px; border-bottom: 1px solid var(--mail-border, #272d39); }
+.message-addresses > div { display: grid; grid-template-columns: minmax(65px, auto) minmax(0, 1fr); gap: 14px; font-size: 12px; }
+.message-addresses dt { color: #8590a6; }
+.message-addresses dd { margin: 0; overflow-wrap: anywhere; color: #bdc6d9; }
+.message-actions :deep(.n-button) { font-size: 11px; }
+.mail-content-renderer :deep(.n-alert) { border-radius: 10px; }
 
 .mail-address { max-width: 100%; height: auto; overflow-wrap: anywhere; }
 .mail-address :deep(.n-tag__content) { white-space: normal; }
@@ -331,6 +324,9 @@ const handleSaveToS3 = async (filename, blob) => {
 }
 
 .mail-text {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.9;
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;

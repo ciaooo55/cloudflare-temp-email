@@ -16,15 +16,6 @@ export default {
             filterParams, limit, offset
         );
     },
-    getUnknowMails: async (c: Context<HonoCustomType>) => {
-        const { limit, offset } = c.req.query();
-        return await handleMailListQuery(c,
-            `SELECT * FROM raw_mails where address NOT IN (select name from address) `,
-            `SELECT count(*) as count FROM raw_mails`
-            + ` where address NOT IN (select name from address) `,
-            [], limit, offset
-        );
-    },
     getMail: async (c: Context<HonoCustomType>) => {
         const { id } = c.req.param();
         const result = await c.env.DB.prepare(

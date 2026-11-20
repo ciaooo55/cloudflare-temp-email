@@ -1,4 +1,14 @@
 import PostalMime from 'postal-mime';
+import { extractCode, joinSubjectAndBody } from '../../../worker/src/email/extract_code';
+import { htmlToPlainText } from './sanitize-html';
+
+function addVerificationCode(item) {
+    let metadata;
+    try { metadata = JSON.parse(item.metadata || '{}'); } catch { metadata = {}; }
+    if (metadata?.ai_extract?.type === 'auth_code' && metadata.ai_extract.result) return;
+    const code = extractCode(joinSubjectAndBody(item.subject, item.text || htmlToPlainText(item.message)));
+    if (code) item.metadata = JSON.stringify({ ...metadata, ai_extract: { type: 'auth_code', result: code, result_text: '' } });
+}
 
 function humanFileSize(size) {
     const i = size === 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
@@ -50,6 +60,7 @@ export async function processItem(item) {
                 blob: blob
             }
         }) || [];
+        addVerificationCode(item);
         return item;
     } catch (error) {
         console.error('Error parsing email with PostalMime', error);
@@ -85,6 +96,7 @@ export async function processItem(item) {
         item.subject = 'No Subject';
         item.message = item.raw;
     }
+    addVerificationCode(item);
     return item;
 }
 
