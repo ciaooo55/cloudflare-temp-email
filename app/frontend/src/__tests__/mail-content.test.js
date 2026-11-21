@@ -2,15 +2,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue'
 import MailContentRenderer from '../components/MailContentRenderer.vue'
+import MailBox from '../components/MailBox.vue'
 
 vi.mock('../store', () => ({
     useGlobalState: () => ({
         preferShowTextMail: ref(false), useIframeShowMail: ref(false),
         useUTCDate: ref(false), isDark: ref(false),
+        autoRefresh: ref(false), configAutoRefreshInterval: ref(60), loading: ref(false),
     }),
 }))
 vi.mock('../i18n/app', () => ({ useScopedI18n: () => ({ t: key => key }) }))
 vi.mock('../utils', () => ({ utcToLocalDate: value => value }))
+vi.mock('../utils/composables', () => ({ useIsMobile: () => ref(false) }))
 vi.mock('naive-ui', async () => {
     const { h } = await import('vue')
     const wrapper = { setup: (_, { slots }) => () => h('div', slots.default?.()) }
@@ -22,6 +25,7 @@ vi.mock('naive-ui', async () => {
         NButton: button, NDrawer: hidden, NDrawerContent: hidden,
         NModal: hidden, NPopconfirm: hidden, NSpin: wrapper, NList: wrapper,
         NListItem: wrapper, NThing: wrapper,
+        NPagination: wrapper, NSwitch: wrapper, NInput: wrapper,
     }
 })
 vi.mock('../components/AiExtractInfo.vue', () => ({ default: { template: '<div />' } }))
@@ -59,6 +63,24 @@ function mount() {
 }
 
 describe('per-message image consent', () => {
+    it('shows the inbox first and renders the reader after a message is selected', async () => {
+        const item = mail(1, 'original@example.com')
+        host = document.createElement('div')
+        document.body.append(host)
+        app = createApp({
+            render: () => h(MailBox, {
+                fetchMailData: async () => ({ results: [item], count: 1 }),
+                processMail: async value => value,
+            }),
+        })
+        app.mount(host)
+        await vi.waitFor(() => expect(host.querySelector('.message-row')).not.toBeNull())
+        expect(host.querySelector('.mail-text')).toBeNull()
+        host.querySelector('.message-row').click()
+        await vi.waitFor(() => expect(host.querySelector('.mail-text')?.textContent).toContain('Code 123456'))
+        expect(host.querySelector('.mail-html')).toBeNull()
+    })
+
     it('keeps plain text visible and hides HTML-only controls after viewing HTML', async () => {
         const props = mount()
         const toggle = [...host.querySelectorAll('button')].find(el => el.textContent.trim() === 'showHtmlMail')
