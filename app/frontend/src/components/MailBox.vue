@@ -92,6 +92,14 @@ const openMail = mail => {
     void props.updateMailReadStatus(mail.id, false).catch(() => { mail.is_unread = 1 })
   }
 }
+const copyOriginalRecipient = async mail => {
+  const address = mail.originalRecipient || mail.address
+  if (!address) return
+  try {
+    await navigator.clipboard.writeText(address)
+    message.success(t('copied'))
+  } catch { message.error(t('copyFailed')) }
+}
 const toggleReadStatus = async () => {
   const mail = curMail.value
   const previous = mail.is_unread
@@ -185,15 +193,30 @@ onBeforeUnmount(() => {
           <p>{{ t('emptyMessages') }}</p>
         </div>
         <div class="message-rows">
-          <button v-for="row in data" :key="row.id" type="button" class="message-row"
+          <div v-for="row in data" :key="row.id" class="message-row"
             :class="{ selected: curMail?.id === row.id || selected.includes(row.id), unread: enableMailReadStatus && row.is_unread === 1 }"
             @click="openMail(row)">
-            <div class="message-sender"><span>{{ row.listSource || row.source }}</span><time>{{ utcToLocalDate(row.created_at, useUTCDate) }}</time></div>
-            <div class="message-subject">{{ row.subject }}</div>
-            <div class="message-preview">{{ row.text || row.subject }}</div>
-            <div class="message-recipient" v-if="showEMailTo">{{ row.address }}</div>
+            <button type="button" class="message-open" :aria-label="row.subject"
+              :aria-pressed="curMail?.id === row.id || selected.includes(row.id)" @click.stop="openMail(row)">
+              <div class="message-sender"><span>{{ row.listSource || row.source }}</span><time>{{ utcToLocalDate(row.created_at, useUTCDate) }}</time></div>
+              <div class="message-subject">{{ row.subject }}</div>
+              <div class="message-preview">{{ row.text || row.subject }}</div>
+              <div class="message-recipient" v-if="showEMailTo">{{ row.address }}</div>
+            </button>
+            <div class="message-original-addresses">
+              <div v-if="row.originalSource || row.source" class="message-address message-original-sender">
+                <span class="message-address-label">{{ t('originalSender') }}</span>
+                <span class="message-address-value" :title="row.originalSource || row.source">{{ row.originalSource || row.source }}</span>
+              </div>
+              <div v-if="row.originalRecipient || row.address" class="message-address message-original-recipient">
+                <span class="message-address-label">{{ t('originalRecipient') }}</span>
+                <span class="message-address-value" :title="row.originalRecipient || row.address">{{ row.originalRecipient || row.address }}</span>
+                <button type="button" class="message-copy" :aria-label="t('copyOriginalRecipient')"
+                  :title="t('copyOriginalRecipient')" @click.stop="copyOriginalRecipient(row)">{{ t('copy') }}</button>
+              </div>
+            </div>
             <AiExtractInfo :metadata="row.metadata" compact />
-          </button>
+          </div>
         </div>
         <div class="mailbox-pagination">
           <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count"
@@ -241,12 +264,19 @@ onBeforeUnmount(() => {
 .message-row { display: block; background: transparent; color: #c5cddd; border: 0; border-bottom: 1px solid #232936; width: 100%; text-align: left; padding: 18px; cursor: pointer; font: inherit; position: relative; }
 .message-row:hover { background: #1a1f2b; }
 .message-row.selected { background: #20283f; box-shadow: inset 3px 0 #a2b2ff; }
+.message-open { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: inherit; font: inherit; cursor: pointer; }
+.message-open:focus-visible, .message-copy:focus-visible { outline: 2px solid #a2b2ff; outline-offset: 3px; border-radius: 3px; }
 .message-sender { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-bottom: 9px; }
 .message-sender > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .message-sender time { font-size: 10px; color: #8994aa; flex: none; }
 .message-subject { font-size: 13px; font-weight: 580; color: #e0e5f1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .message-preview { font-size: 12px; color: #8e99af; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .message-recipient { font-size: 10px; color: #818da5; margin-top: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.message-original-addresses { display: grid; gap: 5px; margin-top: 9px; font-size: 11px; }
+.message-address { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.message-address-label { flex: none; color: #818da5; }
+.message-address-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message-copy { flex: none; padding: 0 2px; border: 0; background: transparent; color: #a2b2ff; font: inherit; cursor: pointer; }
 .message-row :deep(.ai-extract-info) { margin-top: 10px; margin-bottom: 0; }
 .message-reader { min-width: 0; padding: 22px 26px; max-height: 80vh; overflow-y: auto; }
 .reader-navigation { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #768298; font-size: 11px; }

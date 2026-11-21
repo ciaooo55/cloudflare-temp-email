@@ -4,6 +4,8 @@ import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue'
 import MailContentRenderer from '../components/MailContentRenderer.vue'
 import MailBox from '../components/MailBox.vue'
 
+const feedback = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn() }))
+
 vi.mock('../store', () => ({
     useGlobalState: () => ({
         preferShowTextMail: ref(false), useIframeShowMail: ref(false),
@@ -20,7 +22,7 @@ vi.mock('naive-ui', async () => {
     const button = { setup: (_, { slots }) => () => h('button', slots.default?.()) }
     const hidden = { setup: () => () => null }
     return {
-        useMessage: () => ({ success: vi.fn(), warning: vi.fn() }),
+        useMessage: () => feedback,
         NSpace: wrapper, NTag: wrapper, NAlert: wrapper, NIcon: wrapper,
         NButton: button, NDrawer: hidden, NDrawerContent: hidden,
         NModal: hidden, NPopconfirm: hidden, NSpin: wrapper, NList: wrapper,
@@ -43,6 +45,7 @@ const mail = (id, address) => ({
 })
 
 beforeEach(() => {
+    vi.clearAllMocks()
     vi.stubGlobal('URL', Object.assign(URL, {
         createObjectURL: vi.fn(() => 'blob:test-eml'), revokeObjectURL: vi.fn(),
     }))
@@ -142,5 +145,61 @@ describe('per-message image consent', () => {
         app.unmount()
         app = null
         expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-eml')
+    })
+})
+
+describe('mail summary addresses', () => {
+    it.each([true, false])('copies the recipient without opening or marking another mail read (original fields: %s)', async hasOriginal => {
+        const items = [mail(1, 'first@example.com'), { ...mail(2, 'original+tag@icloud.com'), is_unread: 1 }]
+        if (!hasOriginal) {
+            items[1].originalSource = ''
+            items[1].originalRecipient = ''
+        }
+        const writeText = vi.fn().mockResolvedValue(undefined)
+        const updateMailReadStatus = vi.fn().mockResolvedValue(undefined)
+        vi.stubGlobal('navigator', { clipboard: { writeText } })
+        host = document.createElement('div')
+        document.body.append(host)
+        app = createApp({ render: () => h(MailBox, {
+            fetchMailData: async () => ({ results: items, count: 2 }),
+            processMail: async value => value,
+            enableMailReadStatus: true, updateMailReadStatus,
+        }) })
+        app.mount(host)
+        await vi.waitFor(() => expect(host.querySelectorAll('.message-row')).toHaveLength(2))
+        const rows = host.querySelectorAll('.message-row')
+        const expectedRecipient = hasOriginal ? 'original+tag@icloud.com' : 'inbox@example.com'
+        expect(rows[1].querySelector('.message-original-sender').textContent)
+            .toContain(hasOriginal ? 'envelope@example.com' : items[1].source)
+        expect(rows[1].querySelector('.message-original-recipient .message-address-value').title).toBe(expectedRecipient)
+        expect(rows[1].querySelector('button button')).toBeNull()
+        rows[1].querySelector('.message-copy').click()
+        await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(expectedRecipient))
+        expect(host.querySelector('.mail-text')).toBeNull()
+        expect(updateMailReadStatus).not.toHaveBeenCalled()
+        expect(feedback.success).toHaveBeenCalledWith('copied')
+        rows[0].querySelector('.message-open').click()
+        await vi.waitFor(() => expect(host.querySelector('.mail-text')).not.toBeNull())
+        rows[1].querySelector('.message-copy').click()
+        await nextTick()
+        expect(rows[0].classList.contains('selected')).toBe(true)
+        expect(rows[1].classList.contains('unread')).toBe(true)
+        expect(updateMailReadStatus).not.toHaveBeenCalled()
+    })
+
+    it('reports a clipboard failure without opening the message or claiming success', async () => {
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('Denied')) } })
+        host = document.createElement('div')
+        document.body.append(host)
+        app = createApp({ render: () => h(MailBox, {
+            fetchMailData: async () => ({ results: [mail(1, 'original@example.com')], count: 1 }),
+            processMail: async value => value,
+        }) })
+        app.mount(host)
+        await vi.waitFor(() => expect(host.querySelector('.message-copy')).not.toBeNull())
+        host.querySelector('.message-copy').click()
+        await vi.waitFor(() => expect(feedback.error).toHaveBeenCalledWith('copyFailed'))
+        expect(feedback.success).not.toHaveBeenCalled()
+        expect(host.querySelector('.mail-text')).toBeNull()
     })
 })

@@ -26,6 +26,11 @@ export const MESSAGE_REGISTRY = {
     "unavailable": { "en": "Loading. If this fails, check that the backend is updated and reload.", "zh": "正在加载；若加载失败，请检查后端是否已更新并刷新本页。" }
   },
   "components.MailBox": {
+    "originalSender": { "en": "Original From", "zh": "原始发件" },
+    "copyOriginalRecipient": { "en": "Copy original recipient address", "zh": "复制原始收件邮箱" },
+    "copy": { "en": "Copy", "zh": "复制" },
+    "copied": { "en": "Copied", "zh": "已复制" },
+    "copyFailed": { "en": "Copy failed", "zh": "复制失败" },
     "autoRefresh": {
       "en": "Auto Refresh",
       "zh": "自动刷新"
