@@ -260,7 +260,7 @@ export const deMessages = {
   "views.Admin.workerconfig": "Worker-Konfiguration",
   "views.admin.AccountSettings.create_address_subdomain_match_env_locked": "Diese Funktion ist in der Serverkonfiguration derzeit deaktiviert. Der gespeicherte Admin-Schalter kann geändert werden, wird aber erst wirksam, wenn sie in der Serverkonfiguration aktiviert wird.",
   "views.admin.AccountSettings.tip": "Die folgenden Mehrfachauswahlwerte können manuell eingegeben und mit Enter hinzugefügt werden",
-  "components.MailBox.emptyInbox": "Dein Posteingang ist leer",
+  "components.MailBox.emptyMessages": "Keine Nachrichten",
   "components.AddressCredentialModal.addressCredential": "Adresszugangsdaten",
   "components.AddressCredentialModal.addressCredentialLabel": "Address JWT",
   "components.AddressCredentialModal.addressPassword": "Adresspasswort",

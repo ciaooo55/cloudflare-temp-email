@@ -24,9 +24,9 @@ export const MESSAGE_REGISTRY = {
       "en": "Download Mail",
       "zh": "下载邮件"
     },
-    "emptyInbox": {
-      "en": "Your inbox is empty",
-      "zh": "收件箱为空"
+    "emptyMessages": {
+      "en": "No messages",
+      "zh": "暂无邮件"
     },
     "forwardMail": {
       "en": "Forward",

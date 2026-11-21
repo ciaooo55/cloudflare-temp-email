@@ -260,7 +260,7 @@ export const jaMessages = {
   "views.Admin.workerconfig": "Worker設定",
   "views.admin.AccountSettings.create_address_subdomain_match_env_locked": "この機能は現在サーバー設定で無効になっています。管理画面のスイッチは保存できますが、サーバー設定で有効化するまで反映されません。",
   "views.admin.AccountSettings.tip": "以下の複数選択項目は手動入力して Enter で追加できます",
-  "components.MailBox.emptyInbox": "受信箱は空です",
+  "components.MailBox.emptyMessages": "メールはありません",
   "components.AddressCredentialModal.addressCredential": "アドレス認証情報",
   "components.AddressCredentialModal.addressCredentialLabel": "Address JWT",
   "components.AddressCredentialModal.addressPassword": "アドレスパスワード",
