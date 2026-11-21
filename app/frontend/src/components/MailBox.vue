@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
         <div class="list-caption"><span>{{ locale === 'zh' ? '邮件' : 'Messages' }} <b>{{ count }}</b></span><span v-if="autoRefresh">{{ seconds }}s</span></div>
         <div v-if="!data.length" class="mail-empty">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M4 4h16v16H4z M4 13h5l2 3h2l2-3h5" /></svg>
-          <p>{{ t('emptyInbox') }}</p>
+          <p>{{ t('emptyMessages') }}</p>
         </div>
         <div class="message-rows">
           <button v-for="row in data" :key="row.id" type="button" class="message-row"

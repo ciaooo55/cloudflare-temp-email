@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |frontend| Use a folder-neutral empty state in the shared mail list so Sent never says the inbox is empty; update all six languages
+
 - fix: |Mail| Keep MIME and Sent plain text separate from HTML so quotes preserve literal angle brackets and line breaks; hide HTML/image controls for text-only mail to prevent blank alternate views
 
 - fix: |Mail| Reuse the private reader in Telegram; repair reply/forward navigation and shared drafts, unnamed sender reply addresses, and settings access before a bot is configured

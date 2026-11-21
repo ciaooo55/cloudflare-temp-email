@@ -28,4 +28,14 @@ describe('on-demand translations', () => {
         }
         expect(messages.components.MailBox.originalRecipient).toBeTruthy()
     })
+
+    it.each([
+        ['en', 'No messages'], ['zh', '暂无邮件'], ['de', 'Keine Nachrichten'],
+        ['es', 'No hay mensajes'], ['ja', 'メールはありません'], ['pt-BR', 'Nenhuma mensagem'],
+    ])('uses a folder-neutral empty state in %s', async (locale, expected) => {
+        await ensureLocaleMessages(locale)
+        const messages = i18n.global.getLocaleMessage(locale).components.MailBox
+        expect(messages.emptyMessages).toBe(expected)
+        expect(messages.emptyInbox).toBeUndefined()
+    })
 })

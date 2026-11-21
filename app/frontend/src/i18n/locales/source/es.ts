@@ -260,7 +260,7 @@ export const esMessages = {
   "views.Admin.workerconfig": "Configuración del Worker",
   "views.admin.AccountSettings.create_address_subdomain_match_env_locked": "Esta función está desactivada en la configuración del servidor. Puedes guardar el interruptor, pero no tendrá efecto hasta habilitarla en la configuración del servidor.",
   "views.admin.AccountSettings.tip": "Puedes introducir manualmente los siguientes valores y pulsar Enter para añadirlos",
-  "components.MailBox.emptyInbox": "Tu bandeja de entrada está vacía",
+  "components.MailBox.emptyMessages": "No hay mensajes",
   "components.AddressCredentialModal.addressCredential": "Credencial de dirección",
   "components.AddressCredentialModal.addressCredentialLabel": "Address JWT",
   "components.AddressCredentialModal.addressPassword": "Contraseña de la dirección",

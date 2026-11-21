@@ -260,7 +260,7 @@ export const ptBRMessages = {
   "views.Admin.workerconfig": "Configuração do Worker",
   "views.admin.AccountSettings.create_address_subdomain_match_env_locked": "Este recurso está desativado na configuração do servidor. O botão salvo pode ser alterado, mas só terá efeito quando for ativado na configuração do servidor.",
   "views.admin.AccountSettings.tip": "Você pode inserir manualmente os seguintes valores e pressionar Enter para adicioná-los",
-  "components.MailBox.emptyInbox": "Sua caixa de entrada está vazia",
+  "components.MailBox.emptyMessages": "Nenhuma mensagem",
   "components.AddressCredentialModal.addressCredential": "Credencial do endereço",
   "components.AddressCredentialModal.addressCredentialLabel": "Address JWT",
   "components.AddressCredentialModal.addressPassword": "Senha do endereço",
