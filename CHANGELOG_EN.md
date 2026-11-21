@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |frontend| Retire the offline service worker that traps old pages; upgrade controlled tabs and clear only app caches while preserving login/drafts, prevent worker-script caching, and show the build ID
+
 - perf: |frontend| Load inbox code with the workspace instead of waiting for site settings; load the message reader only when opening a message
 
 - fix: |frontend| Use a folder-neutral empty state in the shared mail list so Sent never says the inbox is empty; update all six languages
