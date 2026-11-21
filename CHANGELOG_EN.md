@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |Mail| Keep MIME and Sent plain text separate from HTML so reply/forward quotes preserve literal angle brackets and line breaks
+
 - fix: |Mail| Reuse the private reader in Telegram; repair reply/forward navigation and shared drafts, unnamed sender reply addresses, and settings access before a bot is configured
 - refactor: |Cleanup| Move dependency-free verification rules into shared; remove broken auto-login, obsolete appearance state, generic config endpoints and stale tests while retaining historical mail, credential APIs and unfinished KV/D1 migration paths
 - test: |Regression| Run code-extraction regressions in the regular Worker suite, restore admin read-status controls, and align test fixtures with the current layout and admin workspace

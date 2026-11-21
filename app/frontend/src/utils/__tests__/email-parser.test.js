@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PostalMime from 'postal-mime'
+import { buildReplyModel, buildForwardModel } from '../mail-actions'
 import { processItem, processSentItem, refreshParsedItem, releaseMailResources } from '../email-parser'
 
 const wasmParse = vi.hoisted(() => vi.fn())
@@ -13,6 +14,23 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
+    it.each([buildReplyModel, buildForwardModel])('quotes real text-only MIME without HTML interpretation', async action => {
+        const parsed = await processItem({ raw: 'From: sender@example.com\r\nSubject: Literal\r\nContent-Type: text/plain\r\n\r\nfirst <literal>\nsecond & literal' });
+        const draft = action(parsed, 'Quote');
+        expect(draft.contentType).toBe('text');
+        expect(parsed.message).toBe('');
+        expect(draft.content.replaceAll('\r', '')).toContain('\n\n> first <literal>\n> second & literal');
+    })
+    it('keeps fallback parser text separate from HTML', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(PostalMime, 'parse').mockRejectedValue(new Error('malformed MIME'));
+        wasmParse.mockReturnValue({ text: 'first <literal>\nsecond line', attachments: [] });
+        const parsed = await processItem({ raw: 'broken' });
+        expect(buildForwardModel(parsed, 'Forward')).toMatchObject({
+            contentType: 'text', content: '\n\n> first <literal>\n> second line',
+        });
+    })
+
     it.each(['&nbsp;123456', '&#160;123456', '&#160;&#49;&#50;&#51;&#52;&#53;&#54;', '&nbsp;<span>&#49;&#50;&#51;</span><span>&#52;&#53;&#54;</span>'])('decodes HTML entities before extracting historical codes: %s', async (encoded) => {
         const parsed = await processItem({ raw: 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:' + encoded + '</p>', metadata: null });
         expect(JSON.parse(parsed.metadata).ai_extract.result).toBe('123456');
@@ -22,6 +40,7 @@ describe('lightweight MIME parsing', () => {
         const parsed = processSentItem({ address: 'sender@example.com', raw });
         expect(parsed.subject).toBe('Sent subject');
         expect(parsed.text).toBe('Sent body');
+        expect(parsed.message).toBe('');
         expect(parsed.originalRecipient).toBe('recipient@example.com');
         expect(parsed.source).toBe('sender@example.com');
         expect(parsed.rawFormat).toBe('json');

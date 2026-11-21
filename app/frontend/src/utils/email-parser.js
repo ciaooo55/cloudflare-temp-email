@@ -41,7 +41,7 @@ export async function processItem(item) {
             item.source = `${parsedEmail.from.name} <${parsedEmail.from.address}>`;
         }
         item.subject = parsedEmail.subject || 'No Subject';
-        item.message = parsedEmail.html || parsedEmail.text || '';
+        item.message = parsedEmail.html || '';
         item.text = parsedEmail.text || '';
         item.attachments = parsedEmail.attachments?.map((a_item) => {
             const blob = new Blob(
@@ -73,7 +73,7 @@ export async function processItem(item) {
         const parsedEmail = parse_message(item.raw);
         item.source = parsedEmail.sender || item.source;
         item.subject = parsedEmail.subject || 'No Subject';
-        item.message = parsedEmail.body_html || parsedEmail.text || item.raw;
+        item.message = parsedEmail.body_html || '';
         item.text = parsedEmail.text || '';
         item.attachments = parsedEmail.attachments?.map((a_item) => {
             const blob = new Blob(
@@ -95,7 +95,9 @@ export async function processItem(item) {
     } catch (error) {
         console.error('Error parsing email with mail-parser-wasm', error);
         item.subject = 'No Subject';
-        item.message = item.raw;
+        item.message = '';
+        item.text = item.raw || '';
+        item.attachments = [];
     }
     addVerificationCode(item);
     return item;
@@ -122,7 +124,7 @@ export function processSentItem(item) {
     const sender = data.from?.email || item.address;
     const parsed = { ...item, subject: data.subject || 'No Subject', source: senderName ? senderName + ' <' + sender + '>' : sender,
         originalSource: item.address, originalRecipient: recipients, listSource: recipients,
-        text, message: html || text, attachments: [], rawFormat: 'json' };
+        text, message: html, attachments: [], rawFormat: 'json' };
     addVerificationCode(parsed);
     return parsed;
 }
