@@ -20,6 +20,10 @@ Cloudflare 临时邮箱的核心服务，包含前端和后端。当前 Cloudfla
 
 ## 简化邮箱界面 / Simplified mailbox workspace
 
+**更新与缓存 / Updates and caching**：不再安装离线页面缓存；浏览器正常访问时检查旧 `/sw.js`，新脚本跳过等待、清理本应用 Cache Storage、注销并自动重新打开受控标签。无需手动清缓存，登录、本地设置与会话草稿不受影响。脚本使用 `no-store`，带哈希资源继续使用 HTTP 长缓存；页脚构建标识来自 `CF_PAGES_COMMIT_SHA`。已打开且一直不触发浏览器更新检查的旧页面，须等下次正常访问或浏览器自动检查才会升级。
+
+The app no longer installs offline page caches. Normal visits check an existing `/sw.js`; its replacement skips waiting, clears only app Cache Storage, unregisters, and reloads controlled tabs without clearing login, preferences or session drafts. Worker/registration scripts use `no-store`; hashed assets retain long-lived HTTP caching. The footer build ID comes from `CF_PAGES_COMMIT_SHA`. An already-open old page upgrades when its browser next checks the worker or navigates normally, not through a forced cache reset.
+
 **中文**：界面固定深色，打开即进入收件箱。移除创建邮箱、未知收件人、AI 设置、邮件 Webhook、Webhook 设置、数据库管理、Worker 配置、外观、管理员账号和关于页面；保留访问密码与 Turnstile 防护。版本显示在页脚，统计仅显示收信、发信和邮箱总数。
 
 域名内地址无需提前创建即可收信：旧的“未创建邮箱拒收”设置不再参与收信处理。邮箱列表通过 `GET /admin/address?include_received=1` 合并已登记、已收信和已发信地址，不会写入邮箱记录；默认接口行为仍兼容现有客户端。验证码统一使用本地规则，前端也可从历史正文提取，不调用 Cloudflare AI 或自定义 AI 服务。旧提取元数据仍可读。

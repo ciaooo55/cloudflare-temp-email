@@ -34,36 +34,15 @@ export default defineConfig({
       resolvers: [NaiveUiResolver()]
     }),
     VitePWA({
-      registerType: null,
+      injectRegister: false,
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       devOptions: {
         enabled: false
       },
-      workbox: {
-        disableDevLogs: true,
-        // Precache the shell only; lazy tools are cached when actually opened.
-        globPatterns: ['index.html', 'assets/index-*.{js,css}', '*.{ico,png,svg}'],
-        runtimeCaching: [
-          {
-            // 页面导航：优先网络（保证拿到最新版），断网时回退缓存
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: { cacheName: 'page-cache' },
-          },
-          {
-            // 静态资源：缓存优先（哈希文件名，部署后自动换新名失效）
-            urlPattern: ({ request, url, sameOrigin }) => sameOrigin && (
-              ['script', 'style', 'image', 'font'].includes(request.destination)
-              || url.pathname.endsWith('.wasm')
-            ),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'asset-cache',
-              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-        ],
-        navigateFallback: null,
-        cleanupOutdatedCaches: true,
+      injectManifest: {
+        injectionPoint: undefined,
       },
       manifest: {
         name: 'Temp Email',
@@ -90,5 +69,6 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.PACKAGE_VERSION': JSON.stringify(process.env.npm_package_version),
+    'import.meta.env.BUILD_COMMIT': JSON.stringify((process.env.CF_PAGES_COMMIT_SHA || '').slice(0, 7)),
   }
 })

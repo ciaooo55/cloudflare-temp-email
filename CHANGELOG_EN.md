@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- fix: |frontend| Retire the offline service worker that traps old pages; upgrade controlled tabs and clear only app caches while preserving login/drafts, prevent worker-script caching, and show the build ID
+
 - fix: |frontend| Use a folder-neutral empty state in the shared mail list so Sent never says the inbox is empty; update all six languages
 
 - fix: |Mail| Keep MIME and Sent plain text separate from HTML so quotes preserve literal angle brackets and line breaks; hide HTML/image controls for text-only mail to prevent blank alternate views
