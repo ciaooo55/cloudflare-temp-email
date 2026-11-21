@@ -30,6 +30,15 @@ describe('lightweight MIME parsing', () => {
             contentType: 'text', content: '\n\n> first <literal>\n> second line',
         });
     })
+    it('keeps undecodable fallback content available as literal text', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(PostalMime, 'parse').mockRejectedValue(new Error('malformed MIME'));
+        wasmParse.mockReturnValue({ attachments: [] });
+        const raw = 'undecodable <literal>\nsecond line';
+        const parsed = await processItem({ raw });
+        expect(parsed.message).toBe('');
+        expect(parsed.text).toBe(raw);
+    })
 
     it.each(['&nbsp;123456', '&#160;123456', '&#160;&#49;&#50;&#51;&#52;&#53;&#54;', '&nbsp;<span>&#49;&#50;&#51;</span><span>&#52;&#53;&#54;</span>'])('decodes HTML entities before extracting historical codes: %s', async (encoded) => {
         const parsed = await processItem({ raw: 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Your verification code:' + encoded + '</p>', metadata: null });

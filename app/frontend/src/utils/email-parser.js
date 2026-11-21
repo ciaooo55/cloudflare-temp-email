@@ -74,7 +74,7 @@ export async function processItem(item) {
         item.source = parsedEmail.sender || item.source;
         item.subject = parsedEmail.subject || 'No Subject';
         item.message = parsedEmail.body_html || '';
-        item.text = parsedEmail.text || '';
+        item.text = parsedEmail.text || (item.message ? '' : item.raw || '');
         item.attachments = parsedEmail.attachments?.map((a_item) => {
             const blob = new Blob(
                 [a_item.content],
