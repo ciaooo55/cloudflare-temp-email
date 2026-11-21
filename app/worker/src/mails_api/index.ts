@@ -3,16 +3,11 @@ import { Hono } from 'hono'
 import parsed_mail_api from './parsed_mail_api.ts';
 import mails_crud from './mails_crud.ts';
 import new_address from './new_address.ts';
-import webhook_settings from './webhook_settings.ts';
 import s3_attachment from './s3_attachment.ts';
 import address_auth from './address_auth.ts';
 
 export const api = new Hono<HonoCustomType>()
 
-// webhook
-api.get('/api/webhook/settings', webhook_settings.getWebhookSettings)
-api.post('/api/webhook/settings', webhook_settings.saveWebhookSettings)
-api.post('/api/webhook/test', webhook_settings.testWebhookSettings)
 
 // attachment (S3)
 api.get('/api/attachment/list', s3_attachment.list)

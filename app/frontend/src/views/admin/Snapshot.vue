@@ -553,12 +553,12 @@ onMounted(fetchAll)
 </script>
 
 <template>
-    <div class="center">
-        <n-card :bordered="false" embedded :title="t('title')" style="max-width: 980px; overflow: auto;">
+    <div class="settings-page">
+        <section class="settings-surface">
+            <div class="page-actions"><n-button type="primary" @click="saveSettings">{{ t('save') }}</n-button></div>
             <n-form-item-row :label="t('ttlHours')">
                 <n-input-group>
                     <n-input-number v-model:value="ttlHours" :min="1" :max="8760" style="width: 200px;" />
-                    <n-button type="primary" @click="saveSettings">{{ t('save') }}</n-button>
                 </n-input-group>
                 <template #feedback>
                     <n-text depth="3" style="font-size: 12px;">{{ t('ttlTip') }}</n-text>
@@ -570,7 +570,6 @@ onMounted(fetchAll)
                     <n-switch v-model:value="boundCacheEnabled" />
                     <n-select v-model:value="boundCacheTtl" :options="boundCacheTtlOptions"
                         :disabled="!boundCacheEnabled" style="width: 140px;" />
-                    <n-button type="primary" @click="saveSettings">{{ t('save') }}</n-button>
                 </n-flex>
                 <template #feedback>
                     <n-text depth="3" style="font-size: 12px;">{{ t('boundCacheTip') }}</n-text>
@@ -590,8 +589,7 @@ onMounted(fetchAll)
                 :data="filteredBindings" :row-key="(row: Binding) => row.address"
                 :pagination="{ pageSize: 10 }" :bordered="false" />
 
-            <!-- 批量操作栏：常驻，未选中时禁用 -->
-            <n-flex align="center" style="margin-top: 12px; padding: 10px 12px; background: rgba(127, 127, 127, 0.07); border-radius: 8px;">
+            <n-flex v-if="checkedRowKeys.length" align="center" style="margin-top: 12px; padding: 10px 12px; background: rgba(127, 127, 127, 0.07); border-radius: 8px;">
                 <n-tag type="info" :bordered="false">{{ t('selectedCount', { n: checkedRowKeys.length }) }}</n-tag>
                 <n-select v-model:value="batchOpDuration" :options="quickDurations" style="width: 140px;"
                     :disabled="!checkedRowKeys.length" />
@@ -619,7 +617,8 @@ onMounted(fetchAll)
             </n-form>
             <n-text depth="3" style="font-size: 12px; margin-top: 8px; display: block;">{{ t('durationTip') }}</n-text>
 
-            <n-divider>{{ t('batchBind') }}</n-divider>
+            <details class="settings-disclosure">
+            <summary>{{ t('batchBind') }}</summary>
             <n-text depth="3" style="font-size: 12px;">{{ t('batchBindTip') }}</n-text>
             <n-input v-model:value="batchInput" type="textarea" :rows="5"
                 :placeholder="t('batchPlaceholder')"
@@ -635,15 +634,7 @@ onMounted(fetchAll)
                 <n-button type="primary" :loading="batchBinding" @click="batchBind">{{ t('batchBind') }}</n-button>
                 <n-button @click="batchInput = ''">{{ t('clear') }}</n-button>
             </n-flex>
-        </n-card>
+            </details>
+        </section>
     </div>
 </template>
-
-<style scoped>
-.center {
-    display: flex;
-    text-align: left;
-    place-items: center;
-    justify-content: center;
-}
-</style>

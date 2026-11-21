@@ -9,7 +9,7 @@ import {
     resolveSupportedLocale,
 } from '../i18n/utils'
 
-const { jwt, preferredLocale } = useGlobalState()
+const { preferredLocale } = useGlobalState()
 
 const router = createRouter({
     history: createWebHistory(),
@@ -17,7 +17,11 @@ const router = createRouter({
         {
             path: '/',
             alias: '/:lang/',
-            redirect: '/admin'
+            redirect: to => ({
+                path: replaceLocaleInFullPath('/admin', resolveSupportedLocale(to.path.split('/')[1]) || DEFAULT_LOCALE),
+                query: to.query,
+                hash: to.hash,
+            })
         },
         {
             path: '/admin',
@@ -54,10 +58,6 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(to.query, 'jwt')) {
-        const jwtQuery = Array.isArray(to.query.jwt) ? to.query.jwt[0] : to.query.jwt
-        if (typeof jwtQuery === 'string') {
-            jwt.value = jwtQuery
-        }
         const query = { ...to.query }
         delete query.jwt
         next({

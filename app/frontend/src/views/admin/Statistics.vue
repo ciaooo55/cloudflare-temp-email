@@ -1,96 +1,28 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
-import { User, UserCheck, MailBulk } from '@vicons/fa'
-import { SendOutlined } from '@vicons/material'
-
 import { api } from '../../api'
-
-const message = useMessage()
-
 const { t } = useScopedI18n('views.admin.Statistics')
-
-const statistics = ref({
-    addressCount: 0,
-    mailCount: 0,
-    activeAddressCount7days: 0,
-    activeAddressCount30days: 0,
-    sendMailCount: 0,
-})
-
-const fetchStatistics = async () => {
-    try {
-        const {
-            mailCount, sendMailCount,
-            addressCount, activeAddressCount7days,
-            activeAddressCount30days,
-        } = await api.fetch(`/admin/statistics`);
-        statistics.value.mailCount = mailCount || 0;
-        statistics.value.sendMailCount = sendMailCount || 0;
-        statistics.value.addressCount = addressCount || 0;
-        statistics.value.activeAddressCount7days = activeAddressCount7days || 0;
-        statistics.value.activeAddressCount30days = activeAddressCount30days || 0;
-    } catch (error) {
-        message.error(error.message || "error");
-    }
-}
-
+const message = useMessage()
+const statistics = ref(null)
 onMounted(async () => {
-    await fetchStatistics()
+  try { statistics.value = await api.fetch('/admin/statistics') }
+  catch (error) { message.error(error.message || 'error') }
 })
 </script>
-
 <template>
-    <div>
-        <n-card :bordered="false" embedded>
-            <n-row>
-
-                <n-col :span="8">
-                    <n-statistic :label="t('addressCount')" :value="statistics.addressCount">
-                        <template #prefix>
-                            <n-icon :component="User" />
-                        </template>
-                    </n-statistic>
-                </n-col>
-                <n-col :span="8">
-                    <n-statistic :label="t('activeAddressCount7days')" :value="statistics.activeAddressCount7days">
-                        <template #prefix>
-                            <n-icon :component="UserCheck" />
-                        </template>
-                    </n-statistic>
-                </n-col>
-                <n-col :span="8">
-                    <n-statistic :label="t('activeAddressCount30days')" :value="statistics.activeAddressCount30days">
-                        <template #prefix>
-                            <n-icon :component="UserCheck" />
-                        </template>
-                    </n-statistic>
-                </n-col>
-            </n-row>
-        </n-card>
-        <n-card :bordered="false" embedded>
-            <n-row>
-                <n-col :span="12">
-                    <n-statistic :label="t('mailCount')" :value="statistics.mailCount">
-                        <template #prefix>
-                            <n-icon :component="MailBulk" />
-                        </template>
-                    </n-statistic>
-                </n-col>
-                <n-col :span="12">
-                    <n-statistic :label="t('sendMailCount')" :value="statistics.sendMailCount">
-                        <template #prefix>
-                            <n-icon :component="SendOutlined" />
-                        </template>
-                    </n-statistic>
-                </n-col>
-            </n-row>
-        </n-card>
+  <div class="statistics-grid">
+    <div v-for="[key, label] in [['mailCount', 'mailCount'], ['sendMailCount', 'sendMailCount'], ['addressCount', 'addressCount']]"
+      :key="key" class="statistic">
+      <span>{{ t(label) }}</span>
+      <strong>{{ statistics ? (statistics[key] ?? 0).toLocaleString() : '—' }}</strong>
     </div>
+  </div>
 </template>
-
 <style scoped>
-.n-card {
-    margin-bottom: 20px;
-}
+.statistics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.statistic { background: var(--mail-panel); border: 1px solid var(--mail-border); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.statistic span { color: var(--mail-muted); font-size: 12px; }
+.statistic strong { font-size: 32px; letter-spacing: -.04em; font-weight: 550; color: #e2e8fa; }
+@media (max-width: 767px) { .statistics-grid { grid-template-columns: 1fr; gap: 12px; } .statistic { padding: 20px; flex-direction: row; align-items: center; justify-content: space-between; } .statistic strong { font-size: 26px; } }
 </style>

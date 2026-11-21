@@ -24,13 +24,14 @@ export default defineConfig({
         baseURL: WORKER_GZIP_BASE,
       },
     },
-    {
+    ...(process.env.SMTP_PROXY_HOST ? [{
       name: 'smtp-proxy',
       testDir: './tests/smtp-proxy',
+      testIgnore: process.env.SMTP_PROXY_TLS_HOST ? [] : ['**/*-tls.spec.ts'],
       use: {
         baseURL: WORKER_BASE,
       },
-    },
+    }] : []),
     {
       name: 'browser',
       testDir: './tests/browser',

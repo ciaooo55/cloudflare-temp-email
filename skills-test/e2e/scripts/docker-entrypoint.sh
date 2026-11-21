@@ -102,6 +102,7 @@ if [ -n "${FRONTEND_URL_ENV_OFF:-}" ]; then
   done
 fi
 
+if [ -n "${SMTP_PROXY_TLS_HOST:-}" ]; then
 echo "==> Waiting for smtp-proxy-tls SMTP on $SMTP_PROXY_TLS_HOST:$SMTP_PROXY_TLS_SMTP_PORT ..."
 for i in $(seq 1 30); do
   if nc -z "$SMTP_PROXY_TLS_HOST" "$SMTP_PROXY_TLS_SMTP_PORT" 2>/dev/null; then
@@ -113,6 +114,8 @@ for i in $(seq 1 30); do
   fi
   sleep 1
 done
+
+fi
 
 echo "==> Initializing database"
 curl -sf -X POST "$WORKER_URL/admin/db_initialize" > /dev/null
@@ -138,6 +141,11 @@ if [ -n "${WORKER_GZIP_URL:-}" ]; then
   curl -sf -X POST "$WORKER_GZIP_URL/admin/db_initialize" > /dev/null
   curl -sf -X POST "$WORKER_GZIP_URL/admin/db_migration" > /dev/null
   echo "    Gzip worker database initialized"
+fi
+
+if [ -n "${WORKER_URL_SEND_MAIL_DOMAIN:-}" ]; then
+  curl --connect-timeout 5 --max-time 10 -sf -X POST "$WORKER_URL_SEND_MAIL_DOMAIN/admin/db_initialize" > /dev/null
+  curl --connect-timeout 5 --max-time 10 -sf -X POST "$WORKER_URL_SEND_MAIL_DOMAIN/admin/db_migration" > /dev/null
 fi
 
 if [ -n "${WORKER_URL_SITE_PASSWORD:-}" ]; then

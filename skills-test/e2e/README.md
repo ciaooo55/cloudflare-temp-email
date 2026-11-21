@@ -6,10 +6,18 @@ End-to-end tests for Cloudflare Temp Email using [Playwright](https://playwright
 
 - **Docker** and **Docker Compose**
 
+## Current scope / 当前范围
+
+The fixtures use the repository’s `app/worker`, `app/frontend` and dependency-free `app/shared` layout. Browser scenarios target the admin workspace, not the removed public mailbox UI. Verification-rule regressions run in `app/worker` with `pnpm test`.
+
+SMTP/IMAP proxy servers are not shipped in this repository. Protocol tests are opt-in: provide `SMTP_PROXY_HOST` (and ports; TLS tests additionally need `SMTP_PROXY_TLS_HOST`) for an external test server. The default Compose run no longer builds a missing `smtp_proxy_server` directory.
+
+测试按当前仓库目录及管理工作台运行；不再保留旧游客邮箱页面的浏览器用例。验证码规则回归已纳入 Worker 常规测试。SMTP/IMAP 外置服务不在本仓库内，配置上述环境变量后才执行协议测试，不影响现有凭据及邮件 API。
+
 ## Quick Start
 
 ```bash
-cd e2e
+cd skills-test/e2e
 
 # Build, start all services, run tests, and exit
 npm test

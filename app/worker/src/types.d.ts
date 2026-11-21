@@ -22,7 +22,6 @@ type Bindings = {
     RATE_LIMITER: RateLimit
     SEND_MAIL: SendEmail
     ASSETS: Fetcher
-    AI: Ai
 
     // config
     DEFAULT_LANG: string | undefined
@@ -51,7 +50,6 @@ type Bindings = {
     DISABLE_ADMIN_PASSWORD_CHECK: string | boolean | undefined
     JWT_SECRET: string
     BLACK_LIST: string | undefined
-    ENABLE_WEBHOOK: string | boolean | undefined
     ENABLE_USER_CREATE_EMAIL: string | boolean | undefined
     DISABLE_ANONYMOUS_USER_CREATE_EMAIL: string | boolean | undefined
     ENABLE_USER_DELETE_EMAIL: string | boolean | undefined
@@ -118,17 +116,9 @@ type Bindings = {
     TG_ALLOW_USER_LANG: string | boolean | undefined
     ENABLE_TG_PUSH_ATTACHMENT: string | boolean | undefined
 
-    // webhook config
+    // frontend/backend links
     FRONTEND_URL: string | undefined
     BACKEND_URL: string | undefined
-
-    // AI extraction config
-    ENABLE_AI_EMAIL_EXTRACT: string | boolean | undefined
-    AI_EXTRACT_MODE: string | undefined
-    AI_EXTRACT_MODEL: string | undefined
-    // custom OpenAI-compatible AI endpoint (AI_EXTRACT_MODE=custom)
-    AI_EXTRACT_API_URL: string | undefined
-    AI_EXTRACT_API_KEY: string | undefined
 
     // gzip compression for raw_mails
     ENABLE_MAIL_GZIP: string | boolean | undefined

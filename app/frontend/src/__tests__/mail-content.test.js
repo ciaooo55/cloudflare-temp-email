@@ -59,6 +59,21 @@ function mount() {
 }
 
 describe('per-message image consent', () => {
+    it('keeps plain text visible and hides HTML-only controls after viewing HTML', async () => {
+        const props = mount()
+        const toggle = [...host.querySelectorAll('button')].find(el => el.textContent.trim() === 'showHtmlMail')
+        toggle.click()
+        await nextTick()
+        props.mail = { ...props.mail, message: '', text: 'first <literal>\nsecond line' }
+        await nextTick()
+        expect(host.querySelector('.mail-text').textContent).toBe('first <literal>\nsecond line')
+        expect(host.querySelector('.mail-html')).toBeNull()
+        expect(host.querySelector('iframe')).toBeNull()
+        expect(host.textContent).not.toContain('showHtmlMail')
+        expect(host.textContent).not.toContain('showTextMail')
+        expect(host.textContent).not.toContain('loadRemoteImages')
+    })
+
     it('ignores legacy auto-load preferences and loads only after a click, resetting for another mail', async () => {
         const props = mount()
         const body = () => host.querySelector('.mail-html').shadowRoot

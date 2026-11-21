@@ -1,13 +1,12 @@
 import { computed, ref } from "vue";
 import {
-    createGlobalState, useStorage, useDark, useToggle,
+    createGlobalState, useStorage,
     useLocalStorage, useSessionStorage
 } from '@vueuse/core'
 
 export const useGlobalState = createGlobalState(
     () => {
-        const isDark = useDark()
-        const toggleDark = useToggle(isDark)
+        const isDark = ref(true)
         const loading = ref(false);
         const announcement = useLocalStorage('announcement', '');
         const openSettings = ref({
@@ -15,29 +14,12 @@ export const useGlobalState = createGlobalState(
             title: '',
             announcement: '',
             alwaysShowAnnouncement: false,
-            prefix: '',
-            addressRegex: '',
             needAuth: false,
-            adminContact: '',
-            enableUserCreateEmail: false,
-            disableAnonymousUserCreateEmail: false,
-            disableCustomAddressName: false,
-            enableUserDeleteEmail: false,
             enableMailReadStatus: false,
-            /** @type {string[]} */
-            defaultDomains: [],
-            /** @type {string[]} */
-            randomSubdomainDomains: [],
             /** @type {Array<{label: string, value: string}>} */
             domains: [],
-            copyright: 'Dream Hunter',
             cfTurnstileSiteKey: '',
-            enableWebhook: false,
-            isS3Enabled: false,
-            enableSendMail: false,
-            showGithub: true,
             disableAdminPasswordCheck: false,
-            enableAddressPassword: false,
             enableAgentEmailInfo: false,
             smtpImapProxyConfig: {
                 smtp: {
@@ -51,16 +33,11 @@ export const useGlobalState = createGlobalState(
                     starttls: false,
                 },
             },
-            statusUrl: '',
             enableGlobalTurnstileCheck: false,
         })
-        const settings = ref({
-            fetched: false,
-            send_balance: 0,
-            address: '',
-        });
-        const sendMailModel = useSessionStorage('sendMailModel', {
+        const sendMailModel = useSessionStorage('sendMailByAdminModel', {
             fromName: "",
+            fromMail: "",
             toName: "",
             toMail: "",
             subject: "",
@@ -71,19 +48,11 @@ export const useGlobalState = createGlobalState(
         const showAdminAuth = ref(false);
         const auth = useStorage('auth', '');
         const adminAuth = useStorage('adminAuth', '');
-        const jwt = useStorage('jwt', '');
-        const addressPassword = useSessionStorage('addressPassword', '');
         const adminTab = useSessionStorage('adminTab', "mails");
-        // 兼容旧版本拼写错误的 tab 名（qucickSetup → quickSetup），避免老用户打开后 tab 定位到不存在的面板
-        if (adminTab.value === "qucickSetup") adminTab.value = "quickSetup";
         const adminMailTabAddress = ref("");
         const adminSendBoxTabAddress = ref("");
-        const mailboxSplitSize = useStorage('mailboxSplitSize', 0.25);
-        const mailListView = useStorage('mailListView', false);
-        const mailListPreviewLineClamp = useStorage('mailListPreviewLineClamp', 2);
         const useIframeShowMail = useStorage('useIframeShowMail', false);
         const preferredLocale = useStorage('preferredLocale', '');
-        const useSideMargin = useStorage('useSideMargin', true);
         const useUTCDate = useStorage('useUTCDate', false);
         const autoRefresh = useStorage('autoRefresh', false);
         const configAutoRefreshInterval = useStorage("configAutoRefreshInterval", 60);
@@ -96,33 +65,25 @@ export const useGlobalState = createGlobalState(
         const browserFingerprint = ref('');
         return {
             isDark,
-            toggleDark,
             loading,
-            settings,
             sendMailModel,
             announcement,
             openSettings,
             showAuth,
             auth,
-            jwt,
             adminAuth,
             showAdminAuth,
             adminTab,
             adminMailTabAddress,
             adminSendBoxTabAddress,
-            mailboxSplitSize,
-            mailListView,
-            mailListPreviewLineClamp,
             useIframeShowMail,
             preferredLocale,
-            useSideMargin,
             useUTCDate,
             autoRefresh,
             configAutoRefreshInterval,
             telegramApp,
             isTelegram,
             showAdminPage,
-            addressPassword,
             browserFingerprint,
         }
     },

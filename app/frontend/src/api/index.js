@@ -4,14 +4,14 @@ import axios from 'axios'
 
 import i18n from '../i18n'
 import { getFingerprint } from '../utils/fingerprint'
-import { safeBearerHeader, safeHeaderValue } from '../utils/headers'
+import { safeHeaderValue } from '../utils/headers'
 import { sanitizeHtml } from '../utils/sanitize-html'
 import { APP_CONFIG } from '../config'
 import { ErrorCode } from './error-codes'
 
 const API_BASE = APP_CONFIG.API_BASE || "";
 const {
-    loading, auth, jwt, openSettings,
+    loading, auth, openSettings,
     announcement,
     showAuth, adminAuth, showAdminAuth
 } = useGlobalState();
@@ -42,8 +42,6 @@ const apiFetch = async (path, options = {}) => {
         if (customAuthHeader) headers['x-custom-auth'] = customAuthHeader;
         const adminAuthHeader = safeHeaderValue(adminAuth.value);
         if (adminAuthHeader) headers['x-admin-auth'] = adminAuthHeader;
-        const authorizationHeader = safeBearerHeader(jwt.value);
-        if (authorizationHeader) headers['Authorization'] = authorizationHeader;
 
         const response = await instance.request(path, {
             method: options.method || 'GET',
@@ -83,34 +81,21 @@ const getOpenSettings = async (message, notification) => {
             message.error("No domains found, please check your worker settings");
         }
         Object.assign(openSettings.value, {
-            ...res,
             title: res["title"] || "",
-            prefix: res["prefix"] || "",
-            minAddressLen: res["minAddressLen"] || 1,
-            maxAddressLen: res["maxAddressLen"] || 30,
+            announcement: res["announcement"] || "",
+            alwaysShowAnnouncement: res["alwaysShowAnnouncement"] === true,
+            disableAdminPasswordCheck: res["disableAdminPasswordCheck"] === true,
             needAuth: res["needAuth"] || false,
-            defaultDomains: res["defaultDomains"] || [],
-            randomSubdomainDomains: res["randomSubdomainDomains"] || [],
             domains: domains.map((domain, index) => {
                 return {
                     label: domainLabels.length > index ? domainLabels[index] : domain,
                     value: domain
                 }
             }),
-            adminContact: res["adminContact"] || "",
-            enableUserCreateEmail: res["enableUserCreateEmail"] || false,
-            disableAnonymousUserCreateEmail: res["disableAnonymousUserCreateEmail"] || false,
-            disableCustomAddressName: res["disableCustomAddressName"] || false,
-            enableUserDeleteEmail: res["enableUserDeleteEmail"] || false,
             enableMailReadStatus: res["enableMailReadStatus"] === true,
-            copyright: res["copyright"] || openSettings.value.copyright,
             cfTurnstileSiteKey: res["cfTurnstileSiteKey"] || "",
-            enableWebhook: res["enableWebhook"] || false,
-            isS3Enabled: res["isS3Enabled"] || false,
-            enableAddressPassword: res["enableAddressPassword"] || false,
             enableAgentEmailInfo: res["enableAgentEmailInfo"] || false,
             smtpImapProxyConfig: res["smtpImapProxyConfig"] || openSettings.value.smtpImapProxyConfig,
-            statusUrl: res["statusUrl"] || "",
             enableGlobalTurnstileCheck: res["enableGlobalTurnstileCheck"] || false,
         });
         if (openSettings.value.needAuth) {

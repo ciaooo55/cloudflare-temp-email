@@ -1,5 +1,5 @@
 name = "cloudflare_temp_email_gzip"
-main = "../e2e/fixtures/worker.ts"
+main = "../../skills-test/e2e/fixtures/worker.ts"
 compatibility_date = "2025-04-01"
 compatibility_flags = [ "nodejs_compat" ]
 keep_vars = true
@@ -17,7 +17,6 @@ DEFAULT_SEND_BALANCE = 10
 ENABLE_ADDRESS_PASSWORD = true
 DISABLE_ADMIN_PASSWORD_CHECK = true
 ADMIN_PASSWORDS = '["e2e-admin-pass"]'
-ENABLE_WEBHOOK = true
 BACKEND_URL = "http://worker-gzip:8788"
 ENABLE_MAIL_GZIP = true
 SMTP_CONFIG = """
@@ -34,4 +33,4 @@ database_name = "e2e-temp-email-gzip"
 database_id = "e2e-test-db-gzip-00000000-0000-0000-0000-000000000000"
 
 [alias]
-"cloudflare:email" = "../e2e/fixtures/email.ts"
+"cloudflare:email" = "../../skills-test/e2e/fixtures/email.ts"

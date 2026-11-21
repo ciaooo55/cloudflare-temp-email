@@ -4,7 +4,6 @@ import utils from './utils.ts';
 import { CONSTANTS } from './constants.ts';
 import { isS3Enabled } from './mails_api/s3_attachment.ts';
 import { isAnySendMailEnabled } from './common.ts';
-import { getWebhookAttachment } from './open_api/webhook_attachment.ts';
 
 const api = new Hono<HonoCustomType>
 
@@ -43,7 +42,6 @@ api.get('/open_api/settings', async (c) => {
         "enableMailReadStatus": utils.getBooleanValue(c.env.ENABLE_MAIL_READ_STATUS),
         "copyright": c.env.COPYRIGHT,
         "cfTurnstileSiteKey": c.env.CF_TURNSTILE_SITE_KEY,
-        "enableWebhook": utils.getBooleanValue(c.env.ENABLE_WEBHOOK),
         "isS3Enabled": isS3Enabled(c),
         "enableSendMail": isAnySendMailEnabled(c),
         "version": CONSTANTS.VERSION,
@@ -68,6 +66,5 @@ api.get('/open_api/settings', async (c) => {
     });
 })
 
-api.get('/open_api/a/:mail_id/:index/:expires/:signature', getWebhookAttachment)
 
 export { api }

@@ -23,16 +23,16 @@ const seedMail = async (request: Request, env: Bindings) => {
     }
     const msgId = message_id || `<e2e-${Date.now()}@test>`;
     const { success } = await env.DB.prepare(
-        `INSERT INTO raw_mails (message_id, source, address, raw, created_at)`
-        + ` VALUES (?, ?, ?, ?, COALESCE(?, datetime('now')))`
+        `INSERT INTO raw_mails (message_id, source, address, raw, created_at, is_unread)`
+        + ` VALUES (?, ?, ?, ?, COALESCE(?, datetime('now')), 1)`
     ).bind(msgId, source || address, address, raw, created_at ?? null).run();
     return Response.json({ success });
 };
 
 // Exercises the real email() handler with a mock ForwardableEmailMessage.
 const receiveMail = async (request: Request, env: Bindings, ctx: ExecutionContext) => {
-    const { from, to, raw, ai_extract_result, extract_mode } = await request.json<{
-        from: string; to: string; raw: string; ai_extract_result?: unknown; extract_mode?: string;
+    const { from, to, raw } = await request.json<{
+        from: string; to: string; raw: string;
     }>();
     if (!from || !to || !raw) {
         return new Response("from, to and raw are required", { status: 400 });
@@ -57,18 +57,8 @@ const receiveMail = async (request: Request, env: Bindings, ctx: ExecutionContex
         forward: async (recipient: string) => { state.forwardedTo.push(recipient); return { messageId: '' }; },
         reply: async () => { state.replyCalled = true; return { messageId: '' }; },
     };
-    const { email: emailHandler } = await import('../../worker/src/email');
-    const aiExtractEnvOverrides: Partial<Bindings> = {
-        ENABLE_AI_EMAIL_EXTRACT: true,
-        AI_EXTRACT_MODE: extract_mode ?? 'ai',
-        AI: {
-            run: async () => ({ response: ai_extract_result })
-        } as unknown as Ai,
-    };
-    const emailEnv = ai_extract_result || extract_mode !== undefined
-        ? { ...env, ...aiExtractEnvOverrides }
-        : env;
-    await emailHandler(mockMessage, emailEnv, ctx);
+    const { email: emailHandler } = await import('../../../app/worker/src/email');
+    await emailHandler(mockMessage, env, ctx);
 
     return Response.json({
         success: !state.rejected,

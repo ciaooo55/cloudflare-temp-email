@@ -6,19 +6,16 @@ describe('admin workspace navigation', () => {
 
     it('keeps each working admin tool accessible exactly once', () => {
         expect(new Set(keys).size).toBe(keys.length)
-        expect(keys).toHaveLength(22)
+        expect(keys).toHaveLength(12)
         expect(keys).toEqual(expect.arrayContaining([
-            'mails', 'unknow', 'sendBox', 'sendMail', 'mailWebhook',
-            'account', 'account_create', 'account_settings', 'senderAccess',
-            'ipBlacklistSettings', 'aiExtractSettings', 'webhook',
-            'telegram', 'bark', 'snapshot', 'statistics', 'database',
-            'workerconfig', 'maintenance_tasks', 'appearance', 'adminAccount', 'about',
+            'mails', 'sendBox', 'sendMail', 'account', 'account_settings', 'senderAccess',
+            'ipBlacklistSettings', 'telegram', 'bark', 'snapshot', 'statistics', 'maintenance_tasks',
         ]))
     })
 
     it('migrates duplicate and legacy setup tabs without stranding existing sessions', () => {
         for (const tab of ['qucickSetup', 'quickSetup', 'maintenance']) {
-            expect(normalizeAdminSection(tab)).toBe('database')
+            expect(normalizeAdminSection(tab)).toBe('mails')
         }
         for (const tab of keys) expect(normalizeAdminSection(tab)).toBe(tab)
         expect(normalizeAdminSection('removed')).toBe('mails')
@@ -27,11 +24,13 @@ describe('admin workspace navigation', () => {
     it('separates daily mail from rules and integrations without duplicating pages', () => {
         expect(adminGroups.find(group => group.key === 'mail').items.map(([key]) => key))
             .toEqual(['mails', 'sendMail', 'sendBox'])
-        expect(adminGroups.find(group => group.key === 'notifications').items.map(([key]) => key))
-            .toContain('mailWebhook')
+        expect(keys).not.toEqual(expect.arrayContaining(['aiExtractSettings', 'database', 'workerconfig', 'webhook', 'adminAccount']))
         expect(adminGroups.find(group => group.key === 'rules').items.map(([key]) => key))
             .toContain('account_settings')
-        expect(adminGroups.every(group => group.description)).toBe(true)
+        for (const removed of ['account_create', 'unknow', 'aiExtractSettings', 'mailWebhook', 'webhook', 'database', 'workerconfig', 'appearance', 'adminAccount', 'about']) {
+            expect(keys).not.toContain(removed)
+            expect(normalizeAdminSection(removed)).toBe('mails')
+        }
     })
 
     it('gives mobile select groups unique stable keys across locale changes', () => {

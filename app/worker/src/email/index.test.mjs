@@ -19,6 +19,15 @@ hooks.deregister();
 
 const raw = "From: sender@example.com\r\nTo: inbox@example.com\r\n\r\nTest mail";
 
+test("catch-all receives an unregistered mailbox even with the legacy reject-unknown setting", async () => {
+    const DB = createD1();
+    DB.sqlite.exec("CREATE TABLE raw_mails (source TEXT, address TEXT, raw TEXT, message_id TEXT); CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE address (id INTEGER PRIMARY KEY, name TEXT);");
+    DB.sqlite.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(CONSTANTS.EMAIL_RULE_SETTINGS_KEY, JSON.stringify({ blockReceiveUnknowAddressEmail: true }));
+    assert.deepEqual(await deliver({ DB }), []);
+    assert.equal(DB.sqlite.prepare("SELECT COUNT(*) AS n FROM address").get().n, 0);
+    assert.equal(DB.sqlite.prepare("SELECT address FROM raw_mails").get().address, "inbox@example.com");
+});
+
 async function deliver(env) {
     const rejected = [];
     await email({

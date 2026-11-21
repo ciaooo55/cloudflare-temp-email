@@ -2,7 +2,7 @@
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useMessage } from 'naive-ui';
 import { useScopedI18n } from '@/i18n/app'
-import { CloudDownloadRound, ReplyFilled, ForwardFilled, FullscreenRound, ImageRound } from '@vicons/material'
+import { CloudDownloadRound, ReplyFilled, ForwardFilled, FullscreenRound, ImageRound } from './mail-icons'
 import ShadowHtmlComponent from "./ShadowHtmlComponent.vue";
 import AiExtractInfo from "./AiExtractInfo.vue";
 import { getDownloadEmlUrl } from '../utils/email-parser';
@@ -110,6 +110,7 @@ watch(() => props.mail.id, () => {
 
 const plainText = computed(() => props.mail.text?.trim()
   ? props.mail.text : htmlToPlainText(processedMail.value.message));
+const hasHtml = computed(() => Boolean(props.mail.message?.trim()));
 
 const processedMail = computed(() => {
   if (showRemoteImages.value) {
@@ -165,31 +166,18 @@ const handleSaveToS3 = async (filename, blob) => {
 <template>
   <div class="mail-content-renderer">
     <AiExtractInfo :key="mail.id" :metadata="mail.metadata" />
-    <!-- 邮件信息标签 -->
-    <n-space>
-      <n-tag type="info">
-        ID: {{ mail.id }}
-      </n-tag>
-      <n-tag type="info">
-        {{ utcToLocalDate(mail.created_at, useUTCDate) }}
-      </n-tag>
-      <n-tag type="info">
-        FROM: {{ mail.source }}
-      </n-tag>
-      <n-tag type="info" class="mail-address">
-        {{ t('originalSender') }}: {{ mail.originalSource || mail.source }}
-      </n-tag>
-      <n-tag v-if="showEMailTo" type="info" class="mail-address">
-        TO: {{ mail.address }}
-      </n-tag>
-      <n-tag v-if="originalRecipient" type="info" class="mail-address">
-        {{ t('originalRecipient') }}: {{ originalRecipient }}
+    <dl class="message-addresses">
+      <div><dt>From</dt><dd>{{ mail.source }}</dd></div>
+      <div><dt>{{ t('originalSender') }}</dt><dd>{{ mail.originalSource || mail.source }}</dd></div>
+      <div v-if="showEMailTo"><dt>To</dt><dd>{{ mail.address }}</dd></div>
+      <div v-if="originalRecipient"><dt>{{ t('originalRecipient') }}</dt><dd>{{ originalRecipient }}
         <n-button text size="tiny" type="primary" style="margin-left: 4px;" @click="copyOriginalRecipient">
           {{ t('copy') }}
         </n-button>
-      </n-tag>
-
-      <!-- 操作按钮 -->
+      </dd></div>
+      <div><dt>Date</dt><dd>{{ utcToLocalDate(mail.created_at, useUTCDate) }}</dd></div>
+    </dl>
+    <n-space class="message-actions" size="small">
       <n-popconfirm v-if="enableUserDeleteEmail" @positive-click="handleDelete">
         <template #trigger>
           <n-button tertiary type="error" size="small">{{ t('delete') }}</n-button>
@@ -207,7 +195,7 @@ const handleSaveToS3 = async (filename, blob) => {
         {{ mail.is_unread === 1 ? t('markAsRead') : t('markAsUnread') }}
       </n-button>
 
-      <n-button tag="a" target="_blank" tertiary type="info" size="small" :download="mail.id + '.eml'"
+      <n-button tag="a" target="_blank" tertiary type="info" size="small" :download="mail.id + (mail.rawFormat === 'json' ? '.json' : '.eml')"
         :href="emlUrl">
         <template #icon>
           <n-icon :component="CloudDownloadRound" />
@@ -229,11 +217,11 @@ const handleSaveToS3 = async (filename, blob) => {
         {{ t('forward') }}
       </n-button>
 
-      <n-button size="small" tertiary type="info" @click="showTextMail = !showTextMail">
+      <n-button v-if="hasHtml" size="small" tertiary type="info" @click="showTextMail = !showTextMail">
         {{ showTextMail ? t('showHtmlMail') : t('showTextMail') }}
       </n-button>
 
-      <n-button v-if="!showRemoteImages" size="small" tertiary type="primary" @click="handleLoadRemoteImages">
+      <n-button v-if="hasHtml && !showRemoteImages" size="small" tertiary type="primary" @click="handleLoadRemoteImages">
         <template #icon><n-icon :component="ImageRound" /></template>
         {{ t('loadRemoteImages') }}
       </n-button>
@@ -257,7 +245,7 @@ const handleSaveToS3 = async (filename, blob) => {
 
     <!-- 邮件内容 -->
     <div class="mail-content" :class="{ 'dark-mode': isDark }">
-      <pre v-if="showTextMail" class="mail-text">{{ plainText }}</pre>
+      <pre v-if="showTextMail || !hasHtml" class="mail-text">{{ plainText }}</pre>
       <iframe v-else-if="useIframeShowMail" :srcdoc="processedMail.message" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" :title="mail.subject" class="mail-iframe">
       </iframe>
       <ShadowHtmlComponent v-else :key="mail.id" :htmlContent="processedMail.message" :isDark="isDark" class="mail-html" />
@@ -268,7 +256,7 @@ const handleSaveToS3 = async (filename, blob) => {
     style="height: 100vh;">
     <n-drawer-content :title="mail.subject" closable>
       <div class="fullscreen-mail-content" :class="{ 'dark-mode': isDark }">
-        <pre v-if="showTextMail" class="mail-text">{{ plainText }}</pre>
+        <pre v-if="showTextMail || !hasHtml" class="mail-text">{{ plainText }}</pre>
         <iframe v-else-if="useIframeShowMail" :srcdoc="processedMail.message" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" :title="mail.subject" class="mail-iframe">
         </iframe>
         <ShadowHtmlComponent v-else :key="mail.id" :htmlContent="processedMail.message" :isDark="isDark" class="mail-html" />
@@ -315,6 +303,12 @@ const handleSaveToS3 = async (filename, blob) => {
   flex-direction: column;
   gap: 16px;
 }
+.message-addresses { margin: 0; display: grid; gap: 8px; padding-bottom: 20px; border-bottom: 1px solid var(--mail-border, #272d39); }
+.message-addresses > div { display: grid; grid-template-columns: minmax(65px, auto) minmax(0, 1fr); gap: 14px; font-size: 12px; }
+.message-addresses dt { color: #8590a6; }
+.message-addresses dd { margin: 0; overflow-wrap: anywhere; color: #bdc6d9; }
+.message-actions :deep(.n-button) { font-size: 11px; }
+.mail-content-renderer :deep(.n-alert) { border-radius: 10px; }
 
 .mail-address { max-width: 100%; height: auto; overflow-wrap: anywhere; }
 .mail-address :deep(.n-tag__content) { white-space: normal; }
@@ -331,6 +325,9 @@ const handleSaveToS3 = async (filename, blob) => {
 }
 
 .mail-text {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.9;
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;

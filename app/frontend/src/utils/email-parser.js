@@ -1,4 +1,15 @@
 import PostalMime from 'postal-mime';
+import { decodeHTML } from 'entities';
+import { extractCode, stripVerificationHtml, joinSubjectAndBody } from '../../../shared/verification-code';
+
+function addVerificationCode(item) {
+    let metadata;
+    try { metadata = JSON.parse(item.metadata || '{}'); } catch { metadata = {}; }
+    if (metadata?.ai_extract?.type === 'auth_code' && metadata.ai_extract.result) return;
+    const body = item.text || decodeHTML(stripVerificationHtml(item.message || ''));
+    const code = extractCode(joinSubjectAndBody(item.subject, body));
+    if (code) item.metadata = JSON.stringify({ ...metadata, ai_extract: { type: 'auth_code', result: code, result_text: '' } });
+}
 
 function humanFileSize(size) {
     const i = size === 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
@@ -30,7 +41,7 @@ export async function processItem(item) {
             item.source = `${parsedEmail.from.name} <${parsedEmail.from.address}>`;
         }
         item.subject = parsedEmail.subject || 'No Subject';
-        item.message = parsedEmail.html || parsedEmail.text || '';
+        item.message = parsedEmail.html || '';
         item.text = parsedEmail.text || '';
         item.attachments = parsedEmail.attachments?.map((a_item) => {
             const blob = new Blob(
@@ -50,6 +61,7 @@ export async function processItem(item) {
                 blob: blob
             }
         }) || [];
+        addVerificationCode(item);
         return item;
     } catch (error) {
         console.error('Error parsing email with PostalMime', error);
@@ -61,8 +73,8 @@ export async function processItem(item) {
         const parsedEmail = parse_message(item.raw);
         item.source = parsedEmail.sender || item.source;
         item.subject = parsedEmail.subject || 'No Subject';
-        item.message = parsedEmail.body_html || parsedEmail.text || item.raw;
-        item.text = parsedEmail.text || '';
+        item.message = parsedEmail.body_html || '';
+        item.text = parsedEmail.text || (item.message ? '' : item.raw || '');
         item.attachments = parsedEmail.attachments?.map((a_item) => {
             const blob = new Blob(
                 [a_item.content],
@@ -83,9 +95,38 @@ export async function processItem(item) {
     } catch (error) {
         console.error('Error parsing email with mail-parser-wasm', error);
         item.subject = 'No Subject';
-        item.message = item.raw;
+        item.message = '';
+        item.text = item.raw || '';
+        item.attachments = [];
     }
+    addVerificationCode(item);
     return item;
+}
+
+export function refreshParsedItem(cached, incoming) {
+    const item = { ...cached, ...incoming, source: cached.source,
+        originalSource: incoming.source || cached.originalSource };
+    addVerificationCode(item);
+    return item;
+}
+
+export function processSentItem(item) {
+    let data;
+    try { data = JSON.parse(item.raw); } catch { return processItem(item); }
+    const content = Array.isArray(data.content) ? data.content : [];
+    const text = data.version === 'v2' ? (data.is_html ? '' : data.content || '')
+        : content.find(part => part.type === 'text/plain')?.value || '';
+    const html = data.version === 'v2' ? (data.is_html ? data.content || '' : '')
+        : content.find(part => part.type === 'text/html')?.value || '';
+    const recipients = data.version === 'v2' ? data.to_mail || ''
+        : (data.personalizations || []).flatMap(part => (part.to || []).map(to => to.email)).join(', ');
+    const senderName = data.from_name || data.from?.name;
+    const sender = data.from?.email || item.address;
+    const parsed = { ...item, subject: data.subject || 'No Subject', source: senderName ? senderName + ' <' + sender + '>' : sender,
+        originalSource: item.address, originalRecipient: recipients, listSource: recipients,
+        text, message: html, attachments: [], rawFormat: 'json' };
+    addVerificationCode(parsed);
+    return parsed;
 }
 
 export function getDownloadEmlUrl(raw) {

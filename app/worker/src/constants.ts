@@ -14,7 +14,6 @@ export const CONSTANTS = {
     NO_LIMIT_SEND_ADDRESS_LIST_KEY: 'no_limit_send_address_list',
     EMAIL_RULE_SETTINGS_KEY: 'email_rule_settings',
     IP_BLACKLIST_SETTINGS_KEY: 'ip_blacklist_settings',
-    AI_EXTRACT_SETTINGS_KEY: 'ai_extract_settings',
     TELEGRAM_BOTS_KEY: 'telegram_bots',
     BARK_SETTINGS_KEY: 'bark_settings',
     SNAPSHOT_SETTINGS_KEY: 'snapshot_settings',
@@ -22,11 +21,8 @@ export const CONSTANTS = {
     // KV
     TG_KV_PREFIX: "temp-mail-telegram",
     TG_KV_SETTINGS_KEY: "temp-mail-telegram-settings",
-    WEBHOOK_KV_SETTINGS_KEY: "temp-mail-webhook-settings",
-    WEBHOOK_KV_USER_SETTINGS_KEY: "temp-mail-webhook-user-settings",
     EMAIL_KV_BLACK_LIST: "temp-mail-email-black-list",
     EMAIL_MAILBOX_BLOCK_RULES: "email_mailbox_block_rules",
-    WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY: "temp-mail-webhook-admin-mail-settings",
     SEND_MAIL_LIMIT_COUNT_KEY_PREFIX: "send_mail_limit_count:",
     SEND_MAIL_LIMIT_CONFIG_KEY: "send_mail_limit_config",
 }

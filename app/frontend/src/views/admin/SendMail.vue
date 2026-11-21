@@ -1,10 +1,8 @@
 <script setup>
-import '@wangeditor/editor/dist/css/style.css'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import { defineAsyncComponent } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { useSessionStorage } from '@vueuse/core'
-import { SendRound } from '@vicons/material'
+import { SendRound } from '../../components/mail-icons'
 import { api } from '../../api'
 import ShadowHtmlComponent from '../../components/ShadowHtmlComponent.vue'
 import { useGlobalState } from '../../store'
@@ -12,20 +10,18 @@ import { blockRemoteContent } from '../../utils/remote-content-policy'
 import { sanitizeHtml } from '../../utils/sanitize-html'
 
 const message = useMessage()
+const loadEditor = async () => {
+    const [, editor] = await Promise.all([
+        import('@wangeditor/editor/dist/css/style.css'), import('@wangeditor/editor-for-vue')
+    ])
+    return editor
+}
+const Editor = defineAsyncComponent(async () => (await loadEditor()).Editor)
+const Toolbar = defineAsyncComponent(async () => (await loadEditor()).Toolbar)
 const isPreview = ref(false)
 const editorRef = shallowRef()
 const sending = ref(false)
-const { isDark } = useGlobalState()
-
-const sendMailModel = useSessionStorage('sendMailByAdminModel', {
-    fromName: "",
-    fromMail: "",
-    toName: "",
-    toMail: "",
-    subject: "",
-    contentType: 'text',
-    content: "",
-});
+const { isDark, sendMailModel } = useGlobalState()
 
 const { t } = useScopedI18n('views.admin.SendMail')
 

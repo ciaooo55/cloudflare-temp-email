@@ -1,327 +1,89 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
-
-import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
-const { loading, openSettings } = useGlobalState()
-const message = useMessage()
-
 const { t } = useScopedI18n('views.admin.AccountSettings')
-
-const addressBlockList = ref([])
-const sendAddressBlockList = ref([])
-const noLimitSendAddressList = ref([])
-const verifiedAddressList = ref([])
-const fromBlockList = ref([])
-const blockedMailboxList = ref([])
-const mailboxDomainBlockList = ref([])
-const emailRuleSettings = ref({
-    blockReceiveUnknowAddressEmail: false
-})
-const ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE = {
-    FOLLOW_ENV: 'follow_env',
-    FORCE_ENABLE: 'force_enable',
-    FORCE_DISABLE: 'force_disable'
+const message = useMessage()
+const settings = ref(null)
+const busy = ref(false)
+const fetchData = async () => {
+  const response = await api.fetch('/admin/account_settings')
+  settings.value = {
+    ...response,
+    blockList: response.blockList || [],
+    sendBlockList: response.sendBlockList || [],
+    verifiedAddressList: response.verifiedAddressList || [],
+    noLimitSendAddressList: response.noLimitSendAddressList || [],
+    fromBlockList: response.fromBlockList || [],
+    blockedMailboxList: response.blockedMailboxList || [],
+    mailboxDomainBlockList: response.mailboxDomainBlockList || [],
+    sendMailLimitConfig: { dailyEnabled: false, monthlyEnabled: false, dailyLimit: 100, monthlyLimit: 3000, ...response.sendMailLimitConfig }
+  }
 }
-const DEFAULT_SEND_MAIL_DAILY_LIMIT = 100
-const DEFAULT_SEND_MAIL_MONTHLY_LIMIT = 3000
-const addressCreationSubdomainMatchMode = ref(ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FOLLOW_ENV)
-const sendMailDailyLimitEnabled = ref(false)
-const sendMailMonthlyLimitEnabled = ref(false)
-const sendMailDailyLimit = ref(DEFAULT_SEND_MAIL_DAILY_LIMIT)
-const sendMailMonthlyLimit = ref(DEFAULT_SEND_MAIL_MONTHLY_LIMIT)
-// 打开开关时若无值，填入默认值，避免空值提交
-const onDailyLimitToggle = (v) => {
-    if (v && sendMailDailyLimit.value == null) sendMailDailyLimit.value = DEFAULT_SEND_MAIL_DAILY_LIMIT
-}
-const onMonthlyLimitToggle = (v) => {
-    if (v && sendMailMonthlyLimit.value == null) sendMailMonthlyLimit.value = DEFAULT_SEND_MAIL_MONTHLY_LIMIT
-}
-const addressCreationSubdomainMatchStatus = ref({
-    envConfigured: false,
-    envEnabled: false,
-    storedEnabled: undefined,
-    effectiveEnabled: false
-})
-const subdomainMatchEnvLocked = computed(() => {
-    return addressCreationSubdomainMatchStatus.value.envConfigured
-        && !addressCreationSubdomainMatchStatus.value.envEnabled
-})
-const subdomainMatchModeOptions = computed(() => {
-    return [
-        {
-            value: ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FOLLOW_ENV,
-            label: t('create_address_subdomain_match_follow_env')
-        },
-        {
-            value: ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FORCE_ENABLE,
-            label: t('create_address_subdomain_match_force_enable')
-        },
-        {
-            value: ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FORCE_DISABLE,
-            label: t('create_address_subdomain_match_force_disable')
-        }
-    ]
-})
-
-const getSubdomainMatchModeByStoredValue = (storedEnabled) => {
-    if (storedEnabled === true) {
-        return ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FORCE_ENABLE
-    }
-    if (storedEnabled === false) {
-        return ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FORCE_DISABLE
-    }
-    return ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FOLLOW_ENV
-}
-
-const getSubdomainMatchPayloadValue = (mode) => {
-    if (mode === ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FORCE_ENABLE) {
-        return true
-    }
-    if (mode === ADDRESS_CREATION_SUBDOMAIN_MATCH_MODE.FORCE_DISABLE) {
-        return false
-    }
-    return null
-}
-
-const getSendMailLimitPayload = () => {
-    return {
-        dailyEnabled: sendMailDailyLimitEnabled.value,
-        monthlyEnabled: sendMailMonthlyLimitEnabled.value,
-        dailyLimit: sendMailDailyLimitEnabled.value ? sendMailDailyLimit.value : null,
-        monthlyLimit: sendMailMonthlyLimitEnabled.value ? sendMailMonthlyLimit.value : null
-    }
-}
-
-const isValidSendMailLimit = (value) => {
-    return Number.isInteger(value) && value >= -1
-}
-
-const validateSendMailLimit = () => {
-    if (sendMailDailyLimitEnabled.value && !isValidSendMailLimit(sendMailDailyLimit.value)) {
-        message.error(t('send_mail_daily_limit_invalid'))
-        return false
-    }
-    if (sendMailMonthlyLimitEnabled.value && !isValidSendMailLimit(sendMailMonthlyLimit.value)) {
-        message.error(t('send_mail_monthly_limit_invalid'))
-        return false
-    }
-    return true
-}
-
-const fetchData = async ({ suppressErrorMessage = false } = {}) => {
-    try {
-        const res = await api.fetch(`/admin/account_settings`)
-        addressBlockList.value = res.blockList || []
-        sendAddressBlockList.value = res.sendBlockList || []
-        verifiedAddressList.value = res.verifiedAddressList || []
-        fromBlockList.value = res.fromBlockList || []
-        blockedMailboxList.value = res.blockedMailboxList || []
-        mailboxDomainBlockList.value = res.mailboxDomainBlockList || []
-        noLimitSendAddressList.value = res.noLimitSendAddressList || []
-        emailRuleSettings.value = {
-            blockReceiveUnknowAddressEmail: res.emailRuleSettings?.blockReceiveUnknowAddressEmail || false
-        }
-        addressCreationSubdomainMatchStatus.value = {
-            envConfigured: !!res.addressCreationSubdomainMatchStatus?.envConfigured,
-            envEnabled: !!res.addressCreationSubdomainMatchStatus?.envEnabled,
-            storedEnabled: typeof res.addressCreationSubdomainMatchStatus?.storedEnabled === 'boolean'
-                ? res.addressCreationSubdomainMatchStatus.storedEnabled
-                : undefined,
-            effectiveEnabled: !!res.addressCreationSubdomainMatchStatus?.effectiveEnabled
-        }
-        addressCreationSubdomainMatchMode.value = getSubdomainMatchModeByStoredValue(
-            addressCreationSubdomainMatchStatus.value.storedEnabled
-        )
-        const sendMailLimitConfig = res.sendMailLimitConfig
-        sendMailDailyLimitEnabled.value = !!sendMailLimitConfig?.dailyEnabled
-        sendMailMonthlyLimitEnabled.value = !!sendMailLimitConfig?.monthlyEnabled
-        sendMailDailyLimit.value = sendMailDailyLimitEnabled.value
-            ? sendMailLimitConfig.dailyLimit
-            : null
-        sendMailMonthlyLimit.value = sendMailMonthlyLimitEnabled.value
-            ? sendMailLimitConfig.monthlyLimit
-            : null
-    } catch (error) {
-        if (!suppressErrorMessage) {
-            message.error(error.message || "error");
-        }
-        throw error
-    }
-}
-
 const save = async () => {
-    if (!validateSendMailLimit()) {
-        return
-    }
-    try {
-        const payload = {
-            blockList: addressBlockList.value || [],
-            sendBlockList: sendAddressBlockList.value || [],
-            verifiedAddressList: verifiedAddressList.value || [],
-            fromBlockList: fromBlockList.value || [],
-            blockedMailboxList: blockedMailboxList.value || [],
-            mailboxDomainBlockList: mailboxDomainBlockList.value || [],
-            noLimitSendAddressList: noLimitSendAddressList.value || [],
-            emailRuleSettings: emailRuleSettings.value,
-            addressCreationSettings: {
-                enableSubdomainMatch: getSubdomainMatchPayloadValue(addressCreationSubdomainMatchMode.value)
-            },
-            sendMailLimitConfig: getSendMailLimitPayload()
-        }
-        await api.fetch(`/admin/account_settings`, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        })
-        message.success(t('successTip'))
-    } catch (error) {
-        message.error(error.message || "error");
-        return
-    }
-
-    try {
-        await fetchData({ suppressErrorMessage: true })
-    } catch (error) {
-        console.warn('Failed to refresh account settings after save', error)
-        message.warning(error.message || "error");
-    }
+  if (!settings.value || busy.value) return
+  busy.value = true
+  try {
+    await api.fetch('/admin/account_settings', { method: 'POST', body: JSON.stringify(settings.value) })
+    message.success(t('successTip'))
+    await fetchData()
+  } catch (error) { message.error(error.message || 'error') }
+  finally { busy.value = false }
 }
-
-
-onMounted(async () => {
-    try {
-        await fetchData();
-    } catch {
-        // 首次加载失败时，错误提示已经在 fetchData 内部统一处理，这里无需重复提示。
-    }
-})
+onMounted(async () => { try { await fetchData() } catch (error) { message.error(error.message || 'error') } })
 </script>
-
 <template>
-    <div class="center">
-        <n-card :bordered="false" embedded style="max-width: 600px;">
-            <n-alert :show-icon="false" :bordered="false" type="warning" style="margin-bottom: 10px;">
-                <span>{{ t("tip") }}</span>
-            </n-alert>
-            <n-flex justify="end">
-                <n-button @click="save" type="primary" :loading="loading">
-                    {{ t('save') }}
-                </n-button>
-            </n-flex>
-            <n-form-item-row :label="t('address_block_list')" :feedback="t('manualInputPrompt')">
-                <n-select v-model:value="addressBlockList" filterable multiple tag
-                    :placeholder="t('address_block_list_placeholder')">
-                </n-select>
-            </n-form-item-row>
-            <n-form-item-row :label="t('send_address_block_list')" :feedback="t('manualInputPrompt')">
-                <n-select v-model:value="sendAddressBlockList" filterable multiple tag
-                    :placeholder="t('address_block_list_placeholder')">
-                </n-select>
-            </n-form-item-row>
-            <n-form-item-row :label="t('noLimitSendAddressList')" :feedback="t('manualInputPrompt')">
-                <n-select v-model:value="noLimitSendAddressList" filterable multiple tag
-                    :placeholder="t('noLimitSendAddressList')">
-                </n-select>
-            </n-form-item-row>
-            <n-form-item-row :label="t('verified_address_list')" :feedback="t('manualInputPrompt')">
-                <n-select v-model:value="verifiedAddressList" filterable multiple tag
-                    :placeholder="t('verified_address_list')">
-                </n-select>
-            </n-form-item-row>
-            <n-form-item-row :label="t('send_mail_limit')">
-                <n-flex vertical style="width: 100%;">
-                    <n-flex justify="space-between" align="center">
-                        <n-text>{{ t('send_mail_daily_limit') }}</n-text>
-                        <n-flex align="center">
-                            <n-switch v-model:value="sendMailDailyLimitEnabled" :round="false"
-                                @update:value="onDailyLimitToggle" />
-                            <n-input-number
-                                v-model:value="sendMailDailyLimit"
-                                :disabled="!sendMailDailyLimitEnabled"
-                                :min="-1"
-                                :placeholder="t('send_mail_limit_disabled_placeholder')"
-                            />
-                        </n-flex>
-                    </n-flex>
-                    <n-flex justify="space-between" align="center">
-                        <n-text>{{ t('send_mail_monthly_limit') }}</n-text>
-                        <n-flex align="center">
-                            <n-switch v-model:value="sendMailMonthlyLimitEnabled" :round="false"
-                                @update:value="onMonthlyLimitToggle" />
-                            <n-input-number
-                                v-model:value="sendMailMonthlyLimit"
-                                :disabled="!sendMailMonthlyLimitEnabled"
-                                :min="-1"
-                                :placeholder="t('send_mail_limit_disabled_placeholder')"
-                            />
-                        </n-flex>
-                    </n-flex>
-                    <n-text depth="3">
-                        {{ t('send_mail_limit_tip') }}
-                    </n-text>
-                </n-flex>
-            </n-form-item-row>
-            <n-form-item-row :label="t('fromBlockList')" :feedback="t('manualInputPrompt')">
-                <n-select v-model:value="fromBlockList" filterable multiple tag :placeholder="t('fromBlockList')">
-                </n-select>
-            </n-form-item-row>
-            <n-form-item-row :label="t('blockedMailboxList')" :feedback="t('manualInputPrompt')">
-                <n-select v-model:value="blockedMailboxList" filterable multiple tag :placeholder="t('blockedMailboxList')" />
-            </n-form-item-row>
-            <n-form-item-row :label="t('mailboxDomainBlockList')">
-                <n-dynamic-input v-model:value="mailboxDomainBlockList" :on-create="() => ({ address: '', domain: '' })">
-                    <template #default="{ value }">
-                        <n-space :wrap="false">
-                            <n-input v-model:value="value.address" :placeholder="t('mailboxAddress')" :aria-label="t('mailboxAddress')" />
-                            <n-input v-model:value="value.domain" :placeholder="t('blockedSenderDomain')" :aria-label="t('blockedSenderDomain')" />
-                        </n-space>
-                    </template>
-                </n-dynamic-input>
-            </n-form-item-row>
-            <n-form-item-row :label="t('block_receive_unknow_address_email')">
-                <n-switch v-model:value="emailRuleSettings.blockReceiveUnknowAddressEmail" :round="false" />
-            </n-form-item-row>
-            <n-form-item-row :label="t('create_address_subdomain_match')">
-                <n-flex vertical style="width: 100%;">
-                    <n-radio-group v-model:value="addressCreationSubdomainMatchMode">
-                        <n-space vertical size="small">
-                            <n-radio v-for="item in subdomainMatchModeOptions" :key="item.value" :value="item.value">
-                                {{ item.label }}
-                            </n-radio>
-                        </n-space>
-                    </n-radio-group>
-                    <n-text depth="3">
-                        {{ t('create_address_subdomain_match_tip') }}
-                    </n-text>
-                    <n-text depth="3">
-                        {{ t('create_address_subdomain_match_note') }}
-                    </n-text>
-                    <n-text depth="3">
-                        {{ t('create_address_subdomain_match_follow_env_note') }}
-                    </n-text>
-                    <n-alert v-if="subdomainMatchEnvLocked" type="warning" :show-icon="false" :bordered="false">
-                        {{ t('create_address_subdomain_match_env_locked') }}
-                    </n-alert>
-                </n-flex>
-            </n-form-item-row>
-            <n-flex justify="end" style="margin-top: 12px;">
-                <n-button @click="save" type="primary" :loading="loading">
-                    {{ t('save') }}
-                </n-button>
-            </n-flex>
-        </n-card>
-    </div>
-
+  <div v-if="settings" class="rules-panel">
+    <section class="rule-section">
+      <h2>{{ t('fromBlockList') }}</h2>
+      <p>{{ t('manualInputPrompt') }}</p>
+      <n-select v-model:value="settings.fromBlockList" filterable multiple tag :placeholder="t('fromBlockList')" :aria-label="t('fromBlockList')" />
+    </section>
+    <section class="rule-section">
+      <h2>{{ t('mailboxDomainBlockList') }}</h2>
+      <n-dynamic-input v-model:value="settings.mailboxDomainBlockList" :on-create="() => ({ address: '', domain: '' })">
+        <template #default="{ value }">
+          <div class="domain-rule">
+            <n-input v-model:value="value.address" :placeholder="t('mailboxAddress')" :aria-label="t('mailboxAddress')" />
+            <n-input v-model:value="value.domain" :placeholder="t('blockedSenderDomain')" :aria-label="t('blockedSenderDomain')" />
+          </div>
+        </template>
+      </n-dynamic-input>
+    </section>
+    <section class="rule-section">
+      <h2>{{ t('blockedMailboxList') }}</h2>
+      <p>{{ t('manualInputPrompt') }}</p>
+      <n-select v-model:value="settings.blockedMailboxList" filterable multiple tag :placeholder="t('blockedMailboxList')" :aria-label="t('blockedMailboxList')" />
+    </section>
+    <n-collapse class="send-limits">
+      <n-collapse-item name="send-limits" :title="t('send_mail_limit')">
+        <n-form-item-row :label="t('send_address_block_list')">
+          <n-select v-model:value="settings.sendBlockList" filterable multiple tag />
+        </n-form-item-row>
+        <n-form-item-row :label="t('noLimitSendAddressList')">
+          <n-select v-model:value="settings.noLimitSendAddressList" filterable multiple tag />
+        </n-form-item-row>
+        <n-form-item-row :label="t('send_mail_daily_limit')">
+          <n-switch v-model:value="settings.sendMailLimitConfig.dailyEnabled" />
+          <n-input-number v-model:value="settings.sendMailLimitConfig.dailyLimit" :min="-1" :precision="0" :disabled="!settings.sendMailLimitConfig.dailyEnabled" />
+        </n-form-item-row>
+        <n-form-item-row :label="t('send_mail_monthly_limit')">
+          <n-switch v-model:value="settings.sendMailLimitConfig.monthlyEnabled" />
+          <n-input-number v-model:value="settings.sendMailLimitConfig.monthlyLimit" :min="-1" :precision="0" :disabled="!settings.sendMailLimitConfig.monthlyEnabled" />
+        </n-form-item-row>
+      </n-collapse-item>
+    </n-collapse>
+    <div class="rules-actions"><n-button type="primary" :loading="busy" @click="save">{{ t('save') }}</n-button></div>
+  </div>
 </template>
-
 <style scoped>
-.center {
-    display: flex;
-    text-align: left;
-    place-items: center;
-    justify-content: center;
-    margin: 20px;
-}
+.rules-panel { max-width: 820px; }
+.rule-section { padding: 22px; border: 1px solid var(--mail-border); border-radius: 12px; background: var(--mail-panel); margin-bottom: 16px; }
+.rule-section h2 { margin: 0 0 14px; font-size: 14px; font-weight: 550; }
+.rule-section p { font-size: 12px; color: var(--mail-muted); margin: -6px 0 15px; }
+.domain-rule { display: flex; gap: 10px; min-width: 0; width: 100%; }
+.rules-actions { display: flex; justify-content: flex-end; padding: 20px 0; }
+.send-limits { padding: 16px 22px; border: 1px solid var(--mail-border); border-radius: 12px; }
+@media (max-width: 767px) { .rule-section { padding: 18px 14px; } .domain-rule { flex-direction: column; } }
 </style>

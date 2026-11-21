@@ -6,22 +6,17 @@ import sendbox_api from './sendbox_api.ts'
 import statistics_api from './statistics_api.ts'
 import account_settings_api from './account_settings_api.ts'
 import cleanup_api from './cleanup_api.ts'
-import webhook_settings from './webhook_settings.ts'
-import mail_webhook_settings from './mail_webhook_settings.ts'
-import worker_config from './worker_config.ts'
 import admin_mail_api from './admin_mail_api.ts'
+import { updateMailReadStatus } from '../mail_read_status.ts'
 import { sendMailbyAdmin, sendMailByBindingAdmin } from './send_mail.ts'
 import db_api from './db_api.ts'
 import ip_blacklist_settings from './ip_blacklist_settings.ts'
-import ai_extract_settings from './ai_extract_settings.ts'
 import notify_settings from './notify_settings.ts'
-import config_api from './config_api.ts'
 
 export const api = new Hono<HonoCustomType>()
 
 // address
 api.get('/admin/address', address_api.listAddresses)
-api.post('/admin/new_address', address_api.createNewAddress)
 api.delete('/admin/delete_address/:id', address_api.deleteAddress)
 api.delete('/admin/clear_inbox/:id', address_api.clearInbox)
 api.delete('/admin/clear_sent_items/:id', address_api.clearSentItems)
@@ -30,9 +25,9 @@ api.post('/admin/address/:id/reset_password', address_api.resetPassword)
 
 // mail api
 api.get('/admin/mails', admin_mail_api.getMails)
-api.get('/admin/mails_unknow', admin_mail_api.getUnknowMails)
 api.get('/admin/mails/:id', admin_mail_api.getMail)
 api.delete('/admin/mails/:id', admin_mail_api.deleteMail)
+api.patch('/admin/mails/:id/read', c => updateMailReadStatus(c))
 
 // address sender
 api.get('/admin/address_sender', address_sender_api.list)
@@ -57,17 +52,6 @@ api.post('/admin/auto_cleanup', cleanup_api.saveCleanup)
 api.get('/admin/scheduled_status', cleanup_api.getScheduledStatus)
 api.post('/admin/cleanup_raw_mails', cleanup_api.cleanupRawMailsNow)
 
-// webhook settings
-api.get('/admin/webhook/settings', webhook_settings.getWebhookSettings)
-api.post('/admin/webhook/settings', webhook_settings.saveWebhookSettings)
-
-// mail webhook settings
-api.get('/admin/mail_webhook/settings', mail_webhook_settings.getWebhookSettings)
-api.post('/admin/mail_webhook/settings', mail_webhook_settings.saveWebhookSettings)
-api.post('/admin/mail_webhook/test', mail_webhook_settings.testWebhookSettings)
-
-// worker config
-api.get('/admin/worker/configs', worker_config.getConfig)
 
 // send mail by admin
 api.post('/admin/send_mail', sendMailbyAdmin)
@@ -80,20 +64,10 @@ api.post('admin/db_migration', db_api.migrate)
 api.get('/admin/storage_status', db_api.getStorageStatus)
 api.post('/admin/storage_import', db_api.importStoragePage)
 
-// generic admin config
-api.get('/admin/config/:key', config_api.get)
-api.post('/admin/config', config_api.save)
-
 // IP blacklist settings
 api.get('/admin/ip_blacklist/settings', ip_blacklist_settings.getIpBlacklistSettings)
 api.post('/admin/ip_blacklist/settings', ip_blacklist_settings.saveIpBlacklistSettings)
 
-// AI extract settings
-api.get('/admin/ai_extract/settings', ai_extract_settings.getAiExtractSettings)
-api.post('/admin/ai_extract/settings', ai_extract_settings.saveAiExtractSettings)
-
-// AI extract custom endpoint test
-api.post('/admin/ai_extract/test', ai_extract_settings.testCustomAiEndpoint)
 
 // notify settings: telegram bots
 api.get('/admin/notify/telegram_bots', notify_settings.listTelegramBots)

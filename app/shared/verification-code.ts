@@ -1,8 +1,15 @@
+export function stripVerificationHtml(html: string): string {
+    return html
+        .replace(/<(style|script)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+        .replace(/<\/?(?:p|div|li|tr|td|th|h[1-6]|blockquote|section|article|br|hr)\b[^>]*>/gi, '\n')
+        .replace(/<[^>]*>/g, '');
+}
+
 /**
  * Local rule-based verification code extraction.
  *
  * Extracts verification codes from email text without calling any AI model,
- * so mail content never leaves the regex engine inside the Worker.
+ * Shared by the browser and Worker; it has no runtime dependencies.
  *
  * Pipeline:
  * 1. Normalize: strip zero-width characters, fold full-width digits and letters,

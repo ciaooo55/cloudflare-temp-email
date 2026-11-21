@@ -21,12 +21,13 @@ END`;
 
 const SETTINGS_KEYS = new Set<string>([
     CONSTANTS.EMAIL_KV_BLACK_LIST, CONSTANTS.TG_KV_SETTINGS_KEY,
-    CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY,
+    // Keep historical mail Webhook values importable until the KV migration is complete.
+    "temp-mail-webhook-settings", "temp-mail-webhook-admin-mail-settings",
 ]);
 const LEGACY_KEYS = new Set([...SETTINGS_KEYS, "telegram:webhook-secret:default"]);
 const LEGACY_RUN_KEYS = new Set(["scheduled:last_run:raw_mails", "scheduled:last_run:auto_cleanup"]);
 const LEGACY_PREFIXES = [
-    `${CONSTANTS.TG_KV_PREFIX}:`, `${CONSTANTS.WEBHOOK_KV_USER_SETTINGS_KEY}:`,
+    `${CONSTANTS.TG_KV_PREFIX}:`, "temp-mail-webhook-user-settings:",
     "snapshot-bind:", "snapshot-bindrev:", "mailhtml:",
 ];
 const CHUNK_BYTES = 750_000;

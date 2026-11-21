@@ -1,598 +1,131 @@
 <script setup>
-import { ref, h, onMounted, watch, computed } from 'vue';
-import { NBadge, useMessage } from 'naive-ui'
+import { h, onMounted, ref, watch } from 'vue'
+import { NButton, NDropdown, useDialog, useMessage } from 'naive-ui'
 import { useScopedI18n } from '@/i18n/app'
-
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 import { hashPassword, utcToLocalDate } from '../../utils'
-import { NButton, NMenu } from 'naive-ui';
-import { MenuFilled } from '@vicons/material'
 import AddressCredentialModal from '../../components/AddressCredentialModal.vue'
 
-const {
-    loading, adminTab, openSettings,
-    adminMailTabAddress, adminSendBoxTabAddress,
-    useUTCDate
-} = useGlobalState()
+const { t, locale } = useScopedI18n('views.admin.Account')
+const { adminTab, adminMailTabAddress, adminSendBoxTabAddress, useUTCDate } = useGlobalState()
 const message = useMessage()
-
-const { t } = useScopedI18n('views.admin.Account')
-
-const showEmailCredential = ref(false)
-const curEmailCredential = ref("")
-const curEmailAddress = ref("")
-const curDeleteAddressId = ref(0);
-const curClearInboxAddressId = ref(0);
-const curClearSentItemsAddressId = ref(0);
-const showResetPassword = ref(false);
-const curResetPasswordAddressId = ref(0);
-const newPassword = ref('');
-
-// Multi-action mode state
-const checkedRowKeys = ref([]);
-const showMultiActionModal = ref(false);
-const multiActionProgress = ref({ percentage: 0, tip: '0/0' });
-const multiActionTitle = ref('');
-
-const selectedCount = computed(() => checkedRowKeys.value.length);
-const showMultiActionBar = computed(() => checkedRowKeys.value.length > 0);
-
-const addressQuery = ref("")
-const sortBy = ref("")
-const sortOrder = ref("")
-
-const data = ref([])
+const dialog = useDialog()
+const rows = ref([])
 const count = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
-const showDeleteAccount = ref(false)
-const showClearInbox = ref(false)
-const showClearSentItems = ref(false)
-
-const showCredential = async (row) => {
-    try {
-        curEmailAddress.value = row.name
-        curEmailCredential.value = await api.adminShowAddressCredential(row.id)
-        showEmailCredential.value = true
-    } catch (error) {
-        message.error(error.message || "error");
-        showEmailCredential.value = false
-        curEmailCredential.value = ""
-        curEmailAddress.value = ""
-    }
-}
-
-const deleteEmail = async () => {
-    try {
-        await api.adminDeleteAddress(curDeleteAddressId.value)
-        message.success(t("success"));
-        await fetchData()
-    } catch (error) {
-        message.error(error.message || "error");
-    } finally {
-        showDeleteAccount.value = false
-    }
-}
-
-const clearInbox = async () => {
-    try {
-        await api.fetch(`/admin/clear_inbox/${curClearInboxAddressId.value}`, {
-            method: 'DELETE'
-        });
-        message.success(t("success"));
-        await fetchData()
-    } catch (error) {
-        message.error(error.message || "error");
-    } finally {
-        showClearInbox.value = false
-    }
-}
-
-const clearSentItems = async () => {
-    try {
-        await api.fetch(`/admin/clear_sent_items/${curClearSentItemsAddressId.value}`, {
-            method: 'DELETE'
-        });
-        message.success(t("success"));
-        await fetchData()
-    } catch (error) {
-        message.error(error.message || "error");
-    } finally {
-        showClearSentItems.value = false
-    }
-}
-
-const resetPassword = async () => {
-    const normalizedPassword = newPassword.value.trim()
-    if (!normalizedPassword) {
-        message.error(t("newPassword"));
-        return;
-    }
-    try {
-        await api.fetch(`/admin/address/${curResetPasswordAddressId.value}/reset_password`, {
-            method: 'POST',
-            body: JSON.stringify({
-                password: await hashPassword(normalizedPassword)
-            })
-        });
-        message.success(t("passwordResetSuccess"));
-        newPassword.value = '';
-        showResetPassword.value = false;
-    } catch (error) {
-        message.error(error.message || "error");
-    }
-}
-
-// Multi-action mode functions
-const multiActionSelectAll = () => {
-    checkedRowKeys.value = data.value.map(item => item.id);
-}
-
-const multiActionUnselectAll = () => {
-    checkedRowKeys.value = [];
-}
-
-// 通用批量操作函数
-const executeBatchOperation = async ({
-    shouldSkip = () => false,
-    apiCall,
-    title,
-    operationName = 'operation'
-}) => {
-    try {
-        loading.value = true;
-        const selectedAddresses = data.value.filter((item) =>
-            checkedRowKeys.value.includes(item.id)
-        );
-
-        if (selectedAddresses.length === 0) {
-            message.error(t('pleaseSelectAddress'));
-            return;
-        }
-
-        const failedIds = [];
-        const totalCount = selectedAddresses.length;
-
-        multiActionProgress.value = {
-            percentage: 0,
-            tip: `0/${totalCount}`
-        };
-        multiActionTitle.value = title;
-        showMultiActionModal.value = true;
-
-        for (const [index, address] of selectedAddresses.entries()) {
-            try {
-                if (!shouldSkip(address)) {
-                    await apiCall(address.id);
-                }
-            } catch (error) {
-                console.error(`${operationName} failed for address ${address.id}:`, error);
-                failedIds.push(address.id);
-            }
-            multiActionProgress.value = {
-                percentage: Math.floor((index + 1) / totalCount * 100),
-                tip: `${index + 1}/${totalCount}`
-            };
-        }
-
-        await fetchData();
-        checkedRowKeys.value = failedIds;
-        message.success(t("success"));
-    } catch (error) {
-        message.error(error.message || "error");
-    } finally {
-        loading.value = false;
-    }
-}
-
-const multiActionDeleteAccounts = async () => {
-    await executeBatchOperation({
-        apiCall: (id) => api.adminDeleteAddress(id),
-        title: t('multiDelete') + ' ' + t('success'),
-        operationName: 'Delete'
-    });
-}
-
-const multiActionClearInbox = async () => {
-    await executeBatchOperation({
-        shouldSkip: (address) => address.mail_count <= 0,
-        apiCall: (id) => api.fetch(`/admin/clear_inbox/${id}`, {
-            method: 'DELETE'
-        }),
-        title: t('multiClearInbox') + ' ' + t('success'),
-        operationName: 'ClearInbox'
-    });
-}
-
-const multiActionClearSentItems = async () => {
-    await executeBatchOperation({
-        shouldSkip: (address) => address.send_count <= 0,
-        apiCall: (id) => api.fetch(`/admin/clear_sent_items/${id}`, {
-            method: 'DELETE'
-        }),
-        title: t('multiClearSentItems') + ' ' + t('success'),
-        operationName: 'ClearSentItems'
-    });
-}
-
+const query = ref('')
+const fetching = ref(false)
+const credential = ref('')
+const credentialAddress = ref('')
+const showCredential = ref(false)
+const resetRow = ref(null)
+const password = ref('')
+const showReset = ref(false)
+const selected = ref([])
 const fetchData = async () => {
-    try {
-        addressQuery.value = addressQuery.value.trim()
-        const { results, count: addressCount } = await api.fetch(
-            `/admin/address`
-            + `?limit=${pageSize.value}`
-            + `&offset=${(page.value - 1) * pageSize.value}`
-            + (addressQuery.value ? `&query=${addressQuery.value}` : "")
-            + (sortBy.value ? `&sort_by=${sortBy.value}` : "")
-            + (sortOrder.value ? `&sort_order=${sortOrder.value}` : "")
-        );
-        data.value = results;
-        if (page.value === 1 || addressCount > 0) {
-            count.value = addressCount ?? 0;
-        }
-    } catch (error) {
-        console.error(error);
-        message.error(error.message || "error");
-    }
+  fetching.value = true
+  try {
+    const response = await api.fetch('/admin/address?include_received=1&limit=' + pageSize.value +
+      '&offset=' + (page.value - 1) * pageSize.value + '&query=' + encodeURIComponent(query.value.trim()), { showLoading: false })
+    rows.value = response.results || []
+    if (page.value === 1 || response.count > 0) count.value = Number(response.count) || 0
+    selected.value = []
+  } catch (error) { message.error(error.message || 'error') }
+  finally { fetching.value = false }
 }
-
-const searchData = () => {
-    if (page.value === 1) {
-        fetchData();
-    } else {
-        page.value = 1;
-    }
+const search = () => { if (page.value === 1) void fetchData(); else page.value = 1 }
+const viewMails = row => { adminMailTabAddress.value = row.name; adminTab.value = 'mails' }
+const copy = async value => {
+  try { await navigator.clipboard.writeText(value); message.success(t('success')) }
+  catch (error) { message.error(error.message || 'error') }
 }
-
-const handleSorterChange = (sorter) => {
-    sortBy.value = sorter.columnKey || "";
-    sortOrder.value = sorter.order || "";
-    if (page.value === 1) {
-        fetchData();
-    } else {
-        page.value = 1;
-    }
-}
-
-const columns = computed(() => [
-    {
-        type: 'selection'
-    },
-    {
-        title: "ID",
-        key: "id",
-        sorter: true,
-        sortOrder: sortBy.value === 'id' ? sortOrder.value : false
-    },
-    {
-        title: t('emailAddress'),
-        key: "name",
-        sorter: true,
-        sortOrder: sortBy.value === 'name' ? sortOrder.value : false
-    },
-    {
-        title: t('created_at'),
-        key: "created_at",
-        sorter: true,
-        sortOrder: sortBy.value === 'created_at' ? sortOrder.value : false,
-        render(row) {
-            return utcToLocalDate(row.created_at, useUTCDate.value);
-        }
-    },
-    {
-        title: t('updated_at'),
-        key: "updated_at",
-        sorter: true,
-        sortOrder: sortBy.value === 'updated_at' ? sortOrder.value : false,
-        render(row) {
-            return utcToLocalDate(row.updated_at, useUTCDate.value);
-        }
-    },
-    {
-        title: t('source_meta'),
-        key: "source_meta",
-        sorter: true,
-        sortOrder: sortBy.value === 'source_meta' ? sortOrder.value : false,
-        render(row) {
-            const val = row.source_meta;
-            if (!val) return '';
-            const ipv4Regex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-            const ipv6Regex = /^[0-9a-fA-F:]+$/;
-            if (ipv4Regex.test(val) || (val.includes(':') && ipv6Regex.test(val) && !val.startsWith('tg:'))) {
-                return h('a', {
-                    href: `https://ip.im/${val}`,
-                    target: '_blank',
-                    rel: 'noopener noreferrer'
-                }, val);
-            }
-            return val;
-        }
-    },
-    {
-        title: t('mail_count'),
-        key: "mail_count",
-        sorter: true,
-        sortOrder: sortBy.value === 'mail_count' ? sortOrder.value : false,
-        render(row) {
-            return h(NButton,
-                {
-                    text: true,
-                    onClick: () => {
-                        if (row.mail_count > 0) {
-                            adminMailTabAddress.value = row.name;
-                            adminTab.value = "mails";
-                        }
-                    }
-                },
-                {
-                    icon: () => h(NBadge, {
-                        value: row.mail_count,
-                        'show-zero': true,
-                        max: 99,
-                        type: "success"
-                    }),
-                    default: () => row.mail_count > 0 ? t('viewMails') : ""
-                }
-            )
-        }
-    },
-    {
-        title: t('send_count'),
-        key: "send_count",
-        sorter: true,
-        sortOrder: sortBy.value === 'send_count' ? sortOrder.value : false,
-        render(row) {
-            return h(NButton,
-                {
-                    text: true,
-                    onClick: () => {
-                        if (row.send_count > 0) {
-                            adminSendBoxTabAddress.value = row.name;
-                            adminTab.value = "sendBox";
-                        }
-                    }
-                },
-                {
-                    icon: () => h(NBadge, {
-                        value: row.send_count,
-                        'show-zero': true,
-                        max: 99,
-                        type: "success"
-                    }),
-                    default: () => row.send_count > 0 ? t('viewSendBox') : ""
-                }
-            )
-        }
-    },
-    {
-        title: t('actions'),
-        key: 'actions',
-        render(row) {
-            return h('div', [
-                h(NMenu, {
-                    mode: "horizontal",
-                    options: [
-                        {
-                            label: t('actions'),
-                            icon: () => h(MenuFilled),
-                            key: "action",
-                            children: [
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => showCredential(row)
-                                        },
-                                        { default: () => t('showCredential') }
-                                    ),
-                                },
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => {
-                                                adminMailTabAddress.value = row.name;
-                                                adminTab.value = "mails";
-                                            }
-                                        },
-                                        { default: () => t('viewMails') }
-                                    ),
-                                    show: row.mail_count > 0
-                                },
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => {
-                                                adminSendBoxTabAddress.value = row.name;
-                                                adminTab.value = "sendBox";
-                                            }
-                                        },
-                                        { default: () => t('viewSendBox') }
-                                    ),
-                                    show: row.send_count > 0
-                                },
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => {
-                                                curClearInboxAddressId.value = row.id;
-                                                showClearInbox.value = true;
-                                            }
-                                        },
-                                        { default: () => t('clearInbox') }
-                                    ),
-                                    show: row.mail_count > 0
-                                },
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => {
-                                                curClearSentItemsAddressId.value = row.id;
-                                                showClearSentItems.value = true;
-                                            }
-                                        },
-                                        { default: () => t('clearSentItems') }
-                                    ),
-                                    show: row.send_count > 0
-                                },
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => {
-                                                curResetPasswordAddressId.value = row.id;
-                                                showResetPassword.value = true;
-                                            }
-                                        },
-                                        { default: () => t('resetPassword') }
-                                    ),
-                                    show: openSettings.value?.enableAddressPassword
-                                },
-                                {
-                                    label: () => h(NButton,
-                                        {
-                                            text: true,
-                                            onClick: () => {
-                                                curDeleteAddressId.value = row.id;
-                                                showDeleteAccount.value = true;
-                                            }
-                                        },
-                                        { default: () => t('delete') }
-                                    )
-                                }
-                            ]
-                        }
-                    ]
-                })
-            ])
-        }
-    }
-])
-
-watch([page, pageSize], async () => {
-    await fetchData()
+const confirm = (content, action) => dialog.warning({
+  title: t('actions'), content, positiveText: locale.value === 'zh' ? '确认' : 'Confirm', negativeText: locale.value === 'zh' ? '取消' : 'Cancel',
+  onPositiveClick: async () => {
+    try { await action(); await fetchData(); message.success(t('success')) }
+    catch (error) { message.error(error.message || 'error') }
+  }
 })
-
-onMounted(async () => {
-    await fetchData()
-})
+const action = async (key, row) => {
+  try {
+    if (key === 'credential') {
+      credential.value = await api.adminShowAddressCredential(row.id)
+      credentialAddress.value = row.name
+      showCredential.value = true
+    } else if (key === 'reset') {
+      resetRow.value = row; password.value = ''; showReset.value = true
+    } else if (key === 'sent') {
+      adminSendBoxTabAddress.value = row.name; adminTab.value = 'sendBox'
+    } else if (key === 'clear') {
+      confirm(t('clearInbox'), () => api.fetch('/admin/clear_inbox/' + row.id, { method: 'DELETE' }))
+    } else if (key === 'clearSent') {
+      confirm(t('clearSentItems'), () => api.fetch('/admin/clear_sent_items/' + row.id, { method: 'DELETE' }))
+    } else if (key === 'delete') {
+      confirm(t('delete'), () => api.adminDeleteAddress(row.id))
+    }
+  } catch (error) { message.error(error.message || 'error') }
+}
+const reset = async () => {
+  if (!password.value.trim()) return
+  try {
+    await api.fetch('/admin/address/' + resetRow.value.id + '/reset_password', {
+      method: 'POST', body: JSON.stringify({ password: await hashPassword(password.value.trim()) })
+    })
+    showReset.value = false; password.value = ''; message.success(t('passwordResetSuccess'))
+  } catch (error) { message.error(error.message || 'error') }
+}
+const columns = [
+  { type: 'selection' },
+  { title: t('emailAddress'), key: 'name', minWidth: 240,
+    render: row => h(NButton, { text: true, onClick: () => viewMails(row), style: 'max-width:100%;white-space:normal;overflow-wrap:anywhere' }, { default: () => row.name }) },
+  { title: t('mail_count'), key: 'mail_count', width: 100 },
+  { title: t('send_count'), key: 'send_count', width: 100 },
+  { title: t('updated_at'), key: 'updated_at', width: 165,
+    render: row => row.updated_at ? utcToLocalDate(row.updated_at, useUTCDate.value) : '—' },
+  { title: t('actions'), key: 'actions', width: 160, render: row => h('div', { style: 'display:flex;gap:16px;align-items:center' }, [
+    h(NButton, { text: true, onClick: () => copy(row.name) }, { default: () => locale.value === 'zh' ? '复制' : 'Copy' }),
+    row.id ? h(NDropdown, { trigger: 'click', options: [
+      { key: 'credential', label: t('showCredential') }, { key: 'sent', label: t('viewSendBox') },
+      { key: 'reset', label: t('resetPassword') }, { key: 'clear', label: t('clearInbox') },
+      { key: 'clearSent', label: t('clearSentItems') }, { key: 'delete', label: t('delete') },
+    ], onSelect: key => action(key, row) }, { default: () => h(NButton, { text: true, 'aria-label': t('actions') }, { default: () => '•••' }) }) : null
+  ]) },
+]
+watch([page, pageSize], fetchData)
+onMounted(fetchData)
 </script>
 
 <template>
-    <div style="margin-top: 10px;">
-        <AddressCredentialModal v-model:show="showEmailCredential" :address="curEmailAddress"
-            :jwt="curEmailCredential" />
-        <n-modal v-model:show="showDeleteAccount" preset="dialog" :title="t('deleteMailbox')">
-            <p>{{ t('deleteTip') }}</p>
-            <template #action>
-                <n-button :loading="loading" @click="deleteEmail" size="small" tertiary type="error">
-                    {{ t('deleteMailbox') }}
-                </n-button>
-            </template>
-        </n-modal>
-        <n-modal v-model:show="showClearInbox" preset="dialog" :title="t('clearInbox')">
-            <p>{{ t('clearInboxTip') }}</p>
-            <template #action>
-                <n-button :loading="loading" @click="clearInbox" size="small" tertiary type="error">
-                    {{ t('clearInbox') }}
-                </n-button>
-            </template>
-        </n-modal>
-        <n-modal v-model:show="showClearSentItems" preset="dialog" :title="t('clearSentItems')">
-            <p>{{ t('clearSentItemsTip') }}</p>
-            <template #action>
-                <n-button :loading="loading" @click="clearSentItems" size="small" tertiary type="error">
-                    {{ t('clearSentItems') }}
-                </n-button>
-            </template>
-        </n-modal>
-
-        <n-modal v-model:show="showResetPassword" preset="dialog" :title="t('resetPassword')">
-            <n-form-item :label="t('newPassword')">
-                <n-input v-model:value="newPassword" type="password" placeholder="" show-password-on="click"
-                    @keyup.enter="resetPassword" />
-            </n-form-item>
-            <template #action>
-                <n-button :loading="loading" @click="resetPassword" size="small" tertiary type="info">
-                    {{ t('resetPassword') }}
-                </n-button>
-            </template>
-        </n-modal>
-        <n-input-group style="margin-bottom: 10px;">
-            <n-input v-model:value="addressQuery" clearable :placeholder="t('addressQueryTip')"
-                @keydown.enter="searchData" />
-            <n-button @click="searchData" type="primary" tertiary>
-                {{ t('query') }}
-            </n-button>
-        </n-input-group>
-
-        <n-space v-if="showMultiActionBar" style="margin-bottom: 10px;">
-            <n-button @click="multiActionSelectAll" tertiary>
-                {{ t('selectAll') }}
-            </n-button>
-            <n-button @click="multiActionUnselectAll" tertiary>
-                {{ t('unselectAll') }}
-            </n-button>
-            <n-popconfirm @positive-click="multiActionDeleteAccounts">
-                <template #trigger>
-                    <n-button tertiary type="error">{{ t('multiDelete') }}</n-button>
-                </template>
-                {{ t('multiDeleteTip') }}
-            </n-popconfirm>
-            <n-popconfirm @positive-click="multiActionClearInbox">
-                <template #trigger>
-                    <n-button tertiary type="warning">{{ t('multiClearInbox') }}</n-button>
-                </template>
-                {{ t('multiClearInboxTip') }}
-            </n-popconfirm>
-            <n-popconfirm @positive-click="multiActionClearSentItems">
-                <template #trigger>
-                    <n-button tertiary type="warning">{{ t('multiClearSentItems') }}</n-button>
-                </template>
-                {{ t('multiClearSentItemsTip') }}
-            </n-popconfirm>
-            <n-tag type="info">
-                {{ t('selectedItems') }}: {{ selectedCount }}
-            </n-tag>
-        </n-space>
-        <div style="overflow: auto;">
-            <div style="display: inline-block;">
-                <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count"
-                    :page-sizes="[20, 50, 100]" show-size-picker>
-                    <template #prefix="{ itemCount }">
-                        {{ t('itemCount') }}: {{ itemCount }}
-                    </template>
-                </n-pagination>
-            </div>
-            <n-data-table v-model:checked-row-keys="checkedRowKeys" :columns="columns" :data="data" :bordered="false"
-                :row-key="row => row.id" remote @update:sorter="handleSorterChange" embedded />
-        </div>
-
-        <!-- Multi-action progress modal -->
-        <n-modal v-model:show="showMultiActionModal" preset="dialog" :title="multiActionTitle" negative-text="OK">
-            <n-space justify="center">
-                <n-progress type="circle" status="info" :percentage="multiActionProgress.percentage">
-                    <span style="text-align: center">
-                        {{ multiActionProgress.tip }}
-                    </span>
-                </n-progress>
-            </n-space>
-        </n-modal>
-
+  <div class="mailbox-directory">
+    <p class="directory-hint">{{ locale === 'zh' ? '域名内任意地址均可收信，无需创建。这里列出已有记录的邮箱；也可以直接在收件箱查询完整地址。' : 'No mailbox creation needed. Any address on your domain can receive mail. Addresses with records appear here; search any full address in Inbox.' }}</p>
+    <div class="directory-toolbar">
+      <n-input-group>
+        <n-input v-model:value="query" :placeholder="t('addressQueryTip')" :aria-label="t('addressQueryTip')" clearable @keydown.enter="search" />
+        <n-button @click="search" :loading="fetching" secondary>{{ t('query') }}</n-button>
+      </n-input-group>
+      <n-button :disabled="!selected.length" @click="copy(selected.join('\n'))" secondary>
+        {{ locale === 'zh' ? '复制选中地址' : 'Copy selected' }} <span v-if="selected.length"> ({{ selected.length }})</span>
+      </n-button>
     </div>
+    <n-data-table :columns="columns" :data="rows" :loading="fetching" :row-key="row => row.name"
+      v-model:checked-row-keys="selected" :bordered="false" :scroll-x="865" />
+    <div class="directory-pagination">
+      <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count" simple />
+    </div>
+    <AddressCredentialModal v-model:show="showCredential" :address="credentialAddress" :jwt="credential" />
+    <n-modal v-model:show="showReset" preset="dialog" :title="t('resetPassword')">
+      <p>{{ resetRow?.name }}</p>
+      <n-input v-model:value="password" type="password" :aria-label="t('newPassword')" :placeholder="t('newPassword')" />
+      <template #action><n-button type="primary" :disabled="!password.trim()" @click="reset">{{ locale === 'zh' ? '确认' : 'Confirm' }}</n-button></template>
+    </n-modal>
+  </div>
 </template>
-
 <style scoped>
-.n-pagination {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-
-.n-data-table {
-    min-width: 1000px;
-}
+.directory-hint { margin: 0 0 22px; font-size: 12px; line-height: 1.8; color: var(--mail-muted); max-width: 65em; }
+.directory-toolbar { display: flex; gap: 14px; margin-bottom: 18px; }
+.directory-toolbar .n-input-group { max-width: 480px; }
+.directory-pagination { display: flex; justify-content: flex-end; padding-top: 20px; }
+@media (max-width: 767px) { .directory-toolbar { flex-wrap: wrap; } }
 </style>

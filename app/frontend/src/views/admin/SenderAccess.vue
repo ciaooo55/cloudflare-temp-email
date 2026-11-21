@@ -1,5 +1,6 @@
 <script setup>
 import { ref, h, onMounted, watch } from 'vue';
+import { NButton, NPopconfirm, NTag } from 'naive-ui'
 import { useScopedI18n } from '@/i18n/app'
 
 import { useGlobalState } from '../../store'
@@ -48,10 +49,10 @@ const fetchData = async () => {
       `/admin/address_sender`
       + `?limit=${pageSize.value}`
       + `&offset=${(page.value - 1) * pageSize.value}`
-      + (addressQuery.value ? `&address=${addressQuery.value}` : '')
+      + (addressQuery.value ? `&address=${encodeURIComponent(addressQuery.value)}` : '')
     );
     data.value = results;
-    if (addressCount > 0) {
+    if (page.value === 1 || addressCount > 0) {
       count.value = addressCount;
     }
   } catch (error) {
@@ -62,7 +63,8 @@ const fetchData = async () => {
 const columns = [
   {
     title: "ID",
-    key: "id"
+    key: "id",
+    width: 65
   },
   {
     title: t('address'),
@@ -83,20 +85,17 @@ const columns = [
     title: t('is_enabled'),
     key: "enabled",
     render(row) {
-      return h('div', [
-        h('span', row.enabled ? t('enable') : t('disable'))
-      ])
+      return h(NTag, { size: 'small', bordered: false, type: row.enabled ? 'success' : 'default' }, { default: () => row.enabled ? t('enable') : t('disable') })
     }
   },
   {
     title: t('action'),
     key: 'actions',
     render(row) {
-      return h('div', [
+      return h('div', { style: 'display:flex;gap:12px' }, [
         h(NButton,
           {
-            type: 'success',
-            tertiary: true,
+            text: true,
             onClick: () => {
               showModal.value = true;
               curRow.value = row;
@@ -116,7 +115,7 @@ const columns = [
           {
             trigger: () => h(NButton,
               {
-                tertiary: true,
+                text: true,
                 type: "error",
               },
               { default: () => t('delete') }
@@ -133,6 +132,8 @@ watch([page, pageSize], async () => {
   await fetchData()
 })
 
+
+const search = () => { if (page.value === 1) void fetchData(); else page.value = 1 }
 
 onMounted(async () => {
   await fetchData()
@@ -158,38 +159,18 @@ onMounted(async () => {
         </n-button>
       </template>
     </n-modal>
-    <n-input-group>
-      <n-input v-model:value="addressQuery" @keydown.enter="fetchData" />
-      <n-button @click="fetchData" type="primary" tertiary>
+    <n-input-group class="sender-search">
+      <n-input v-model:value="addressQuery" :placeholder="t('address')" :aria-label="t('address')" @keydown.enter="search" clearable />
+      <n-button @click="search" secondary>
         {{ t('query') }}
       </n-button>
     </n-input-group>
-    <div style="overflow: auto;">
-      <div style="display: inline-block;">
-        <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count" :page-sizes="[20, 50, 100]"
-          show-size-picker>
-          <template #prefix="{ itemCount }">
-            {{ t('itemCount') }}: {{ itemCount }}
-          </template>
-        </n-pagination>
-      </div>
-      <n-data-table :columns="columns" :data="data" :bordered="false" embedded />
-    </div>
+    <n-data-table :columns="columns" :data="data" :bordered="false" :scroll-x="720" />
+    <div class="sender-pagination"><n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count" simple /></div>
   </div>
 </template>
 
 <style scoped>
-.n-pagination {
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
-.n-data-table {
-  min-width: 700px;
-}
-
-/* 小屏允许表格横向滚动，避免撑破布局 */
-:deep(.n-data-table-wrapper) {
-  overflow-x: auto;
-}
+.sender-search { max-width: 480px; margin-bottom: 20px; }
+.sender-pagination { display: flex; justify-content: flex-end; padding-top: 20px; }
 </style>
