@@ -21,9 +21,9 @@ import {
     getSnapshotBindingForMail,
 } from './mail_snapshot.ts';
 import { resolveRawEmail } from '../gzip.ts';
-import { UserFromGetMe } from "telegraf/types";
+import type { UserFromGetMe } from "telegraf/types";
 import i18n from '../i18n/index.ts';
-import { LocaleMessages } from '../i18n/type.ts';
+import type { LocaleMessages } from '../i18n/type.ts';
 import type { ExtractResult, RawMailRow } from '../models/index.ts';
 
 

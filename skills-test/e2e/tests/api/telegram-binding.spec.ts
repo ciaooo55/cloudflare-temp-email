@@ -91,8 +91,8 @@ test('stale Telegram credentials cannot unbind; internal mailbox cleanup still w
   const deletion = await request.delete(`${WORKER_URL}/admin/delete_address/${original.address_id}`);
   expect(deletion.ok()).toBe(true);
   const [name, domain] = original.address.split('@');
-  const creation = await request.post(`${WORKER_URL}/admin/new_address`, {
-    data: { name, domain, enablePrefix: false },
+  const creation = await request.post(`${WORKER_URL}/api/new_address`, {
+    data: { name: name.replace(/^tmp/, ''), domain },
   });
   expect(creation.ok()).toBe(true);
   const recreated = await creation.json();
@@ -125,8 +125,8 @@ test('Telegram unbind accepts a current credential after a stale credential for 
   const deletion = await request.delete(`${WORKER_URL}/admin/delete_address/${original.address_id}`);
   expect(deletion.ok()).toBe(true);
   const [name, domain] = original.address.split('@');
-  const creation = await request.post(`${WORKER_URL}/admin/new_address`, {
-    data: { name, domain, enablePrefix: false },
+  const creation = await request.post(`${WORKER_URL}/api/new_address`, {
+    data: { name: name.replace(/^tmp/, ''), domain },
   });
   expect(creation.ok()).toBe(true);
   const recreated = await creation.json();

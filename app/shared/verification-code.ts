@@ -9,7 +9,7 @@ export function stripVerificationHtml(html: string): string {
  * Local rule-based verification code extraction.
  *
  * Extracts verification codes from email text without calling any AI model,
- * so mail content never leaves the regex engine inside the Worker.
+ * Shared by the browser and Worker; it has no runtime dependencies.
  *
  * Pipeline:
  * 1. Normalize: strip zero-width characters, fold full-width digits and letters,

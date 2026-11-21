@@ -8,6 +8,10 @@
 
 ## v1.13.0(main)
 
+- fix: |Mail| Reuse the private reader in Telegram; repair reply/forward navigation and shared drafts, unnamed sender reply addresses, and settings access before a bot is configured
+- refactor: |Cleanup| Move dependency-free verification rules into shared; remove broken auto-login, obsolete appearance state, generic config endpoints and stale tests while retaining historical mail, credential APIs and unfinished KV/D1 migration paths
+- test: |Regression| Run code-extraction regressions in the regular Worker suite, restore admin read-status controls, and align test fixtures with the current layout and admin workspace
+
 - feat: |frontend| Replace ten selected non-daily pages with a dark-only mail workspace and mobile layout, always open the mail list, watermark the version and simplify statistics to three totals
 - feat: |design| Redraw action icons, buttons, tables and rule forms, share the inbox/sent split reader, collapse notification creation and batch binding forms, lazy-load rich-text editing and remove retired locale resources
 - refactor: |mail| Receive and list domain mailboxes without creation, remove unknown-recipient classification, AI and mail Webhook runtime code, and extract verification codes locally while preserving notifications, three blocking levels and sending APIs

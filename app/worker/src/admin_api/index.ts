@@ -7,11 +7,11 @@ import statistics_api from './statistics_api.ts'
 import account_settings_api from './account_settings_api.ts'
 import cleanup_api from './cleanup_api.ts'
 import admin_mail_api from './admin_mail_api.ts'
+import { updateMailReadStatus } from '../mail_read_status.ts'
 import { sendMailbyAdmin, sendMailByBindingAdmin } from './send_mail.ts'
 import db_api from './db_api.ts'
 import ip_blacklist_settings from './ip_blacklist_settings.ts'
 import notify_settings from './notify_settings.ts'
-import config_api from './config_api.ts'
 
 export const api = new Hono<HonoCustomType>()
 
@@ -27,6 +27,7 @@ api.post('/admin/address/:id/reset_password', address_api.resetPassword)
 api.get('/admin/mails', admin_mail_api.getMails)
 api.get('/admin/mails/:id', admin_mail_api.getMail)
 api.delete('/admin/mails/:id', admin_mail_api.deleteMail)
+api.patch('/admin/mails/:id/read', c => updateMailReadStatus(c))
 
 // address sender
 api.get('/admin/address_sender', address_sender_api.list)
@@ -62,10 +63,6 @@ api.post('admin/db_initialize', db_api.initialize)
 api.post('admin/db_migration', db_api.migrate)
 api.get('/admin/storage_status', db_api.getStorageStatus)
 api.post('/admin/storage_import', db_api.importStoragePage)
-
-// generic admin config
-api.get('/admin/config/:key', config_api.get)
-api.post('/admin/config', config_api.save)
 
 // IP blacklist settings
 api.get('/admin/ip_blacklist/settings', ip_blacklist_settings.getIpBlacklistSettings)

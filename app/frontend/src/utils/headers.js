@@ -31,12 +31,3 @@ export const safeHeaderValue = (value) => {
     if (hasControlChar(trimmed)) return undefined;
     return trimmed;
 };
-
-/**
- * Build an Authorization: Bearer ... header from a raw JWT, or `undefined` if
- * the JWT is missing or unsafe.
- */
-export const safeBearerHeader = (jwt) => {
-    const safe = safeHeaderValue(jwt);
-    return safe ? `Bearer ${safe}` : undefined;
-};

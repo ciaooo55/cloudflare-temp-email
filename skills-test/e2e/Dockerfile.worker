@@ -3,17 +3,18 @@ FROM node:24-slim
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
 
-WORKDIR /app/worker
+WORKDIR /repo/app/worker
 
-COPY worker/package.json worker/pnpm-lock.yaml ./
-COPY worker/patches/ patches/
-RUN pnpm install --frozen-lockfile || (echo "WARN: frozen-lockfile failed, falling back to pnpm install" && pnpm install)
+COPY app/worker/package.json app/worker/pnpm-lock.yaml ./
+COPY app/worker/patches/ patches/
+RUN pnpm install --frozen-lockfile
 
-COPY worker/src/ src/
-COPY e2e/fixtures/*.ts /app/e2e/fixtures/
-RUN ln -s /app/worker/node_modules /app/e2e/node_modules
-COPY worker/tsconfig.json ./
-ARG WRANGLER_TOML=e2e/fixtures/wrangler.toml.e2e
+COPY app/worker/src/ src/
+COPY app/shared/ /repo/app/shared/
+COPY skills-test/e2e/fixtures/*.ts /repo/skills-test/e2e/fixtures/
+RUN ln -s /repo/app/worker/node_modules /repo/skills-test/e2e/node_modules
+COPY app/worker/tsconfig.json ./
+ARG WRANGLER_TOML=skills-test/e2e/fixtures/wrangler.toml.e2e
 COPY ${WRANGLER_TOML} wrangler.toml
 
 EXPOSE 8787

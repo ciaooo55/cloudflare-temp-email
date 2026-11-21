@@ -90,7 +90,7 @@ test.describe('Create Address Subdomain Match', () => {
     const settings = await getAccountSettings(request, CREATE_ADDRESS_WORKER_URL);
     expect(settings.addressCreationSubdomainMatchStatus?.storedEnabled).toBeUndefined();
 
-    const res = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const res = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: `subenvfb${Date.now()}`, domain: SUBDOMAIN },
     });
 
@@ -125,7 +125,7 @@ test.describe('Create Address Subdomain Match', () => {
     await saveSubdomainMatchSetting(request, CREATE_ADDRESS_WORKER_URL, false);
 
     const uniqueName = `subdomain-default-${Date.now()}`;
-    const res = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const res = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: uniqueName, domain: RANDOM_SUBDOMAIN },
     });
 
@@ -133,11 +133,11 @@ test.describe('Create Address Subdomain Match', () => {
     expect((await res.json()).address).toContain(`@${RANDOM_SUBDOMAIN}`);
   });
 
-  test('admin switch enables suffix subdomain match for both admin and user create APIs', async ({ request }) => {
+  test('admin switch enables suffix subdomain match for the address API', async ({ request }) => {
     await saveSubdomainMatchSetting(request, CREATE_ADDRESS_WORKER_URL, true);
 
     const adminName = `subdomain-admin-${Date.now()}`;
-    const adminRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const adminRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: adminName, domain: SUBDOMAIN },
     });
     expect(adminRes.ok()).toBe(true);
@@ -154,32 +154,32 @@ test.describe('Create Address Subdomain Match', () => {
     expect(userBody.address).toContain(`@${NESTED_SUBDOMAIN}`);
     expect(userBody.address_id).toBeGreaterThan(0);
 
-    const mixedCaseRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const mixedCaseRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: `subcase${Date.now()}`, domain: MIXED_CASE_SUBDOMAIN },
     });
     expect(mixedCaseRes.ok()).toBe(true);
     const mixedCaseBody = await mixedCaseRes.json();
     expect(mixedCaseBody.address).toContain(`@${SUBDOMAIN}`);
 
-    const invalidRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const invalidRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: `subinvalid${Date.now()}`, domain: INVALID_LOOKALIKE_DOMAIN },
     });
     expect(invalidRes.ok()).toBe(false);
     expect(await invalidRes.text()).toContain('Invalid domain');
 
-    const invalidEmptyPrefixRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const invalidEmptyPrefixRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: `subempty${Date.now()}`, domain: INVALID_EMPTY_PREFIX_DOMAIN },
     });
     expect(invalidEmptyPrefixRes.ok()).toBe(false);
     expect(await invalidEmptyPrefixRes.text()).toContain('Invalid domain');
 
-    const invalidEmptyLabelRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const invalidEmptyLabelRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: `sublabel${Date.now()}`, domain: INVALID_EMPTY_LABEL_DOMAIN },
     });
     expect(invalidEmptyLabelRes.ok()).toBe(false);
     expect(await invalidEmptyLabelRes.text()).toContain('Invalid domain');
 
-    const invalidOverlongRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/admin/new_address`, {
+    const invalidOverlongRes = await request.post(`${CREATE_ADDRESS_WORKER_URL}/api/new_address`, {
       data: { name: `sublong${Date.now()}`, domain: INVALID_OVERLONG_DOMAIN },
     });
     expect(invalidOverlongRes.ok()).toBe(false);
@@ -221,7 +221,7 @@ test.describe('Create Address Subdomain Match', () => {
 
     await saveSubdomainMatchSetting(request, WORKER_URL_ENV_OFF, true);
 
-    const res = await request.post(`${WORKER_URL_ENV_OFF}/admin/new_address`, {
+    const res = await request.post(`${WORKER_URL_ENV_OFF}/api/new_address`, {
       data: { name: `subdomain-env-off-${Date.now()}`, domain: RANDOM_SUBDOMAIN },
     });
     expect(res.ok()).toBe(false);

@@ -1,4 +1,5 @@
 import { Context } from 'hono'
+import { updateMailReadStatus as updateReadStatus } from '../mail_read_status.ts';
 
 import i18n from '../i18n/index.ts';
 import { getBooleanValue } from '../utils.ts';
@@ -20,22 +21,7 @@ const listMails = async (c: Context<HonoCustomType>) => {
     );
 };
 
-const updateMailReadStatus = async (c: Context<HonoCustomType>) => {
-    if (!getBooleanValue(c.env.ENABLE_MAIL_READ_STATUS)) {
-        return c.json({ error: 'Mail read status is disabled' }, 403);
-    }
-    const { address } = c.get("jwtPayload");
-    const { id } = c.req.param();
-    const { isUnread } = await c.req.json<{ isUnread?: boolean }>().catch(() => ({ isUnread: undefined }));
-    if (typeof isUnread !== 'boolean') {
-        return c.json({ error: 'isUnread must be a boolean' }, 400);
-    }
-    const value = isUnread ? 1 : 0;
-    const { success } = await c.env.DB.prepare(
-        `UPDATE raw_mails SET is_unread = ? WHERE id = ? AND address = ? AND COALESCE(is_unread, 0) != ?`
-    ).bind(value, id, address, value).run();
-    return c.json({ success });
-};
+const updateMailReadStatus = (c: Context<HonoCustomType>) => updateReadStatus(c, c.get('jwtPayload').address);
 
 const getMail = async (c: Context<HonoCustomType>) => {
     const { address } = c.get("jwtPayload")

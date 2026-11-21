@@ -15,10 +15,6 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  addressPassword: {
-    type: String,
-    default: '',
-  },
 })
 
 const { openSettings, auth } = useGlobalState()
@@ -32,7 +28,6 @@ const docLocale = computed(() => locale.value === 'zh' ? 'zh' : 'en')
 const agentDocUrl = computed(() => `https://temp-mail-docs.awsl.uk/${docLocale.value}/guide/feature/agent-email.html`)
 const smtpImapDocUrl = computed(() => `https://temp-mail-docs.awsl.uk/${docLocale.value}/guide/feature/config-smtp-proxy.html`)
 const agentSkillUrl = 'https://github.com/dreamhunter2333/cloudflare_temp_email/blob/main/skills/cf-temp-mail-agent-mail/SKILL.md'
-const autoLoginUrl = computed(() => `${frontendBaseUrl.value}/?jwt=${encodeURIComponent(props.jwt)}`)
 const showAgent = computed(() => !!openSettings.value.enableAgentEmailInfo)
 const smtpImapConfig = computed(() => openSettings.value.smtpImapProxyConfig || {})
 const smtpConfig = computed(() => smtpImapConfig.value.smtp || {})
@@ -121,10 +116,6 @@ const copyText = async (text) => {
             </n-button>
           </div>
         </div>
-        <div v-if="addressPassword" class="credential-field">
-          <span class="credential-label">{{ t('addressPassword') }}</span>
-          <code data-testid="address-credential-password" class="credential-code">{{ addressPassword }}</code>
-        </div>
       </div>
     </section>
 
@@ -205,18 +196,6 @@ const copyText = async (text) => {
         </div>
       </n-collapse-item>
 
-      <n-collapse-item name="share-link" :title="t('autoLoginLink')">
-        <template #header-extra>
-          <n-button size="tiny" tertiary type="primary" @click.stop="copyText(autoLoginUrl)">
-            {{ t('copySection') }}
-          </n-button>
-        </template>
-        <div class="credential-section">
-          <div class="credential-field">
-            <code class="credential-code">{{ autoLoginUrl }}</code>
-          </div>
-        </div>
-      </n-collapse-item>
     </n-collapse>
   </div>
 </template>

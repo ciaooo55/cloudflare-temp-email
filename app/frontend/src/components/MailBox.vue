@@ -6,7 +6,6 @@ import { useGlobalState } from '../store'
 import { useIsMobile } from '../utils/composables'
 import { processItem, refreshParsedItem, releaseMailResources } from '../utils/email-parser'
 import { utcToLocalDate } from '../utils'
-import { buildReplyModel, buildForwardModel } from '../utils/mail-actions'
 import MailContentRenderer from './MailContentRenderer.vue'
 import AiExtractInfo from './AiExtractInfo.vue'
 
@@ -21,7 +20,8 @@ const props = defineProps({
   updateMailReadStatus: { type: Function, default: async () => {} },
 })
 const { t, locale } = useScopedI18n('components.MailBox')
-const { useUTCDate, autoRefresh, configAutoRefreshInterval, loading, sendMailModel, indexTab } = useGlobalState()
+const emit = defineEmits(['reply', 'forward'])
+const { useUTCDate, autoRefresh, configAutoRefreshInterval, loading } = useGlobalState()
 const message = useMessage()
 const isMobile = useIsMobile()
 const rawData = ref([])
@@ -126,14 +126,8 @@ const downloadSelected = async () => {
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-const reply = () => {
-  Object.assign(sendMailModel.value, buildReplyModel(curMail.value, t('reply')))
-  indexTab.value = 'sendmail'
-}
-const forward = () => {
-  Object.assign(sendMailModel.value, buildForwardModel(curMail.value, t('forwardMail')))
-  indexTab.value = 'sendmail'
-}
+const reply = () => emit('reply', curMail.value)
+const forward = () => emit('forward', curMail.value)
 const rendererProps = computed(() => ({
   mail: curMail.value, showEMailTo: props.showEMailTo,
   enableUserDeleteEmail: props.enableUserDeleteEmail, showReply: props.showReply,

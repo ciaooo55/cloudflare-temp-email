@@ -116,7 +116,7 @@ type Bindings = {
     TG_ALLOW_USER_LANG: string | boolean | undefined
     ENABLE_TG_PUSH_ATTACHMENT: string | boolean | undefined
 
-    // webhook config
+    // frontend/backend links
     FRONTEND_URL: string | undefined
     BACKEND_URL: string | undefined
 

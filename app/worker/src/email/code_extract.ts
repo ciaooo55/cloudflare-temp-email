@@ -1,6 +1,6 @@
 import { commonParseMail } from '../common.ts';
 import { decodeHTML } from 'entities';
-import { extractCode, stripVerificationHtml, joinSubjectAndBody } from './extract_code.ts';
+import { extractCode, stripVerificationHtml, joinSubjectAndBody } from '../../../shared/verification-code.ts';
 import type { ExtractResult } from '../models/index.ts';
 
 export async function extractEmailInfo(

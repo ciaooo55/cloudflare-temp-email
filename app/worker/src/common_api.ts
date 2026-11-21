@@ -42,7 +42,6 @@ api.get('/open_api/settings', async (c) => {
         "enableMailReadStatus": utils.getBooleanValue(c.env.ENABLE_MAIL_READ_STATUS),
         "copyright": c.env.COPYRIGHT,
         "cfTurnstileSiteKey": c.env.CF_TURNSTILE_SITE_KEY,
-        "enableWebhook": false,
         "isS3Enabled": isS3Enabled(c),
         "enableSendMail": isAnySendMailEnabled(c),
         "version": CONSTANTS.VERSION,

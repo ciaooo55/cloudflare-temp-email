@@ -35,14 +35,6 @@ api.use("/telegram/*", async (c, next) => {
     return await next();
 });
 
-api.use("/admin/telegram/*", async (c, next) => {
-    const msgs = i18n.getMessagesByContext(c);
-    if (!(await hasTelegramBot(c))) {
-        return c.text(msgs.TgBotTokenRequiredMsg, 400);
-    }
-    return await next();
-});
-
 const handleTelegramWebhook = async (
     c: Context<HonoCustomType>, token: string | undefined, storedSecret: string | null
 ) => {

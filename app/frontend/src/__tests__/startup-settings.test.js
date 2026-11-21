@@ -10,7 +10,7 @@ vi.mock('axios', () => ({ default: { create: () => ({ request: mocks.request }) 
 beforeEach(() => {
     vi.resetModules()
     mocks.request.mockReset()
-    mocks.state = Object.fromEntries(['loading', 'auth', 'jwt', 'announcement', 'showAuth', 'adminAuth', 'showAdminAuth']
+    mocks.state = Object.fromEntries(['loading', 'auth', 'announcement', 'showAuth', 'adminAuth', 'showAdminAuth']
         .map(key => [key, { value: '' }]))
     mocks.state.openSettings = { value: { fetched: false } }
 })

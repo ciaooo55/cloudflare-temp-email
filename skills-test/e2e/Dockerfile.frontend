@@ -3,14 +3,15 @@ FROM node:24-slim
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
 
-WORKDIR /app/frontend
+WORKDIR /repo/app/frontend
 
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile || (echo "WARN: frozen-lockfile failed, falling back to pnpm install" && pnpm install)
+COPY app/frontend/package.json app/frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
-COPY frontend/ .
+COPY app/frontend/ .
+COPY app/shared/ /repo/app/shared/
 
-# Generate self-signed cert for HTTPS (required for WebAuthn/crypto.subtle)
+# Generate self-signed cert for HTTPS (required for crypto.subtle)
 RUN openssl req -x509 -newkey rsa:2048 -keyout /tmp/key.pem -out /tmp/cert.pem \
     -days 365 -nodes -subj '/CN=frontend'
 
@@ -24,16 +25,17 @@ const workerTarget = process.env.VITE_WORKER_URL || "http://worker:8787";\
 config.server = {\
   ...config.server,\
   allowedHosts: true,\
+  fs: { allow: [".."] },\
   https: {\
     key: fs.readFileSync("/tmp/key.pem"),\
     cert: fs.readFileSync("/tmp/cert.pem"),\
   },\
   proxy: {\
     "/api": { target: workerTarget, changeOrigin: true },\
-    "/admin": { target: workerTarget, changeOrigin: true },\
-    "/user_api": { target: workerTarget, changeOrigin: true },\
+    "/admin/": { target: workerTarget, changeOrigin: true },\
     "/open_api": { target: workerTarget, changeOrigin: true },\
-    "/redeem_api": { target: workerTarget, changeOrigin: true },\
+    "/telegram/": { target: workerTarget, changeOrigin: true },\
+    "/m/": { target: workerTarget, changeOrigin: true },\
     "/external": { target: workerTarget, changeOrigin: true },\
     "/health_check": { target: workerTarget, changeOrigin: true },\
   },\

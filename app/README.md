@@ -26,6 +26,12 @@ Cloudflare 临时邮箱的核心服务，包含前端和后端。当前 Cloudfla
 
 已移除 `/admin/new_address`、`/admin/mails_unknow`、`/admin/worker/configs`、`/admin/ai_extract/*`、`/admin/mail_webhook/*`、`/admin/webhook/*`、`/api/webhook/*` 和邮件 Webhook 附件下载入口。Telegram 自身的 Webhook 属于机器人收消息通道，仍保留；邮件发送、邮箱凭据 API、数据库初始化/升级、存储迁移与预算保护接口仍供既有客户端和运维使用。现有 D1、KV、密钥及配置值不被删除。
 
+复查后删除无人消费的 `/admin/config` 通用键值读写接口和已失效的邮箱自动登录链接；邮箱 JWT 凭据、SMTP/IMAP 接入与收发邮件 API 仍保留。后台已读状态使用 `/admin/mails/:id/read`（PATCH），与邮箱凭据接口共享状态更新逻辑，但授权边界分开。
+
+验证码规则位于 `app/shared/verification-code.ts`，是浏览器与 Worker 的无依赖公共模块；前端不再导入 Worker 源码或依赖。Telegram 邮件阅读也复用默认禁图的安全阅读器。未完成的 KV/D1 导入、历史邮件格式及旧通知数据读取仍保留，不能当作无用兼容删掉。
+
+The audit also removes the unused `/admin/config` key-value API and broken mailbox auto-login links; mailbox JWT credentials, SMTP/IMAP access and mail APIs remain. Admin read status uses `PATCH /admin/mails/:id/read` with shared update logic and separate authorization. Dependency-free verification rules live in `app/shared/verification-code.ts`, with no frontend imports from Worker source. Telegram reuses the private reader. Unfinished KV/D1 imports and historical mail/notification data paths remain intact.
+
 **English**: The dark-only UI always opens Inbox. Removed pages: mailbox creation, unknown recipients, AI settings, mail Webhook, Webhook settings, database management, Worker config, appearance, admin account and About. Password/Turnstile protection stays. The footer watermarks the version; statistics show only received mail, sent mail and mailbox totals.
 
 Domain addresses receive without creation: the legacy reject-unregistered setting no longer gates inbound delivery. `GET /admin/address?include_received=1` lists registered, received and sent addresses without inserting mailbox records; the default endpoint remains compatible with existing clients. Local rules extract codes in the Worker and historical frontend messages without external AI calls, preserving stored metadata compatibility.

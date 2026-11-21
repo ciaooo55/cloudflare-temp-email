@@ -2,7 +2,6 @@
 import { defineAsyncComponent } from 'vue'
 import { useScopedI18n } from '@/i18n/app'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { useSessionStorage } from '@vueuse/core'
 import { SendRound } from '../../components/mail-icons'
 import { api } from '../../api'
 import ShadowHtmlComponent from '../../components/ShadowHtmlComponent.vue'
@@ -22,17 +21,7 @@ const Toolbar = defineAsyncComponent(async () => (await loadEditor()).Toolbar)
 const isPreview = ref(false)
 const editorRef = shallowRef()
 const sending = ref(false)
-const { isDark } = useGlobalState()
-
-const sendMailModel = useSessionStorage('sendMailByAdminModel', {
-    fromName: "",
-    fromMail: "",
-    toName: "",
-    toMail: "",
-    subject: "",
-    contentType: 'text',
-    content: "",
-});
+const { isDark, sendMailModel } = useGlobalState()
 
 const { t } = useScopedI18n('views.admin.SendMail')
 

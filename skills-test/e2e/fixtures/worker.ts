@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
-import worker from '../../worker/src/worker';
-import { CONSTANTS } from '../../worker/src/constants';
+import worker from '../../../app/worker/src/worker';
+import { workerStore } from '../../../app/worker/src/worker_store';
+import { CONSTANTS } from '../../../app/worker/src/constants';
 import mailApi from './mail-api';
 
 const testApi = new Hono<HonoCustomType>();
@@ -9,7 +10,7 @@ testApi.post('/receive_mail', c => mailApi.receiveMail(c.req.raw, c.env, c.execu
 testApi.get('/telegram_binding', async c => {
   const address = c.req.query('address');
   if (!address) return c.text('address is required', 400);
-  return c.json(await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:${address}`));
+  return c.json(await workerStore(c.env).get(`${CONSTANTS.TG_KV_PREFIX}:${address}`));
 });
 
 const app = new Hono<HonoCustomType>();

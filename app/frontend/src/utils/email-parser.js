@@ -1,6 +1,6 @@
 import PostalMime from 'postal-mime';
 import { decodeHTML } from 'entities';
-import { extractCode, stripVerificationHtml, joinSubjectAndBody } from '../../../worker/src/email/extract_code';
+import { extractCode, stripVerificationHtml, joinSubjectAndBody } from '../../../shared/verification-code';
 
 function addVerificationCode(item) {
     let metadata;
