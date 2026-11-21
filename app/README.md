@@ -70,3 +70,39 @@ The endpoints listed above are removed. Telegram's own inbound Webhook, sending/
 - When the soft budget runs out, cron and ordinary APIs pause (HTTP 503 for APIs) so inbound raw mail can still be saved. Snapshot refreshes, notifications, webhooks and other optional processing skipped for those messages are not replayed. Inbound mail is rejected last, when the hard budget cannot admit it or D1 is unavailable. Admins can inspect the budget with `GET /admin/storage_status`.
 - Cron checks every five minutes. Cleanup intervals are at least five minutes; existing 1–4 minute values are treated as five. Intervals use elapsed time, with work running at the next available tick.
 - On fresh installs, use `POST /admin/db_initialize`; no KV binding is needed. On upgrades, keep the original `KV` binding and run `POST /admin/db_migration`. Cron imports one small batch per tick; admins can also call `POST /admin/storage_import` for the next batch. The cursor is stored in D1 and legacy reads remain available until import completes. Remove the KV binding only after `GET /admin/storage_status` reports both `kvBound: true` and `kvMigrationComplete: true`.
+
+## 网页防刷规则 / Editable abuse protection
+
+在管理员的“防刷与访问控制”页使用“收信与快照防刷”，修改后点击独立的保存按钮。设置储存在现有 D1 settings 表，不需要新增绑定或环境变量。其他 Worker 实例最多 30 秒后读取新设置。
+
+| 字段 / Field | 默认 / Default | 范围 / Range |
+| --- | ---: | ---: |
+| inboundEnabled | true | boolean |
+| inboundWindowMinutes | 10 分钟 / minutes | 1–1440 |
+| inboundPairLimit | 10 封 / messages | 1–10000 |
+| inboundSenderLimit | 100 封 / messages | 1–100000 |
+| inboundBanMinutes | 10 分钟 / minutes | 1–10080 |
+| snapshotEnabled | true | boolean |
+| snapshotWindowSeconds | 60 秒 / seconds | 1–3600 |
+| snapshotLimit | 60 次 / requests | 1–10000 |
+| snapshotBanMinutes | 10 分钟 / minutes | 1–10080 |
+
+**中文**
+
+- 收信按 SMTP 信封发件地址（不是邮件正文的 From）和收件邮箱计数，从首次请求起算固定窗口，不是逐封滑动窗口。默认前十封允许，第十一封拒收并临时封禁该发件人向本站所有邮箱投递；跨邮箱总量限制用于减少换收件人绕过。空信封退信不计数。封禁到期后仍受当前窗口限制，手动关闭限流后自动封禁也暂停执行。
+- 快照按 Cloudflare 提供的客户端 IP 合并所有 /m/ 链接的 GET/HEAD 请求计数，超限返回 429 和 Retry-After。共用出口 IP 的用户共用限额。计数先预留应用预算；已封禁重试不再写入计数或预算，但仍消耗 Worker 请求，并可能读取 D1。切换实例、规则、发件人或 IP 仍有额外开销；这不是账号级防护或 Cloudflare WAF 的替代。
+- 限流在正常与只存信模式都执行，防护存储故障时暂停收信/快照以避免绕过。修改窗口会使用新的计数键；现有发件人封禁在开启限流期间保持到期。
+- GET /admin/abuse_protection 返回以上完整对象；POST 相同路径必须传入全部字段，布尔和整数范围严格校验，无效请求返回 400 且不保存。现有站点和管理员认证均适用。
+- Telegram 来信推送只需机器人 Token 和接收 ID，不依赖 webhook。只有让机器人接收命令或使用 Telegram 内的交互功能才需要回调。高级设置支持按机器人查看、注册和关闭：GET/POST/DELETE /admin/notify/telegram_bots/:id/webhook；关闭只注销回调，不删除机器人、推送配置或待处理更新。默认机器人新注册使用 /telegram/webhook，同时兼容现有 /telegram/webhook/env。已注册不代表命令近期有使用，需用户自行决定是否关闭。
+- 新计数器带来读写开销。完整收信每次按 57 读、15 写预留，只存信按 25 读、10 写预留；快照防刷每 16 次预留 833 读、65 写，实例提前退出会浪费剩余预留。它们是保守预算参数，不是 D1 实际计量，也不能保证每封固定成本。按默认预算且无其他操作的理想计算，约 5333 封完整处理后再接收约 1500 封只存信；仅快照访问约 19680 次会耗尽软写预算。后台、清理、索引、邮件大小、通知数量以及同账号其他资源会影响实际容量；拒收/拒绝请求也可能耗费读取和调用。
+
+**English**
+
+Use the independent save button under inbound and snapshot abuse protection on the admin abuse protection and access page. Settings use the existing D1 settings table; no new bindings or environment variables are required. Other isolates may retain the previous configuration for up to 30 seconds.
+
+- Inbound limits use the SMTP envelope sender and normalized recipient, with a fixed window anchored at first use. The default allows ten messages; the eleventh rejects and temporarily bans the sender across all local mailboxes. A separate sender-wide ceiling limits mailbox rotation. Empty envelope delivery reports are exempt. Expired bans remain subject to the current window; disabling protection also suspends automatic bans.
+- Snapshot GET/HEAD requests share a counter across all /m/ tokens per Cloudflare client IP. Excess returns 429 with Retry-After. Shared-IP users share the limit. Reserve the application budget before writing counters. Banned retries do not write counters or the ledger, but still invoke the Worker and may read D1. Rotating senders/IPs or isolates still consumes resources; this does not replace account-level protection or a WAF.
+- Enforce inbound protection even in receive-only mode and fail closed on protection storage errors. Window changes create new counter keys. Existing sender bans last until expiry while protection remains enabled.
+- GET /admin/abuse_protection returns the complete object above. POST requires every field and validates booleans and integer ranges; invalid requests return 400 without saving. Existing site/admin authentication applies.
+- Telegram mail push needs a bot token and receiver IDs; webhook registration is only needed for incoming bot commands and interactive Telegram features. Advanced settings use GET/POST/DELETE /admin/notify/telegram_bots/:id/webhook for status, registration and removal. Removal preserves bot/push configuration and pending updates. New default registrations use /telegram/webhook; existing /telegram/webhook/env remains supported. Registration alone does not establish active command use.
+- Budget reservations are estimates, not metered D1 rows: full inbound 57 reads/15 writes, receive-only 25/10, protected snapshots 833/65 per sixteen requests. Unused leases are not refunded. With default budgets and no competing activity, the arithmetic permits about 5333 full inbound attempts followed by 1500 receive-only attempts, or about 19680 snapshot attempts at the soft write limit. Indexes, cleanup, message sizes, notifications, other account activity and rejected requests affect actual capacity.

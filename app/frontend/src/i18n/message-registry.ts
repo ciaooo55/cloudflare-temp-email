@@ -1,4 +1,30 @@
 export const MESSAGE_REGISTRY = {
+  "components.AbuseProtection": {
+    "title": { "en": "Mail and snapshot protection", "zh": "收信与快照防刷" },
+    "scope": { "en": "Changes apply within 30 seconds. Independent from the IP blacklist below.", "zh": "保存后最多 30 秒生效。这组规则独立于下方 IP 黑名单，可分别开关。" },
+    "inboundEnabled": { "en": "Limit incoming mail", "zh": "开启收信限流" },
+    "inboundEnabledHelp": { "en": "Exceeding either limit rejects the message and bans its envelope sender across all site mailboxes. Empty-sender delivery reports are exempt.", "zh": "按信封发件地址计数；超过任一限制的这一封开始拒收，并暂时封禁该发件人向本站所有邮箱投递。空发件地址的退信不计数。" },
+    "inboundWindowMinutes": { "en": "Mail window (minutes)", "zh": "收信统计窗口（分钟）" },
+    "inboundWindowMinutesHelp": { "en": "Starts with the first message and resets when the window ends. Default: 10 minutes. Changing this resets counters.", "zh": "从第一封开始计时，到期重新计数。默认 10 分钟；修改窗口会重新计数。" },
+    "inboundPairLimit": { "en": "Messages per sender and mailbox", "zh": "同一发件人 → 同一邮箱最多封数" },
+    "inboundPairLimitHelp": { "en": "Default: 10 messages. Message 11 triggers the ban.", "zh": "默认 10 封，第 11 封开始拒收；不同收件邮箱分别计数。" },
+    "inboundSenderLimit": { "en": "Messages per sender across all mailboxes", "zh": "同一发件人 → 所有邮箱合计最多封数" },
+    "inboundSenderLimitHelp": { "en": "Uses the same window to prevent mailbox rotation. Default: 100 messages.", "zh": "使用相同时间窗口，防止对方换着你的收件邮箱轰炸。默认 100 封。" },
+    "inboundBanMinutes": { "en": "Sender ban (minutes)", "zh": "发件人自动封禁时长（分钟）" },
+    "inboundBanMinutesHelp": { "en": "Default: 10 minutes. Blocked attempts do not extend bans. Disabling this protection bypasses automatic bans, not manual blocks.", "zh": "默认 10 分钟，到期自动解封，重复被拦不会延长。封禁时不存信、不推送。关闭收信限流可暂停自动封禁，手动黑名单仍生效。" },
+    "snapshotEnabled": { "en": "Limit snapshot visits", "zh": "开启快照链接防刷" },
+    "snapshotEnabledHelp": { "en": "Counts all snapshot visits per IP. Switching links does not reset it. Visitors sharing a public IP share this limit.", "zh": "按 IP 统计所有快照链接的合计访问数，更换链接不能绕过；同一网络出口的访客共用次数。" },
+    "snapshotWindowSeconds": { "en": "Snapshot window (seconds)", "zh": "快照统计窗口（秒）" },
+    "snapshotWindowSecondsHelp": { "en": "Starts with the first visit. Default: 60 seconds, then resets.", "zh": "从首次访问开始计时。默认 60 秒，到期重新计数。" },
+    "snapshotLimit": { "en": "Snapshot requests per IP per window", "zh": "每个 IP 在窗口内最多访问次数" },
+    "snapshotLimitHelp": { "en": "Default: 60; request 61 returns HTTP 429. Refreshes, invalid links, cache hits and HEAD requests count too.", "zh": "默认 60 次，第 61 次提示访问过于频繁。刷新、无效链接、缓存命中和 HEAD 请求也计数。" },
+    "snapshotBanMinutes": { "en": "Snapshot IP ban (minutes)", "zh": "快照访问封禁时长（分钟）" },
+    "snapshotBanMinutesHelp": { "en": "Default: 10 minutes. Affects this IP's snapshot access only, without extending existing bans or blocking incoming mail.", "zh": "默认 10 分钟，只限制该 IP 的快照访问，不封邮箱、不影响其他 IP，重复被拦不会延长。" },
+    "costHelp": { "en": "Reuses database counters; no KV writes. Blocked repeats do not write counters or reserve mail budget, but still invoke a Worker. Rotating senders or IPs can still consume site quotas.", "zh": "复用现有数据库计数表，不增加 KV 写入。封禁后的重复请求不写计数和收信预算，但仍消耗 Worker 调用；更换发件地址或 IP 仍可能消耗全站额度。" },
+    "save": { "en": "Save protection rules", "zh": "保存防刷规则" },
+    "saved": { "en": "Saved; applies within 30 seconds", "zh": "已保存，最多 30 秒生效" },
+    "unavailable": { "en": "Loading. If this fails, check that the backend is updated and reload.", "zh": "正在加载；若加载失败，请检查后端是否已更新并刷新本页。" }
+  },
   "components.MailBox": {
     "autoRefresh": {
       "en": "Auto Refresh",
@@ -410,8 +436,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "数据库"
     },
     "ipBlacklistSettings": {
-      "en": "IP Blacklist",
-      "zh": "IP 黑名单"
+      "en": "Abuse protection and access",
+      "zh": "防刷与访问控制"
     },
     "loginMethod": {
       "en": "Login Method",
@@ -521,6 +547,7 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.Bark": {
+    "pushUrlHelp": { "en": "Full Bark endpoint; normally keep its current value. Device keys come from the Bark app and must stay private. Disabling a device stops its notifications only.", "zh": "Bark 推送服务完整地址，通常保留现值。设备 Key 在手机 Bark 应用里获取，相当于推送密码，不要公开。关闭设备只停通知，不影响收信。" },
     "actions": {
       "en": "Actions",
       "zh": "操作"
@@ -620,6 +647,7 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.Snapshot": {
+    "overviewHelp": { "en": "Anyone with a snapshot link can read its mail without login. Bound links show the latest mail. Configure visit limits under mail and snapshot protection.", "zh": "快照无需登录，拿到链接的人都能查看邮件；固定绑定链接展示该邮箱最新一封信。访问限制在“防刷与访问控制”页的“收信与快照防刷”中调整。" },
     "actions": {
       "en": "Actions",
       "zh": "操作"
@@ -1210,6 +1238,11 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.IpBlacklistSettings": {
+    "ipHelp": { "en": "Blocks IPs on protected address/send endpoints, not email senders or snapshot links. Regular expressions are supported.", "zh": "拦截创建邮箱和发信等受保护接口的访问 IP，不是邮件发件人，也不覆盖快照。支持正则表达式。" },
+    "asnHelp": { "en": "Matches the visitor network organization, such as a cloud provider; can also block legitimate users on that network.", "zh": "按访客网络所属公司名称拦截，例如某个云服务商；不是邮箱域名，可能同时影响该网络的正常用户。" },
+    "fingerprintHelp": { "en": "Browser fingerprints can be spoofed. Snapshots do not supply fingerprints; use snapshot IP protection above.", "zh": "浏览器指纹可以被伪造；快照没有指纹，请用上方独立防刷保护快照。" },
+    "whitelistHelp": {"en":"Only listed IPs may use protected address/send endpoints. Include your own IP. Daily limits still apply; incoming mail and snapshots are unaffected.","zh":"仅名单中的 IP 可使用创建邮箱和发信等受保护接口，请勿漏掉自己当前的 IP。仍受每日次数限制；不限制收信和快照。"},
+    "dailyHelp": { "en": "Counts protected address/send requests per IP; resets at 00:00 UTC (08:00 China time). Does not limit snapshots.", "zh": "仅统计创建邮箱和发信等受保护接口，每个 IP 每天北京时间 08:00 重置。快照请用上方独立防刷。" },
     "asn_blacklist": {
       "en": "ASN Organization Blacklist",
       "zh": "ASN 组织（运营商）黑名单"
@@ -1320,6 +1353,16 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.Telegram": {
+    "envHelp": {"en":"The default bot is configured with environment variables, so its switch and recipient filters are read-only here. To stop commands only, disable its webhook in Advanced.","zh":"默认机器人来自环境变量，表格里的开关和接收白名单不能在网页修改；只想停用命令，可到高级设置关闭其回调。"},
+    "pushHelp": { "en": "For mail notifications, configure a bot token, enable global push and enter destination chat IDs. No webhook is required.", "zh": "只接收来信推送：配置机器人 Token、打开全局推送并填写接收聊天 ID 即可，不需要设置 webhook。" },
+    "whitelistHelp": {"en":"For bots added on this page, these lists filter notification recipients; an empty list does not restrict that recipient type. Set actual targets in global push or mailbox bindings. Command access uses the Telegram allowlist below.","zh":"网页添加的机器人：表格白名单用于筛选推送接收人，该类名单留空则不限制。实际接收人仍在全局推送或邮箱绑定中设置；命令使用权限看下方 Telegram 白名单。"},
+    "allowListHelp": {"en":"Restricts Telegram user IDs allowed to use private bot commands. Enter user IDs, not email addresses. Does not change web admin access or global notification targets.","zh":"限制哪些 Telegram 用户 ID 能私聊机器人执行命令。填用户 ID，不是邮箱地址；不改变网页管理员权限或全局推送接收名单。"},
+    "miniAppHelp": { "en": "Only needed for the Telegram mail mini app. Leave empty for notifications only.", "zh": "仅用于 Telegram 内嵌邮件小程序；只要来信通知就留空。" },
+    "advancedWebhook": { "en": "Advanced: control mail from Telegram (webhook)", "zh": "高级：在 Telegram 中操作邮箱（webhook）" },
+    "webhookHelp": { "en": "Enable only for commands such as /new or /mails. Status checks send no messages. Disabling the webhook stops commands, but notifications keep working.", "zh": "只有需要 /new、/mails 等机器人命令时才启用。检查状态不会发消息；关闭 webhook 只停机器人命令，来信推送继续工作。" },
+    "disableWebhook": { "en": "Disable bot commands", "zh": "关闭机器人命令" },
+    "webhookDisabled": { "en": "Webhook disabled; notifications remain enabled", "zh": "已关闭 webhook，来信推送保留" },
+    "disableWebhookConfirm": { "en": "Disable Telegram commands? Incoming mail notifications will remain enabled.", "zh": "关闭后不能在 Telegram 中使用机器人命令，来信推送不受影响。确定关闭？" },
     "enable": {
       "en": "Enable",
       "zh": "启用"
@@ -1341,8 +1384,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "全局邮件推送 Chat ID 列表"
     },
     "globalMailPushListTip": {
-      "en": "Supports chat_id of private chat/group/channel. Send a message to your bot first, then fill your BOT TOKEN into the link below and open it to see the chat_id.",
-      "zh": "支持对话/群组/频道的 Chat ID。先给机器人发一条消息，然后把 BOT TOKEN 填入下面的链接并打开，即可看到 chat_id。"
+      "en": "Supports chat_id of private chat/group/channel. Send a message to your bot first, then fill your BOT TOKEN into the link below to see the chat_id. If a webhook is registered, disable it in Advanced before using getUpdates. Known chat IDs can be entered directly without changing the webhook.",
+      "zh": "支持对话/群组/频道的 Chat ID。先给机器人发一条消息，然后把 BOT TOKEN 填入下面链接查看 chat_id。如果已注册 webhook，须先在高级设置关闭回调才能使用 getUpdates；已知 Chat ID 可直接填写，不必更改回调。"
     },
     "getUpdatesUrlTemplate": {
       "en": "https://api.telegram.org/bot<Replace with your BOT TOKEN>/getUpdates",
@@ -1506,6 +1549,13 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.AccountSettings": {
+    "fromHelp": {"en":"Blocks all mailboxes by case-sensitive text contained in the envelope or From sender address. Enter addresses or domain fragments carefully; a fragment can match multiple senders. Matching mail is rejected without storage or notifications.","zh":"对所有邮箱生效，按信封或 From 发件地址包含的文本匹配，区分大小写。可填地址或域名片段，片段可能匹配多个发件人；命中后拒收，不存信、不推送。"},
+    "domainHelp": { "en": "Blocks a sender domain and its subdomains for one recipient only. Your mailbox goes left; their sender domain goes right.", "zh": "左边填你的收件邮箱，右边填对方发件域名；只对该邮箱拦截这个域名及子域名，不影响其他邮箱。" },
+    "mailboxHelp": { "en": "Rejects incoming mail to these mailboxes without deleting existing messages. Remove an entry to resume delivery.", "zh": "停用这些收件邮箱的来信，不删除已有邮件；移出名单即可恢复收信。" },
+    "sendBlockHelp": {"en":"Blocks outgoing mail whose destination address contains an entry (case-sensitive). These are recipient addresses or domain fragments, not your local sender mailboxes. Incoming mail is unaffected.","zh":"禁止向包含这些文本的收件地址发信，区分大小写。填对方收件地址或域名片段，不是你自己的发件邮箱；不影响收信。"},
+    "unlimitedHelp": {"en":"These local sender mailboxes bypass their individual sending balance. They still obey the site-wide daily/monthly limits and blocked destination rules.","zh":"这些本地发件邮箱不检查各自的发信余额；仍受全站日/月发信总限额和发信收件地址黑名单限制。"},
+    "dailyLimitHelp": {"en":"Site-wide total sends per UTC day, shared by all sender mailboxes. -1 means unlimited; disabling skips the daily check.","zh":"全站所有发件邮箱共用的每日发信总数，按 UTC 日期重置；-1 表示不限，关闭则不检查日限额。"},
+    "monthlyLimitHelp": {"en":"Site-wide total sends per UTC month, shared by all sender mailboxes. -1 means unlimited; both daily and monthly limits apply.","zh":"全站所有发件邮箱共用的每月发信总数，按 UTC 月份重置；-1 表示不限，日/月限额同时生效。"},
     "address_block_list": {
       "en": "Address Block Keywords for Users(Admin can skip)",
       "zh": "邮件地址屏蔽关键词(管理员可跳过检查)"

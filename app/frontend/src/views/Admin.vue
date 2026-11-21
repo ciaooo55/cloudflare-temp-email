@@ -7,9 +7,10 @@ import { hashPassword } from '../utils'
 import Turnstile from '../components/Turnstile.vue'
 import { useIsMobile } from '../utils/composables'
 import { adminGroups } from '../utils/admin-navigation'
+import Mails from './admin/Mails.vue'
 
 const sections = {
-  mails: defineAsyncComponent(() => import('./admin/Mails.vue')),
+  mails: Mails,
   sendMail: defineAsyncComponent(() => import('./admin/SendMail.vue')),
   sendBox: defineAsyncComponent(() => import('./admin/SendBox.vue')),
   account: defineAsyncComponent(() => import('./admin/Account.vue')),

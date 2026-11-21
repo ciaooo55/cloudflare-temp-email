@@ -20,6 +20,8 @@ import { scheduled } from './scheduled.ts';
 import { getPasswords, getBooleanValue, getDomains, checkIsAdmin, getEnvStringList } from './utils.ts';
 import { checkAccessControl } from './ip_blacklist.ts';
 import { quotaRetryAfter, reserveHttpUsage } from './usage_budget.ts';
+import { getAbuseSettings, type AbuseSettings } from './abuse_settings.ts';
+import { activeRateLimitBan, checkSnapshotRateLimit } from './rate_limits.ts';
 
 const API_PATHS = [
 	"/api/",
@@ -192,15 +194,50 @@ app.use('/admin/*', async (c, next) => {
 
 app.use('/*', async (c, next) => {
 	const path = c.req.path.replace(/\/+$/, '');
+	let snapshotRule: AbuseSettings | undefined;
+	let snapshotIp: string | undefined;
+	const rejectSnapshot = (retryAfter: number) => {
+		c.header('Retry-After', String(retryAfter));
+		c.header('Cache-Control', 'no-store');
+		return c.text('访问过于频繁，请稍后再试 / Too many snapshot requests', 429);
+	};
+	// Snapshot abuse must be rejected before reserving the shared mail/storage budget.
+	if (c.req.path.startsWith('/m/')) {
+		if (!/^\/m\/[0-9a-f]{64}$/.test(path) || !['GET', 'HEAD'].includes(c.req.method)) {
+			return c.text('Not Found', 404);
+		}
+		try {
+			snapshotRule = await getAbuseSettings(c.env);
+			if (snapshotRule.snapshotEnabled) {
+				snapshotIp = c.req.header('cf-connecting-ip');
+				if (!snapshotIp) return c.text('Snapshot client IP unavailable', 503);
+				const until = await activeRateLimitBan(c.env.DB, `snapshot_ip:${snapshotRule.snapshotWindowSeconds * 1000}:${snapshotIp}`);
+				if (until) return rejectSnapshot(Math.max(1, Math.ceil((until - Date.now()) / 1000)));
+			}
+		} catch (error) {
+			console.error('snapshot protection unavailable', error);
+			return c.text('快照防刷暂不可用', 503);
+		}
+	}
 	if (!API_PATHS.some(prefix => c.req.path.startsWith(prefix))
 		|| ['/admin/db_initialize', '/admin/db_migration', '/admin/db_version', '/admin/storage_status'].includes(path)) {
 		return await next();
 	}
 	const readOnly = ['GET', 'HEAD', 'OPTIONS'].includes(c.req.method);
-	const allowed = await reserveHttpUsage(c.env, readOnly);
+	const allowed = await reserveHttpUsage(c.env, readOnly, !!snapshotRule?.snapshotEnabled);
 	if (!allowed) {
 		c.header("Retry-After", String(quotaRetryAfter()));
 		return c.json({ message: "Daily storage budget paused this operation" }, 503);
+	}
+	if (snapshotRule?.snapshotEnabled && snapshotIp) {
+		try {
+			const retryAfter = await checkSnapshotRateLimit(c.env.DB, snapshotIp, snapshotRule.snapshotLimit,
+				snapshotRule.snapshotWindowSeconds * 1000, snapshotRule.snapshotBanMinutes * 60_000);
+			if (retryAfter) return rejectSnapshot(retryAfter);
+		} catch (error) {
+			console.error('snapshot counter unavailable', error);
+			return c.text('快照防刷暂不可用', 503);
+		}
 	}
 	if (c.req.path.startsWith("/api/new_address")
 		|| c.req.path.startsWith("/api/send_mail")

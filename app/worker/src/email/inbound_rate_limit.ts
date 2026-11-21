@@ -1,97 +1,62 @@
-/**
- * Inbound mail rate limiting (anti mail-bomb).
- *
- * Two dimensions, both per fixed 1-minute bucket:
- *   1. sender + recipient pair: 30/min  (same sender hammering one address)
- *   2. sender across all recipients: 99/min (same sender blasting many addresses)
- *
- * Graduated bans on violation:
- *   offense #1 -> 10 min ban
- *   offense #2 -> 1 hour ban
- *   offense #3+ -> 24 hour ban
- *
- * Offense counter resets 24h after the last offense.
- *
- * Sender identity = SMTP envelope sender (message.from), NOT the From header
- * (trivially spoofed). Empty envelope sender (bounces) is exempt.
- */
+import { getAbuseSettings } from '../abuse_settings.ts';
+import { cachedRateLimitBan, cacheRateLimitBan, withRateLimitTable } from '../rate_limits.ts';
 
-import { withRateLimitTable } from '../rate_limits.ts';
-
-const PAIR_LIMIT = 30;
-const SENDER_LIMIT = 99;
-const OFFENSE_TTL_MS = 86_400_000;
-const BAN_DURATIONS_MS = [600_000, 3_600_000, OFFENSE_TTL_MS];
-const COUNTER_TTL_MS = 120_000;
-
-const ACTIVE_BAN = "SELECT 1 FROM worker_rate_limits WHERE key = ? AND blocked_until > ?";
+const ACTIVE_BAN = 'SELECT blocked_until FROM worker_rate_limits WHERE key = ? AND blocked_until > ?';
 const INCREMENT_COUNTER = `
     INSERT INTO worker_rate_limits (key, count, window_start, expires_at)
-    SELECT ?, 1, ?, ? WHERE NOT EXISTS (${ACTIVE_BAN})
+    SELECT ?1, 1, ?2, ?3 WHERE NOT EXISTS (${ACTIVE_BAN})
     ON CONFLICT(key) DO UPDATE SET
-        count = CASE WHEN window_start = excluded.window_start THEN count + 1 ELSE 1 END,
-        window_start = excluded.window_start,
-        expires_at = excluded.expires_at
+        count = CASE WHEN window_start <= ?6 THEN 1 ELSE count + 1 END,
+        window_start = CASE WHEN window_start <= ?6 THEN excluded.window_start ELSE window_start END,
+        expires_at = CASE WHEN window_start <= ?6 THEN excluded.expires_at ELSE expires_at END
     RETURNING count
 `;
-const RECORD_OFFENSE = `
+const RECORD_BAN = `
     INSERT INTO worker_rate_limits (key, count, window_start, expires_at, blocked_until)
-    SELECT ?, 1, ?, ?, ? WHERE NOT EXISTS (${ACTIVE_BAN})
-        AND EXISTS (
-            SELECT 1 FROM worker_rate_limits WHERE (key = ? AND count > ?) OR (key = ? AND count > ?)
-        )
-    ON CONFLICT(key) DO UPDATE SET
-        count = CASE WHEN expires_at <= excluded.window_start THEN 1 ELSE count + 1 END,
-        window_start = excluded.window_start,
-        expires_at = excluded.expires_at,
-        blocked_until = CASE
-            WHEN expires_at <= excluded.window_start THEN excluded.blocked_until
-            WHEN count = 1 THEN excluded.window_start + ?
-            ELSE excluded.window_start + ?
-        END
-    RETURNING count, blocked_until
+    SELECT ?1, 1, ?2, ?3, ?3 WHERE NOT EXISTS (${ACTIVE_BAN})
+        AND EXISTS (SELECT 1 FROM worker_rate_limits WHERE (key = ?6 AND count > ?7) OR (key = ?8 AND count > ?9))
+    ON CONFLICT(key) DO UPDATE SET count = count + 1, window_start = excluded.window_start,
+        expires_at = excluded.expires_at, blocked_until = excluded.blocked_until
+    RETURNING blocked_until
 `;
 
+/** SMTP envelope sender + normalized mailbox; empty senders (delivery reports) are exempt. */
 export async function checkInboundRateLimit(
     sender: string, recipient: string, env: Bindings, record = true
 ): Promise<{ blocked: boolean; reason?: string }> {
     if (!env.DB) return { blocked: false };
-    const s = sender.toLowerCase().trim().slice(0, 200);
-    if (!s) return { blocked: false }; // bounce / empty envelope sender: exempt
+    const s = sender.toLowerCase().trim();
+    if (!s) return { blocked: false };
+    const settings = await getAbuseSettings(env);
+    if (!settings.inboundEnabled) return { blocked: false };
     const now = Date.now();
     const banKey = `inbound_ban:${s}`;
+    if (cachedRateLimitBan(env.DB, banKey, now)) return { blocked: true, reason: 'sender temporarily blocked' };
     if (!record) {
-        const active = await env.DB.prepare(ACTIVE_BAN).bind(banKey, now).first();
-        return active ? { blocked: true, reason: "sender temporarily blocked" } : { blocked: false };
+        const active = await withRateLimitTable(env.DB, () => env.DB.prepare(ACTIVE_BAN)
+            .bind(banKey, now).first<{ blocked_until: number }>());
+        if (!active) return { blocked: false };
+        cacheRateLimitBan(env.DB, banKey, active.blocked_until);
+        return { blocked: true, reason: 'sender temporarily blocked' };
     }
-    const r = recipient.toLowerCase().trim().slice(0, 200);
-    const bucket = Math.floor(now / 60_000) * 60_000;
-    const pairKey = `inbound_pair:${JSON.stringify([s, r])}`;
-    const senderKey = `inbound_sender:${s}`;
-    const [pair, senderTotal, offenseResult] = await withRateLimitTable(env.DB, () => env.DB.batch<{
-        count: number;
-        blocked_until?: number;
+    const r = recipient.toLowerCase().trim();
+    const windowMs = settings.inboundWindowMinutes * 60_000;
+    const pairKey = `inbound_pair:${windowMs}:${JSON.stringify([s, r])}`;
+    const senderKey = `inbound_sender:${windowMs}:${s}`;
+    const until = now + settings.inboundBanMinutes * 60_000;
+    const [pair, senderTotal, ban] = await withRateLimitTable(env.DB, () => env.DB.batch<{
+        count: number; blocked_until?: number;
     }>([
-        env.DB.prepare(INCREMENT_COUNTER).bind(pairKey, bucket, now + COUNTER_TTL_MS, banKey, now),
-        env.DB.prepare(INCREMENT_COUNTER).bind(senderKey, bucket, now + COUNTER_TTL_MS, banKey, now),
-        env.DB.prepare(RECORD_OFFENSE).bind(
-            banKey, now, now + OFFENSE_TTL_MS, now + BAN_DURATIONS_MS[0], banKey, now,
-            pairKey, PAIR_LIMIT, senderKey, SENDER_LIMIT, BAN_DURATIONS_MS[1], BAN_DURATIONS_MS[2]
+        env.DB.prepare(INCREMENT_COUNTER).bind(pairKey, now, now + windowMs, banKey, now, now - windowMs),
+        env.DB.prepare(INCREMENT_COUNTER).bind(senderKey, now, now + windowMs, banKey, now, now - windowMs),
+        env.DB.prepare(RECORD_BAN).bind(
+            banKey, now, until, banKey, now, pairKey, settings.inboundPairLimit, senderKey, settings.inboundSenderLimit
         ),
     ]));
-    if (!pair.results.length) {
-        return { blocked: true, reason: "sender temporarily blocked" };
+    if (!pair.results.length) return { blocked: true, reason: 'sender temporarily blocked' };
+    if (ban.results[0]?.blocked_until) {
+        cacheRateLimitBan(env.DB, banKey, ban.results[0].blocked_until!);
+        return { blocked: true, reason: `inbound rate limit exceeded (pair ${pair.results[0].count}/${settings.inboundPairLimit}, sender ${senderTotal.results[0].count}/${settings.inboundSenderLimit})` };
     }
-
-    const offense = offenseResult.results[0];
-    if (offense?.blocked_until) {
-        const banSecs = (offense.blocked_until - now) / 1000;
-        const reason =
-            `inbound rate limit exceeded (pair ${pair.results[0].count}/${PAIR_LIMIT}, ` +
-            `sender ${senderTotal.results[0].count}/${SENDER_LIMIT}), banned ${banSecs}s (offense #${offense.count})`;
-        console.warn(`[inbound-rl] ${reason} sender=${s}`);
-        return { blocked: true, reason };
-    }
-
     return { blocked: false };
 }

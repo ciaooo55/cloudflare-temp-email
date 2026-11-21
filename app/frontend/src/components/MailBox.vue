@@ -1,13 +1,14 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import { useScopedI18n } from '@/i18n/app'
 import { useGlobalState } from '../store'
 import { useIsMobile } from '../utils/composables'
 import { processItem, refreshParsedItem, releaseMailResources } from '../utils/email-parser'
 import { utcToLocalDate } from '../utils'
-import MailContentRenderer from './MailContentRenderer.vue'
 import AiExtractInfo from './AiExtractInfo.vue'
+
+const MailContentRenderer = defineAsyncComponent(() => import('./MailContentRenderer.vue'))
 
 const props = defineProps({
   fetchMailData: { type: Function, required: true },

@@ -14,8 +14,8 @@ import type { TelegramBotEntry } from '../admin_api/notify_settings.ts'
 export const api = new Hono<HonoCustomType>();
 export { sendMailNotifications }
 
-/** KV key for the default bot's Telegram webhook secret token */
-const WEBHOOK_SECRET_KV_KEY = "telegram:webhook-secret:default";
+/** Persisted key for the default bot's Telegram webhook secret token. */
+const WEBHOOK_SECRET_KV_KEY = CONSTANTS.TG_WEBHOOK_SECRET_KEY;
 
 const hasTelegramBot = async (c: Context<HonoCustomType>) => {
     if (c.env.TELEGRAM_BOT_TOKEN) return true;
@@ -68,9 +68,13 @@ const handleTelegramWebhook = async (
 
 api.post("/telegram/webhook/:botId", async (c) => {
     const botId = c.req.param("botId");
+    if (botId === 'env') {
+        const secret = await workerStore(c.env).get(WEBHOOK_SECRET_KV_KEY);
+        return handleTelegramWebhook(c, c.env.TELEGRAM_BOT_TOKEN, secret);
+    }
     const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
     const bot = bots.find(b => b.id === botId);
-    if (!bot?.token) {
+    if (!bot?.token || !bot.enabled) {
         return c.text("bot not found", 404);
     }
     return handleTelegramWebhook(c, bot.token, bot.webhookSecret ?? null);

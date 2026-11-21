@@ -11,19 +11,26 @@ const dialog = useDialog()
 
 const { t } = useScopedI18n('views.admin.Telegram')
 
-const status = ref({
-    fetched: false,
-})
-
-const fetchStatus = async () => {
+const webhookStatus = ref<Record<string, unknown>>({})
+const fetchWebhook = async (bot: BotItem) => {
     try {
-        const res = await api.fetch(`/admin/telegram/status`)
-        Object.assign(status.value, res)
-        status.value.fetched = true
-    } catch (error) {
-        message.error((error as Error).message || "error");
-    }
+        const result = await api.fetch(`/admin/notify/telegram_bots/${bot.id}/webhook`)
+        if (!result.ok) throw new Error(result.error)
+        webhookStatus.value[bot.id] = result.info
+    } catch (error) { message.error((error as Error).message || 'error') }
 }
+const disableWebhook = (bot: BotItem) => dialog.warning({
+    title: t('confirmTitle'), content: t('disableWebhookConfirm'),
+    positiveText: t('positiveText'), negativeText: t('negativeText'),
+    onPositiveClick: async () => {
+        try {
+            const result = await api.fetch(`/admin/notify/telegram_bots/${bot.id}/webhook`, { method: 'DELETE' })
+            if (!result.ok) throw new Error(result.error)
+            message.success(t('webhookDisabled'))
+            await fetchWebhook(bot)
+        } catch (error) { message.error((error as Error).message || 'error') }
+    }
+})
 
 const copyText = async (text: string) => {
     try {
@@ -32,25 +39,6 @@ const copyText = async (text: string) => {
     } catch {
         message.warning(text)
     }
-}
-
-const init = async () => {
-    dialog.warning({
-        title: t('confirmTitle'),
-        content: t('confirmInit'),
-        positiveText: t('positiveText'),
-        negativeText: t('negativeText'),
-        onPositiveClick: async () => {
-            try {
-                await api.fetch(`/admin/telegram/init`, {
-                    method: 'POST',
-                })
-                message.success(t('successTip'))
-            } catch (error) {
-                message.error((error as Error).message || "error");
-            }
-        }
-    })
 }
 
 type BotItem = {
@@ -241,27 +229,21 @@ const saveSettings = async () => {
 }
 
 onMounted(async () => {
-    await getSettings();
-    await fetchBots();
+    await Promise.all([getSettings(), fetchBots()]);
 })
 </script>
 
 <template>
     <div class="settings-page">
         <section class="settings-surface">
+            <p class="settings-note">{{ t('pushHelp') }}</p>
             <n-flex justify="end" class="page-actions">
-                <n-button @click="fetchStatus" secondary>
-                    {{ t('status') }}
-                </n-button>
-                <n-button @click="init" secondary>
-                    {{ t('init') }}
-                </n-button>
                 <n-button @click="saveSettings" type="primary">
                     {{ t('save') }}
                 </n-button>
             </n-flex>
             <n-card :bordered="false" embedded :title="t('botManagement')" style="margin-top: 12px;">
-                <n-text depth="3" style="font-size: 12px;">{{ t('botManagementTip') }}<br />{{ t('botManagementTipExtra') }}</n-text>
+                <n-text depth="3" style="font-size: 12px;">{{ t('botManagementTip') }}<br />{{ t('whitelistHelp') }}<template v-if="bots.some(bot => bot.id === 'env')"><br />{{ t('envHelp') }}</template></n-text>
                 <div style="overflow-x: auto; margin-top: 8px;">
                 <n-table :bordered="false" style="min-width: 880px;">
                     <thead>
@@ -279,18 +261,17 @@ onMounted(async () => {
                             <td style="white-space: nowrap;">{{ bot.name }}</td>
                             <td><n-text code style="white-space: nowrap;">{{ bot.maskedToken }}</n-text></td>
                             <td>
-                                <n-input v-model:value="bot.allowedChatIds" :placeholder="t('chatIdsPlaceholder')"
+                                <n-input v-model:value="bot.allowedChatIds" :disabled="bot.id === 'env'" :placeholder="t('chatIdsPlaceholder')"
                                     style="min-width: 200px;" size="small" @change="saveBotWhitelist(bot)" />
                             </td>
                             <td>
-                                <n-input v-model:value="bot.allowedGroupIds" :placeholder="t('groupIdsPlaceholder')"
+                                <n-input v-model:value="bot.allowedGroupIds" :disabled="bot.id === 'env'" :placeholder="t('groupIdsPlaceholder')"
                                     style="min-width: 200px;" size="small" @change="saveBotWhitelist(bot)" />
                             </td>
-                            <td><n-switch v-model:value="bot.enabled" @update:value="toggleBot(bot)" :round="false" /></td>
+                            <td><n-switch v-model:value="bot.enabled" :disabled="bot.id === 'env'" @update:value="toggleBot(bot)" :round="false" /></td>
                             <td>
                                 <n-flex :wrap="false">
                                     <n-button size="small" @click="openTestModal(bot)">{{ t('test') }}</n-button>
-                                    <n-button size="small" @click="setBotWebhook(bot)">{{ t('setWebhook') }}</n-button>
                                     <n-button v-if="bot.id !== 'env'" size="small" type="error" ghost @click="deleteBot(bot)">{{ t('delete') }}</n-button>
                                 </n-flex>
                             </td>
@@ -326,9 +307,9 @@ onMounted(async () => {
                 </template>
             </n-modal>
             <n-card :bordered="false" embedded>
-                <n-form-item-row :label="t('enableTelegramAllowList')" :feedback="t('manualInputPrompt')">
+                <n-form-item-row :label="t('enableTelegramAllowList')" :feedback="t('allowListHelp')">
                     <n-input-group>
-                        <n-checkbox v-model:checked="settings.enableAllowList" >
+                        <n-checkbox style="flex-shrink: 0; white-space: nowrap;" v-model:checked="settings.enableAllowList" >
                             {{ t('enable') }}
                         </n-checkbox>
                         <n-select v-model:value="settings.allowList" filterable multiple tag
@@ -339,7 +320,7 @@ onMounted(async () => {
                 <br />
                 <n-form-item-row :label="t('enableGlobalMailPush')">
                     <n-input-group>
-                        <n-checkbox v-model:checked="settings.enableGlobalMailPush" >
+                        <n-checkbox style="flex-shrink: 0; white-space: nowrap;" v-model:checked="settings.enableGlobalMailPush" >
                             {{ t('enable') }}
                         </n-checkbox>
                         <n-select v-model:value="settings.globalMailPushList" filterable multiple tag
@@ -357,11 +338,23 @@ onMounted(async () => {
                     </template>
                 </n-form-item-row>
                 <br />
-                <n-form-item-row :label="t('miniAppUrl')">
+                <n-form-item-row :label="t('miniAppUrl')" :feedback="t('miniAppHelp')">
                     <n-input v-model:value="settings.miniAppUrl"></n-input>
                 </n-form-item-row>
             </n-card>
-            <pre v-if="status.fetched">{{ JSON.stringify(status, null, 2) }}</pre>
+            <details class="settings-disclosure">
+                <summary>{{ t('advancedWebhook') }}</summary>
+                <p class="settings-note">{{ t('webhookHelp') }}</p>
+                <div v-for="bot in bots" :key="bot.id" style="margin: 12px 0;">
+                    <strong>{{ bot.name }}</strong>
+                    <n-flex style="margin-top: 8px;">
+                        <n-button size="small" @click="fetchWebhook(bot)">{{ t('status') }}</n-button>
+                        <n-button size="small" @click="setBotWebhook(bot)">{{ t('setWebhook') }}</n-button>
+                        <n-button size="small" @click="disableWebhook(bot)">{{ t('disableWebhook') }}</n-button>
+                    </n-flex>
+                    <pre v-if="webhookStatus[bot.id]" style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ JSON.stringify(webhookStatus[bot.id], null, 2) }}</pre>
+                </div>
+            </details>
         </section>
     </div>
 </template>

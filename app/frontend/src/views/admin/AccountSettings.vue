@@ -37,11 +37,11 @@ onMounted(async () => { try { await fetchData() } catch (error) { message.error(
   <div v-if="settings" class="rules-panel">
     <section class="rule-section">
       <h2>{{ t('fromBlockList') }}</h2>
-      <p>{{ t('manualInputPrompt') }}</p>
+      <p>{{ t('fromHelp') }}</p>
       <n-select v-model:value="settings.fromBlockList" filterable multiple tag :placeholder="t('fromBlockList')" :aria-label="t('fromBlockList')" />
     </section>
     <section class="rule-section">
-      <h2>{{ t('mailboxDomainBlockList') }}</h2>
+      <h2>{{ t('mailboxDomainBlockList') }}</h2><p>{{ t('domainHelp') }}</p>
       <n-dynamic-input v-model:value="settings.mailboxDomainBlockList" :on-create="() => ({ address: '', domain: '' })">
         <template #default="{ value }">
           <div class="domain-rule">
@@ -53,22 +53,22 @@ onMounted(async () => { try { await fetchData() } catch (error) { message.error(
     </section>
     <section class="rule-section">
       <h2>{{ t('blockedMailboxList') }}</h2>
-      <p>{{ t('manualInputPrompt') }}</p>
+      <p>{{ t('mailboxHelp') }}</p>
       <n-select v-model:value="settings.blockedMailboxList" filterable multiple tag :placeholder="t('blockedMailboxList')" :aria-label="t('blockedMailboxList')" />
     </section>
     <n-collapse class="send-limits">
       <n-collapse-item name="send-limits" :title="t('send_mail_limit')">
-        <n-form-item-row :label="t('send_address_block_list')">
+        <n-form-item-row :label="t('send_address_block_list')" :feedback="t('sendBlockHelp')">
           <n-select v-model:value="settings.sendBlockList" filterable multiple tag />
         </n-form-item-row>
-        <n-form-item-row :label="t('noLimitSendAddressList')">
+        <n-form-item-row :label="t('noLimitSendAddressList')" :feedback="t('unlimitedHelp')">
           <n-select v-model:value="settings.noLimitSendAddressList" filterable multiple tag />
         </n-form-item-row>
-        <n-form-item-row :label="t('send_mail_daily_limit')">
+        <n-form-item-row :label="t('send_mail_daily_limit')" :feedback="t('dailyLimitHelp')">
           <n-switch v-model:value="settings.sendMailLimitConfig.dailyEnabled" />
           <n-input-number v-model:value="settings.sendMailLimitConfig.dailyLimit" :min="-1" :precision="0" :disabled="!settings.sendMailLimitConfig.dailyEnabled" />
         </n-form-item-row>
-        <n-form-item-row :label="t('send_mail_monthly_limit')">
+        <n-form-item-row :label="t('send_mail_monthly_limit')" :feedback="t('monthlyLimitHelp')">
           <n-switch v-model:value="settings.sendMailLimitConfig.monthlyEnabled" />
           <n-input-number v-model:value="settings.sendMailLimitConfig.monthlyLimit" :min="-1" :precision="0" :disabled="!settings.sendMailLimitConfig.monthlyEnabled" />
         </n-form-item-row>

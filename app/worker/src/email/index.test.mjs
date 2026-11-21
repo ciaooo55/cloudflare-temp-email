@@ -133,6 +133,21 @@ test("admitted mail still promotes the legacy KV blacklist", async () => {
     assert.equal(DB.sqlite.prepare("SELECT inbound_emails FROM worker_usage_day").get().inbound_emails, 1);
 });
 
+test("receive-only mail still enforces limits; banned retries leave mail and admission budget unchanged", async t => {
+    const DB = createD1();
+    t.after(() => DB.sqlite.close());
+    DB.sqlite.exec(WORKER_STORE_SCHEMA + USAGE_BUDGET_SCHEMA);
+    DB.sqlite.exec("CREATE TABLE raw_mails (source TEXT, address TEXT, raw TEXT, message_id TEXT); CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);");
+    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: '0' };
+    for (let i = 0; i < 10; i++) assert.deepEqual(await deliver(env), []);
+    assert.deepEqual(await deliver(env), ['Rate limit exceeded']);
+    const before = DB.sqlite.prepare('SELECT total_changes() AS n').get().n;
+    for (let i = 0; i < 20; i++) assert.deepEqual(await deliver(env), ['Rate limit exceeded']);
+    assert.equal(DB.sqlite.prepare('SELECT total_changes() AS n').get().n, before);
+    assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM raw_mails').get().n, 10);
+    assert.equal(DB.sqlite.prepare('SELECT inbound_emails FROM worker_usage_day').get().inbound_emails, 11);
+});
+
 test("D1 blacklist reads are cached across admission and repeated deliveries", async () => {
     for (const blacklist of [[], ["other@example.com"], ["sender@example.com"]]) {
         const DB = createD1();

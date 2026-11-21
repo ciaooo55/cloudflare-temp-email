@@ -555,6 +555,7 @@ onMounted(fetchAll)
 <template>
     <div class="settings-page">
         <section class="settings-surface">
+            <p class="settings-note">{{ t('overviewHelp') }}</p>
             <div class="page-actions"><n-button type="primary" @click="saveSettings">{{ t('save') }}</n-button></div>
             <n-form-item-row :label="t('ttlHours')">
                 <n-input-group>

@@ -133,7 +133,7 @@ onMounted(fetchData)
                 <n-button @click="testDevice()" secondary :loading="testingDeviceId === '__all__'" :disabled="!!testingDeviceId">{{ t('testAll') }}</n-button>
                 <n-button @click="saveAll" type="primary">{{ t('save') }}</n-button>
             </n-flex>
-            <n-form-item-row :label="t('pushUrl')" style="margin-top: 12px;">
+            <n-form-item-row :label="t('pushUrl')" :feedback="t('pushUrlHelp')" style="margin-top: 12px;">
                 <n-input v-model:value="pushUrl" :placeholder="t('pushUrlTip')" />
             </n-form-item-row>
             <div class="table-scroll">

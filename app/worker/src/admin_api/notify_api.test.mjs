@@ -142,6 +142,26 @@ test("TG bot: 独立 webhook 设置", async () => {
 });
 
 // ---------- Bark ----------
+test('default Telegram webhook persists verification secret; status and disabling preserve push settings', async () => {
+    const db = makeDb();
+    const ctx = makeCtx({ db, params: { id: 'env' }, envExtra: { TELEGRAM_BOT_TOKEN: '333:default' } });
+    const methods = [];
+    let webhookBody;
+    globalThis.fetch = async (url, init) => {
+        methods.push(String(url).split('/').at(-1));
+        if (init?.body) webhookBody = JSON.parse(init.body);
+        return { ok: true, json: async () => ({ ok: true, result: { url: 'https://mail.example.com/telegram/webhook' } }) };
+    };
+    assert.equal((await bodyOf(await notifyApi.setTelegramBotWebhook(ctx))).data.ok, true);
+    assert.equal(webhookBody.url, 'https://mail.example.com/telegram/webhook');
+    assert.equal(storeEntry(db, 'telegram:webhook-secret:default').value, webhookBody.secret_token);
+    const before = db.sqlite.prepare('SELECT * FROM settings').all();
+    assert.equal((await bodyOf(await notifyApi.getTelegramBotWebhook(ctx))).data.ok, true);
+    assert.equal((await bodyOf(await notifyApi.deleteTelegramBotWebhook(ctx))).data.ok, true);
+    assert.deepEqual(db.sqlite.prepare('SELECT * FROM settings').all(), before);
+    assert.deepEqual(methods, ['setWebhook', 'getWebhookInfo', 'deleteWebhook']);
+});
+
 test("Bark: 多设备配置、脱敏、测试", async () => {
     const db = makeDb();
     let r = await bodyOf(await notifyApi.getBark(makeCtx({ db })));
