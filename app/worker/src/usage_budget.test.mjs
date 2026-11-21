@@ -9,13 +9,13 @@ const now = Date.UTC(2026, 0, 1, 23, 59, 59);
 test("soft exhaustion keeps inbound storage available until the hard budget, then resets at UTC midnight", async () => {
     const DB = createD1();
     DB.sqlite.exec(USAGE_BUDGET_SCHEMA + WORKER_STORE_SCHEMA);
-    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "15", D1_DAILY_WRITE_HARD_LIMIT: "27" };
+    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "15", D1_DAILY_WRITE_HARD_LIMIT: "35" };
     assert.equal(await reserveInboundUsage(env, now), "full");
     assert.equal(await reserveReadUsage(env, now), false);
     assert.equal(await reserveInboundUsage(env, now), "receive-only");
     assert.equal(await reserveInboundUsage(env, now), "receive-only");
     assert.equal(await reserveInboundUsage(env, now), "paused");
-    assert.deepEqual({ ...(await getUsageStatus(env, now)).usage }, { row_reads: 107, row_writes: 27, inbound_emails: 3 });
+    assert.deepEqual({ ...(await getUsageStatus(env, now)).usage }, { row_reads: 107, row_writes: 35, inbound_emails: 3 });
     assert.equal(quotaRetryAfter(now), 1);
     assert.equal(await reserveInboundUsage(env, now + 1000), "full");
 });
@@ -40,6 +40,19 @@ test("fresh databases allow settings and admin login until budgeting is initiali
     DB.sqlite.exec(USAGE_BUDGET_SCHEMA);
     assert.equal(await reserveHttpUsage(env, true), true);
     assert.equal(await reserveHttpUsage(env, false), false);
+});
+
+test('snapshot reads reserve their counter writes separately from ordinary API read leases', async () => {
+    const DB = createD1();
+    DB.sqlite.exec(USAGE_BUDGET_SCHEMA);
+    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: '98' };
+    for (let i = 0; i < 16; i++) {
+        assert.equal(await reserveReadUsage(env, now), true);
+        assert.equal(await reserveReadUsage(env, now, true), true);
+    }
+    assert.equal((await getUsageStatus(env, now)).usage.row_writes, 98);
+    assert.equal(await reserveReadUsage(env, now), false);
+    assert.equal(await reserveReadUsage(env, now, true), false);
 });
 
 test("an unrelated D1 error does not disable HTTP budgeting", async () => {

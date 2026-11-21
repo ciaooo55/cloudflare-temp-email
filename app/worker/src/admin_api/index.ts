@@ -12,6 +12,7 @@ import { sendMailbyAdmin, sendMailByBindingAdmin } from './send_mail.ts'
 import db_api from './db_api.ts'
 import ip_blacklist_settings from './ip_blacklist_settings.ts'
 import notify_settings from './notify_settings.ts'
+import { getAbuseSettingsResponse, saveAbuseSettings } from '../abuse_settings.ts'
 
 export const api = new Hono<HonoCustomType>()
 
@@ -67,6 +68,8 @@ api.post('/admin/storage_import', db_api.importStoragePage)
 // IP blacklist settings
 api.get('/admin/ip_blacklist/settings', ip_blacklist_settings.getIpBlacklistSettings)
 api.post('/admin/ip_blacklist/settings', ip_blacklist_settings.saveIpBlacklistSettings)
+api.get('/admin/abuse_protection', getAbuseSettingsResponse)
+api.post('/admin/abuse_protection', saveAbuseSettings)
 
 
 // notify settings: telegram bots
@@ -76,6 +79,8 @@ api.put('/admin/notify/telegram_bots/:id', notify_settings.updateTelegramBot)
 api.delete('/admin/notify/telegram_bots/:id', notify_settings.deleteTelegramBot)
 api.post('/admin/notify/telegram_bots/:id/test', notify_settings.testTelegramBot)
 api.post('/admin/notify/telegram_bots/:id/webhook', notify_settings.setTelegramBotWebhook)
+api.get('/admin/notify/telegram_bots/:id/webhook', notify_settings.getTelegramBotWebhook)
+api.delete('/admin/notify/telegram_bots/:id/webhook', notify_settings.deleteTelegramBotWebhook)
 
 // notify settings: bark
 api.get('/admin/notify/bark', notify_settings.getBark)

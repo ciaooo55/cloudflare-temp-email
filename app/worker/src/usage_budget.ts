@@ -4,10 +4,11 @@ CREATE TABLE IF NOT EXISTS worker_usage_day (
 );
 `;
 
-export const MAIL_CORE_COST = { reads: 24, writes: 5 };
+export const MAIL_CORE_COST = { reads: 24, writes: 9 };
 export const MAIL_FULL_COST = { reads: 56, writes: 14 };
 export const API_WRITE_COST = { reads: 100, writes: 12 };
 const API_READ_COST = { reads: 50, writes: 2 };
+const SNAPSHOT_READ_COST = { reads: 52, writes: 4 };
 export const CRON_COST = { reads: 120, writes: 5 };
 const inboundSchemaReady = new WeakSet<D1Database>();
 
@@ -67,27 +68,30 @@ export async function reserveInboundUsage(env: Bindings, now = Date.now()) {
 
 type ReadLease = { day: string; remaining: number };
 const readLeases = new WeakMap<D1Database, ReadLease>();
+const snapshotReadLeases = new WeakMap<D1Database, ReadLease>();
 const READ_LEASE_SIZE = 16;
 
-export async function reserveReadUsage(env: Bindings, now = Date.now()) {
+export async function reserveReadUsage(env: Bindings, now = Date.now(), snapshot = false) {
     const day = utcDay(now);
-    const lease = readLeases.get(env.DB);
+    const leases = snapshot ? snapshotReadLeases : readLeases;
+    const cost = snapshot ? SNAPSHOT_READ_COST : API_READ_COST;
+    const lease = leases.get(env.DB);
     if (lease?.day === day && lease.remaining > 0) {
         lease.remaining--;
         return true;
     }
     if (await reserveUsage(env, "soft", {
-        reads: API_READ_COST.reads * READ_LEASE_SIZE, writes: API_READ_COST.writes * READ_LEASE_SIZE,
+        reads: cost.reads * READ_LEASE_SIZE, writes: cost.writes * READ_LEASE_SIZE,
     }, false, now)) {
-        readLeases.set(env.DB, { day, remaining: READ_LEASE_SIZE - 1 });
+        leases.set(env.DB, { day, remaining: READ_LEASE_SIZE - 1 });
         return true;
     }
     return false;
 }
 
-export async function reserveHttpUsage(env: Bindings, readOnly: boolean) {
+export async function reserveHttpUsage(env: Bindings, readOnly: boolean, snapshot = false) {
     try {
-        return await (readOnly ? reserveReadUsage(env) : reserveUsage(env, "soft", API_WRITE_COST));
+        return await (readOnly ? reserveReadUsage(env, Date.now(), snapshot) : reserveUsage(env, "soft", API_WRITE_COST));
     } catch (error) {
         return error instanceof Error && /\bno such table: worker_usage_day\b/.test(error.message);
     }

@@ -197,7 +197,7 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
         // Security: generate a secret token for webhook verification
         // Telegram will send it in X-Telegram-Bot-Api-Secret-Token header
         const webhookSecret = generateSecureHexToken(32);
-        const webhookUrl = `https://${new URL(c.req.url).host}/telegram/webhook/${id}`;
+        const webhookUrl = `https://${new URL(c.req.url).host}/telegram/webhook${id === 'env' ? '' : '/' + id}`;
         const res = await fetch(`https://api.telegram.org/bot${bot.token}/setWebhook`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -213,11 +213,32 @@ async function setTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Respon
         if (idx >= 0) {
             bots[idx].webhookSecret = webhookSecret;
             await saveSetting(c, CONSTANTS.TELEGRAM_BOTS_KEY, JSON.stringify(bots));
+        } else if (id === 'env') {
+            await workerStore(c.env).put(CONSTANTS.TG_WEBHOOK_SECRET_KEY, webhookSecret);
         }
         return c.json({ ok: true, webhookUrl });
     } catch (e) {
         return c.json({ ok: false, error: `请求 Telegram 失败: ${(e as Error).message}` });
     }
+}
+
+async function getTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Response> {
+    const bot = await findBot(c, c.req.param('id') || '');
+    if (!bot) return c.json({ error: 'bot not found' }, 404);
+    const response = await fetch(`https://api.telegram.org/bot${bot.token}/getWebhookInfo`);
+    const result = await response.json<{ ok: boolean; result?: unknown; description?: string }>();
+    return c.json(result.ok ? { ok: true, info: result.result }
+        : { ok: false, error: result.description || 'Telegram status unavailable' }, result.ok ? 200 : 502);
+}
+
+async function deleteTelegramBotWebhook(c: Context<HonoCustomType>): Promise<Response> {
+    const bot = await findBot(c, c.req.param('id') || '');
+    if (!bot) return c.json({ error: 'bot not found' }, 404);
+    const response = await fetch(`https://api.telegram.org/bot${bot.token}/deleteWebhook`, { method: 'POST' });
+    const result = await response.json<{ ok: boolean; description?: string }>();
+    // Keep bot tokens, push recipients and secrets intact; notifications do not use webhooks.
+    return c.json(result.ok ? { ok: true }
+        : { ok: false, error: result.description || 'Telegram webhook could not be disabled' }, result.ok ? 200 : 502);
 }
 
 async function getBark(c: Context<HonoCustomType>): Promise<Response> {
@@ -562,6 +583,8 @@ export default {
     deleteTelegramBot,
     testTelegramBot,
     setTelegramBotWebhook,
+    getTelegramBotWebhook,
+    deleteTelegramBotWebhook,
     getBark,
     saveBark,
     testBark,

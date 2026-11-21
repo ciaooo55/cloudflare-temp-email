@@ -44,6 +44,17 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
     }
+    // Active bans must not keep consuming the daily admission ledger under a mail flood.
+    try {
+        if ((await checkInboundRateLimit(message.from, toAddress, env, false)).blocked) {
+            message.setReject("Rate limit exceeded");
+            return;
+        }
+    } catch (error) {
+        console.error("inbound ban check error", error);
+        message.setReject("Mail temporarily paused: protection unavailable");
+        return;
+    }
     const admission = await reserveInboundUsage(env).catch(() => "paused");
     if (admission === "paused") {
         message.setReject("Mail temporarily paused: storage budget unavailable");
@@ -54,9 +65,9 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         console.log(`Reject message from ${message.from} to ${toAddress}`);
         return;
     }
-    // inbound rate limit: anti mail-bomb (pair 30/min, sender 99/min, graduated bans)
+    // Keep counting in receive-only mode so budget degradation cannot bypass protection.
     try {
-        const rl = await checkInboundRateLimit(message.from, toAddress, env, admission === "full");
+        const rl = await checkInboundRateLimit(message.from, toAddress, env);
         if (rl.blocked) {
             message.setReject("Rate limit exceeded");
             console.log(`Reject rate-limited message from ${message.from} to ${toAddress}: ${rl.reason}`);
@@ -64,6 +75,8 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         }
     } catch (error) {
         console.error("inbound rate limit check error", error);
+        message.setReject("Mail temporarily paused: protection unavailable");
+        return;
     }
     const rawEmail = await new Response(message.raw).text();
     // 转发邮件：从 To 头提取原始收件人（信封收件人 message.to 已被转发改写）
