@@ -8,7 +8,7 @@
 
 ## v1.13.0(main)
 
-- fix: |Mail| Keep MIME and Sent plain text separate from HTML so reply/forward quotes preserve literal angle brackets and line breaks
+- fix: |Mail| Keep MIME and Sent plain text separate from HTML so quotes preserve literal angle brackets and line breaks; hide HTML/image controls for text-only mail to prevent blank alternate views
 
 - fix: |Mail| Reuse the private reader in Telegram; repair reply/forward navigation and shared drafts, unnamed sender reply addresses, and settings access before a bot is configured
 - refactor: |Cleanup| Move dependency-free verification rules into shared; remove broken auto-login, obsolete appearance state, generic config endpoints and stale tests while retaining historical mail, credential APIs and unfinished KV/D1 migration paths

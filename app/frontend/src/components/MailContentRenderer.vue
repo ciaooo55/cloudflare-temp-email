@@ -110,6 +110,7 @@ watch(() => props.mail.id, () => {
 
 const plainText = computed(() => props.mail.text?.trim()
   ? props.mail.text : htmlToPlainText(processedMail.value.message));
+const hasHtml = computed(() => Boolean(props.mail.message?.trim()));
 
 const processedMail = computed(() => {
   if (showRemoteImages.value) {
@@ -216,11 +217,11 @@ const handleSaveToS3 = async (filename, blob) => {
         {{ t('forward') }}
       </n-button>
 
-      <n-button size="small" tertiary type="info" @click="showTextMail = !showTextMail">
+      <n-button v-if="hasHtml" size="small" tertiary type="info" @click="showTextMail = !showTextMail">
         {{ showTextMail ? t('showHtmlMail') : t('showTextMail') }}
       </n-button>
 
-      <n-button v-if="!showRemoteImages" size="small" tertiary type="primary" @click="handleLoadRemoteImages">
+      <n-button v-if="hasHtml && !showRemoteImages" size="small" tertiary type="primary" @click="handleLoadRemoteImages">
         <template #icon><n-icon :component="ImageRound" /></template>
         {{ t('loadRemoteImages') }}
       </n-button>
@@ -244,7 +245,7 @@ const handleSaveToS3 = async (filename, blob) => {
 
     <!-- 邮件内容 -->
     <div class="mail-content" :class="{ 'dark-mode': isDark }">
-      <pre v-if="showTextMail" class="mail-text">{{ plainText }}</pre>
+      <pre v-if="showTextMail || !hasHtml" class="mail-text">{{ plainText }}</pre>
       <iframe v-else-if="useIframeShowMail" :srcdoc="processedMail.message" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" :title="mail.subject" class="mail-iframe">
       </iframe>
       <ShadowHtmlComponent v-else :key="mail.id" :htmlContent="processedMail.message" :isDark="isDark" class="mail-html" />
@@ -255,7 +256,7 @@ const handleSaveToS3 = async (filename, blob) => {
     style="height: 100vh;">
     <n-drawer-content :title="mail.subject" closable>
       <div class="fullscreen-mail-content" :class="{ 'dark-mode': isDark }">
-        <pre v-if="showTextMail" class="mail-text">{{ plainText }}</pre>
+        <pre v-if="showTextMail || !hasHtml" class="mail-text">{{ plainText }}</pre>
         <iframe v-else-if="useIframeShowMail" :srcdoc="processedMail.message" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" :title="mail.subject" class="mail-iframe">
         </iframe>
         <ShadowHtmlComponent v-else :key="mail.id" :htmlContent="processedMail.message" :isDark="isDark" class="mail-html" />
