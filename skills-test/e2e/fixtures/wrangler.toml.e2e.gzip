@@ -33,4 +33,4 @@ database_name = "e2e-temp-email-gzip"
 database_id = "e2e-test-db-gzip-00000000-0000-0000-0000-000000000000"
 
 [alias]
-"cloudflare:email" = "../e2e/fixtures/email.ts"
+"cloudflare:email" = "../../skills-test/e2e/fixtures/email.ts"
