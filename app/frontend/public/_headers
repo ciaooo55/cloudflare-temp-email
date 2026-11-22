@@ -1,6 +1,18 @@
 /*
   Content-Security-Policy: frame-ancestors 'self'
   X-Frame-Options: SAMEORIGIN
+/telegram_mail
+  ! X-Frame-Options
+  ! Content-Security-Policy
+/telegram_mail/
+  ! X-Frame-Options
+  ! Content-Security-Policy
+/:lang/telegram_mail
+  ! X-Frame-Options
+  ! Content-Security-Policy
+/:lang/telegram_mail/
+  ! X-Frame-Options
+  ! Content-Security-Policy
 /
   Cache-Control: no-cache, max-age=0, must-revalidate
 /index.html

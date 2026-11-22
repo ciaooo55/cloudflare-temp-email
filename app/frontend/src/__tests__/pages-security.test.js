@@ -41,8 +41,19 @@ describe('Pages API backend selection', () => {
   })
 })
 
-it('sets only frame-embedding CSP and the legacy frame header globally', () => {
+it('protects ordinary pages but detaches frame restrictions for every Telegram Mini App route and alias', () => {
   const headers = readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8')
+  const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
   expect(headers).toContain("/*\n  Content-Security-Policy: frame-ancestors 'self'\n  X-Frame-Options: SAMEORIGIN")
   expect(headers).not.toContain('default-src')
+  const miniAppRoutes = [...router.matchAll(/path: '([^']+)',\s*alias: '([^']+)',\s*component: \(\) => import\('\.\.\/views\/telegram\/[^']+'\)/g)]
+    .flatMap(match => [match[1], match[2]])
+  expect(miniAppRoutes).toEqual(['/telegram_mail', '/:lang/telegram_mail'])
+  const exemptPaths = miniAppRoutes.flatMap(path => [path, `${path}/`])
+  const rules = headers.split(/\n(?=\/)/)
+  const exemptions = rules.filter(rule => rule.includes('! X-Frame-Options') || rule.includes('! Content-Security-Policy'))
+  expect(exemptions.map(rule => rule.split('\n')[0]).sort()).toEqual(exemptPaths.sort())
+  for (const path of exemptPaths) {
+    expect(rules).toContain(`${path}\n  ! X-Frame-Options\n  ! Content-Security-Policy`)
+  }
 })
