@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |frontend| Clarify cleanup units and save scopes, constrain mobile snapshot-table scrolling, show filter match counts, and use searchable plain-text HTML previews
 - feat: |Mail list| Show original sender and recipient addresses in message summaries, copy the original recipient directly, and reveal full addresses on hover
 - feat: |Abuse protection| Add editable inbound and snapshot limits, defaulting to ten messages per sender/mailbox in ten minutes; enforce temporary bans in receive-only mode without counter or budget writes on banned retries
 - fix: |Telegram| Support the registered default-bot /env callback and align new callback registration with its verification secret; expose webhook status and removal in advanced settings while keeping mail push independent

@@ -2,11 +2,16 @@ import PostalMime from 'postal-mime';
 import { decodeHTML } from 'entities';
 import { extractCode, stripVerificationHtml, joinSubjectAndBody } from '../../../shared/verification-code';
 
-function addVerificationCode(item) {
+function addMailSummary(item) {
     let metadata;
     try { metadata = JSON.parse(item.metadata || '{}'); } catch { metadata = {}; }
-    if (metadata?.ai_extract?.type === 'auth_code' && metadata.ai_extract.result) return;
-    const body = item.text || decodeHTML(stripVerificationHtml(item.message || ''));
+    const hasCode = metadata?.ai_extract?.type === 'auth_code' && metadata.ai_extract.result;
+    if (hasCode && typeof item.preview === 'string') return;
+    const body = String(item.text || decodeHTML(stripVerificationHtml(
+        (item.message || '').replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, '')
+    )));
+    item.preview = body.replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (hasCode) return;
     const code = extractCode(joinSubjectAndBody(item.subject, body));
     if (code) item.metadata = JSON.stringify({ ...metadata, ai_extract: { type: 'auth_code', result: code, result_text: '' } });
 }
@@ -61,7 +66,7 @@ export async function processItem(item) {
                 blob: blob
             }
         }) || [];
-        addVerificationCode(item);
+        addMailSummary(item);
         return item;
     } catch (error) {
         console.error('Error parsing email with PostalMime', error);
@@ -99,14 +104,14 @@ export async function processItem(item) {
         item.text = item.raw || '';
         item.attachments = [];
     }
-    addVerificationCode(item);
+    addMailSummary(item);
     return item;
 }
 
 export function refreshParsedItem(cached, incoming) {
     const item = { ...cached, ...incoming, source: cached.source,
         originalSource: incoming.source || cached.originalSource };
-    addVerificationCode(item);
+    addMailSummary(item);
     return item;
 }
 
@@ -125,7 +130,7 @@ export function processSentItem(item) {
     const parsed = { ...item, subject: data.subject || 'No Subject', source: senderName ? senderName + ' <' + sender + '>' : sender,
         originalSource: item.address, originalRecipient: recipients, listSource: recipients,
         text, message: html, attachments: [], rawFormat: 'json' };
-    addVerificationCode(parsed);
+    addMailSummary(parsed);
     return parsed;
 }
 

@@ -588,7 +588,7 @@ onMounted(fetchAll)
 
             <n-data-table v-model:checked-row-keys="checkedRowKeys" v-model:page="tablePage" :columns="columns"
                 :data="filteredBindings" :row-key="(row: Binding) => row.address"
-                :pagination="{ pageSize: 10 }" :bordered="false" />
+                :pagination="{ pageSize: 10 }" :bordered="false" :scroll-x="900" />
 
             <n-flex v-if="checkedRowKeys.length" align="center" style="margin-top: 12px; padding: 10px 12px; background: rgba(127, 127, 127, 0.07); border-radius: 8px;">
                 <n-tag type="info" :bordered="false">{{ t('selectedCount', { n: checkedRowKeys.length }) }}</n-tag>

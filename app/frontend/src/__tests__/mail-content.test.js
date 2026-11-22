@@ -13,7 +13,7 @@ vi.mock('../store', () => ({
         autoRefresh: ref(false), configAutoRefreshInterval: ref(60), loading: ref(false),
     }),
 }))
-vi.mock('../i18n/app', () => ({ useScopedI18n: () => ({ t: key => key }) }))
+vi.mock('../i18n/app', () => ({ useScopedI18n: () => ({ t: (key, values) => values ? key + ':' + Object.values(values).join('/') : key }) }))
 vi.mock('../utils', () => ({ utcToLocalDate: value => value }))
 vi.mock('../utils/composables', () => ({ useIsMobile: () => ref(false) }))
 vi.mock('naive-ui', async () => {
@@ -27,7 +27,10 @@ vi.mock('naive-ui', async () => {
         NButton: button, NDrawer: hidden, NDrawerContent: hidden,
         NModal: hidden, NPopconfirm: hidden, NSpin: wrapper, NList: wrapper,
         NListItem: wrapper, NThing: wrapper,
-        NPagination: wrapper, NSwitch: wrapper, NInput: wrapper,
+        NPagination: wrapper, NSwitch: wrapper,
+        NInput: { props: ['value'], emits: ['update:value'], setup: (props, { emit }) => () => h('input', {
+            value: props.value, onInput: event => emit('update:value', event.target.value),
+        }) },
     }
 })
 vi.mock('../components/AiExtractInfo.vue', () => ({ default: { template: '<div />' } }))
@@ -149,6 +152,38 @@ describe('per-message image consent', () => {
 })
 
 describe('mail summary addresses', () => {
+    it('counts current-page matches, searches visible fields, and distinguishes no matches from an empty mailbox', async () => {
+        const items = [mail(1, 'first@example.com'), { ...mail(2, 'second@example.com'),
+            originalSource: 'unique-envelope@example.com', text: '', preview: 'HTML-only summary' }, mail(3, 'third@example.com')]
+        host = document.createElement('div')
+        document.body.append(host)
+        app = createApp({ render: () => h(MailBox, {
+            fetchMailData: async () => ({ results: items, count: 55 }),
+            processMail: async value => value, showFilterInput: true,
+        }) })
+        app.mount(host)
+        await vi.waitFor(() => expect(host.querySelectorAll('.message-row')).toHaveLength(3))
+        expect(host.querySelector('.list-caption').textContent).toBe('messageCount:55')
+        expect(host.querySelectorAll('.message-preview')[1].textContent).toBe('HTML-only summary')
+        const filter = async value => {
+            const input = host.querySelector('input')
+            input.value = value
+            input.dispatchEvent(new Event('input'))
+            await nextTick()
+        }
+        for (const value of [' second@example.com ', 'UNIQUE-ENVELOPE', 'html-only']) {
+            await filter(value)
+            expect(host.querySelectorAll('.message-row')).toHaveLength(1)
+            expect(host.querySelector('.list-caption').textContent).toBe('filteredCount:1/55')
+        }
+        await filter('no such mail')
+        expect(host.querySelector('.list-caption').textContent).toBe('filteredCount:0/55')
+        expect(host.querySelector('.mail-empty').textContent).toContain('noFilterMatches')
+        await filter('   ')
+        expect(host.querySelectorAll('.message-row')).toHaveLength(3)
+        expect(host.querySelector('.list-caption').textContent).toBe('messageCount:55')
+    })
+
     it.each([true, false])('copies the recipient without opening or marking another mail read (original fields: %s)', async hasOriginal => {
         const items = [mail(1, 'first@example.com'), { ...mail(2, 'original+tag@icloud.com'), is_unread: 1 }]
         if (!hasOriginal) {

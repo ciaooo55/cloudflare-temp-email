@@ -26,6 +26,9 @@ export const MESSAGE_REGISTRY = {
     "unavailable": { "en": "Loading. If this fails, check that the backend is updated and reload.", "zh": "正在加载；若加载失败，请检查后端是否已更新并刷新本页。" }
   },
   "components.MailBox": {
+    "messageCount": { "en": "Messages {total}", "zh": "邮件 {total}" },
+    "filteredCount": { "en": "Page matches {matched} · Total {total}", "zh": "本页匹配 {matched} · 共 {total} 封" },
+    "noFilterMatches": { "en": "No matches on this page. Try another filter.", "zh": "本页没有匹配邮件，请修改筛选词。" },
     "originalSender": { "en": "Original From", "zh": "原始发件" },
     "copyOriginalRecipient": { "en": "Copy original recipient address", "zh": "复制原始收件邮箱" },
     "copy": { "en": "Copy", "zh": "复制" },
@@ -1243,6 +1246,8 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.IpBlacklistSettings": {
+    "accessTitle": { "en": "Website and API access", "zh": "网页与 API 访问" },
+    "saveAccess": { "en": "Save access rules", "zh": "保存访问规则" },
     "ipHelp": { "en": "Blocks IPs on protected address/send endpoints, not email senders or snapshot links. Regular expressions are supported.", "zh": "拦截创建邮箱和发信等受保护接口的访问 IP，不是邮件发件人，也不覆盖快照。支持正则表达式。" },
     "asnHelp": { "en": "Matches the visitor network organization, such as a cloud provider; can also block legitimate users on that network.", "zh": "按访客网络所属公司名称拦截，例如某个云服务商；不是邮箱域名，可能同时影响该网络的正常用户。" },
     "fingerprintHelp": { "en": "Browser fingerprints can be spoofed. Snapshots do not supply fingerprints; use snapshot IP protection above.", "zh": "浏览器指纹可以被伪造；快照没有指纹，请用上方独立防刷保护快照。" },
@@ -1726,8 +1731,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "清理成功"
     },
     "cronTip": {
-      "en": "Scheduled cleanup runs automatically in the background; each task follows the schedule set in the Scheduled Tasks tab. Days must be at least 1.",
-      "zh": "定时清理会在后台自动运行，各任务按「定时任务」标签页里设定的时间执行；天数最小为 1 天。"
+      "en": "Cleanup permanently deletes data. Scheduled task fields use minutes; basic cleanup thresholds use days. Save updates automatic rules; Run now immediately deletes matching data.",
+      "zh": "清理会永久删除数据。定时任务按分钟设置，常规清理按天设置；保存只更新自动规则，「立即清理」会立刻删除符合条件的数据。"
     },
     "customSqlCleanup": {
       "en": "Custom SQL Cleanup",
@@ -1817,6 +1822,8 @@ export const MESSAGE_REGISTRY = {
       "en": "Each task below runs automatically on its own schedule. Changes take effect right after saving, no redeploy needed.",
       "zh": "下面每个任务都会按自己设定的时间自动执行，保存后立即生效，不用重新部署。"
     },
+    "minutesPlaceholder": { "en": "Enter minutes", "zh": "请输入分钟数" },
+    "minutesUnit": { "en": "min", "zh": "分钟" },
     "tip": {
       "en": "Please input the days",
       "zh": "请输入天数"

@@ -14,6 +14,20 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('lightweight MIME parsing', () => {
+    it('builds bounded HTML previews even when a server code already exists, without loading remote content', async () => {
+        const parsed = await processItem({ metadata: JSON.stringify({ ai_extract: { type: 'auth_code', result: '123456' } }),
+            raw: 'Subject: Repeated subject\r\nContent-Type: text/html\r\n\r\n<head><title>Repeated subject</title><style>hidden</style></head><p>Useful &amp; readable</p><p>Body text</p><img src="https://images.example.com/tracker.png"><script>hidden</script>' })
+        expect(parsed.preview).toBe('Useful & readable Body text')
+        expect(parsed.text).toBe('')
+        expect(JSON.parse(parsed.metadata).ai_extract.result).toBe('123456')
+        expect(wasmParse).not.toHaveBeenCalled()
+        const sent = processSentItem({ address: 'sender@example.com', raw: JSON.stringify({
+            version: 'v2', subject: 'Different subject', is_html: true, content: '<p>' + 'x'.repeat(500) + '</p>',
+        }) })
+        expect(sent.preview).toBe('x'.repeat(240))
+        expect(refreshParsedItem(parsed, { metadata: null }).preview).toBe(parsed.preview)
+    })
+
     it.each([buildReplyModel, buildForwardModel])('quotes real text-only MIME without HTML interpretation', async action => {
         const parsed = await processItem({ raw: 'From: sender@example.com\r\nSubject: Literal\r\nContent-Type: text/plain\r\n\r\nfirst <literal>\nsecond & literal' });
         const draft = action(parsed, 'Quote');

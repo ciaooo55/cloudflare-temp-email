@@ -75,13 +75,13 @@ onMounted(async () => {
 
 <template>
   <div class="settings-page">
-    <div class="page-actions"><n-button @click="save" type="primary" :loading="loading">{{ t('save') }}</n-button></div>
+    <AbuseProtection />
+    <h2 class="access-heading">{{ t('accessTitle') }}</h2>
     <details class="settings-note">
       <summary>{{ t('tip_scope') }}</summary>
       <p>{{ t('tip_whitelist') }}<br>{{ t('tip_ip') }}<br>{{ t('tip_asn') }}<br>{{ t('tip_fingerprint') }}<br>{{ t('tip_daily_limit') }}</p>
     </details>
     <div class="settings-grid">
-      <AbuseProtection />
       <section class="settings-section">
         <h2>{{ t('ip_whitelist') }}</h2><p>{{ t('whitelistHelp') }}</p>
         <n-form-item-row :label="t('enable_ip_whitelist')"><n-switch v-model:value="enableWhitelist" /><n-text depth="3">{{ t('enable_whitelist_tip') }}</n-text></n-form-item-row>
@@ -100,5 +100,11 @@ onMounted(async () => {
         <n-input-number v-model:value="dailyRequestLimit" :min="1" :precision="0" :disabled="!enableDailyLimit" :aria-label="t('daily_request_limit')" />
       </section>
     </div>
+    <div class="page-actions access-actions"><n-button @click="save" type="primary" :loading="loading">{{ t('saveAccess') }}</n-button></div>
   </div>
 </template>
+
+<style scoped>
+.access-heading { font-size: 16px; font-weight: 550; margin: 28px 0 12px; }
+.access-actions { margin-top: 18px; }
+</style>
