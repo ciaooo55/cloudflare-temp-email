@@ -3,11 +3,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createApp, h } from 'vue'
 import Statistics from '../views/admin/Statistics.vue'
 const fetch = vi.hoisted(() => vi.fn())
+const usagePath = '/admin/cloudflare_usage'
 vi.mock('../api', () => ({ api: { fetch } }))
 vi.mock('../i18n/app', () => ({ useScopedI18n: () => ({ t: key => key }) }))
 vi.mock('naive-ui', async () => {
   const { h } = await import('vue')
-  return { NButton: { setup: (_, { slots }) => () => h('button', slots.default?.()) },
+  return { NButton: { props: ['attrType'], setup: (props, { slots }) => () => h('button', { type: props.attrType || 'button' }, slots.default?.()) },
+    NPopconfirm: { setup: (_, { slots }) => () => h('div', slots.trigger?.()) },
     NPagination: { setup: () => () => null } }
 })
 const data = { mailCount: 8, sendMailCount: 3, addressCount: 2, period: { start: '2026-11-16', end: '2026-11-22', startedAt: '2026-11-16T10:00:00.000Z' },
@@ -17,7 +19,8 @@ const data = { mailCount: 8, sendMailCount: 3, addressCount: 2, period: { start:
 const budget = { days: [{ day: '2026-11-22', usage: { row_reads: 90, row_writes: 20 } },
   { day: '2026-11-21', usage: { row_reads: 40, row_writes: 5 } }], hard: { reads: 100, writes: 25 }, soft: { reads: 80, writes: 20 }, free: { reads: 5000000, writes: 100000 } }
 let app, host
-beforeEach(() => { fetch.mockReset(); fetch.mockImplementation(async path => path.startsWith('/admin/statistics') ? structuredClone(data) : { budget: structuredClone(budget) }) })
+const defaultResult = path => path === usagePath ? { state: 'unconfigured' } : path.startsWith('/admin/statistics') ? structuredClone(data) : { budget: structuredClone(budget) }
+beforeEach(() => { fetch.mockReset(); fetch.mockImplementation(async path => defaultResult(path)) })
 afterEach(() => { app?.unmount(); host?.remove() })
 function mount() { host = document.createElement('div'); document.body.append(host); app = createApp({ render: () => h(Statistics) }); app.mount(host) }
 
@@ -31,7 +34,7 @@ it('shows seven days, idle/active mailboxes, two-day reservations and clamped re
   expect(host.textContent).toContain('accountNotConnected')
   expect(host.textContent).toContain('resetHelp')
   expect(host.querySelector('.history-start').textContent).toContain('historyStart')
-  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(fetch).toHaveBeenCalledTimes(3)
 })
 
 it('shows unavailable history as dashes rather than invented zeros', async () => {
@@ -64,4 +67,40 @@ it('keeps budget readable when message statistics fail and does not invent zero 
   mount()
   await vi.waitFor(() => expect(host.textContent).toContain('budgetUnavailable'))
   expect(host.querySelector('.budget-table')).toBeNull()
+})
+
+it('saves the analytics token only to its admin endpoint and renders real D1 totals separately', async () => {
+  fetch.mockImplementation(async (path, options) => options?.method === 'PUT' ? {
+    state: 'connected', accountId: 'a'.repeat(32),
+    usage: { day: '2026-11-22', totals: { rowsRead: 8000, rowsWritten: 20 }, fetchedAt: '2026-11-22T05:00:00Z' }
+  } : defaultResult(path))
+  mount()
+  const button = text => [...host.querySelectorAll('button')].find(button => button.textContent === text)
+  await vi.waitFor(() => expect(button('accountConfigure')).toBeTruthy())
+  button('accountConfigure').click()
+  await vi.waitFor(() => expect(host.querySelector('input[type=password]')).not.toBeNull())
+  const inputs = [...host.querySelectorAll('.analytics-form input')]
+  for (const [i, value] of ['a'.repeat(32), 'x'.repeat(40)].entries()) {
+    inputs[i].value = value
+    inputs[i].dispatchEvent(new Event('input', { bubbles: true }))
+  }
+  host.querySelector('.analytics-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  await vi.waitFor(() => expect(host.querySelector('.account-usage')?.textContent).toContain('8,000'))
+  expect(fetch).toHaveBeenCalledWith(usagePath, { method: 'PUT', showLoading: false,
+    body: JSON.stringify({ accountId: 'a'.repeat(32), token: 'x'.repeat(40) }) })
+  expect(host.querySelector('input[type=password]')).toBeNull()
+  button('accountReplace').click()
+  await vi.waitFor(() => expect(host.querySelector('input[type=password]')?.value).toBe(''))
+})
+
+it('keeps the application budget and mail stats displayed when analytics fails', async () => {
+  fetch.mockImplementation(async path => {
+    if (path === usagePath) throw Error('unavailable')
+    return defaultResult(path)
+  })
+  mount()
+  await vi.waitFor(() => expect(host.textContent).toContain('accountUnavailable'))
+  expect(host.querySelector('.budget-table')).not.toBeNull()
+  expect(host.querySelectorAll('.chart-day')).toHaveLength(7)
+  expect(host.querySelector('.account-usage')).toBeNull()
 })

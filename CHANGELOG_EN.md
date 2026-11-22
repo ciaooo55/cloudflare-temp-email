@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- feat: |Statistics| Optionally connect a read-only Cloudflare Analytics token from the admin page to see actual account D1 usage separately from protection budgets
+
 - fix: |Cleanup budget| Conservatively include candidate probes, deletion subqueries and primary-key lookups in read reservations
 - fix: |Mailbox polling| Use absolute retry deadlines for backoff and Retry-After so time spent in hidden tabs counts toward the wait
 - fix: |Manual cleanup| Return deleted counts and completion state on success and partial failure, with remaining-work feedback in the web UI
