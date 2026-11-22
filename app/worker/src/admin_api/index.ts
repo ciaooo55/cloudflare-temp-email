@@ -4,6 +4,7 @@ import address_api from './address_api.ts'
 import address_sender_api from './address_sender_api.ts'
 import sendbox_api from './sendbox_api.ts'
 import statistics_api from './statistics_api.ts'
+import cloudflare_usage from './cloudflare_usage.ts'
 import account_settings_api from './account_settings_api.ts'
 import cleanup_api from './cleanup_api.ts'
 import admin_mail_api from './admin_mail_api.ts'
@@ -41,6 +42,9 @@ api.delete('/admin/sendbox/:id', sendbox_api.remove)
 
 // statistics
 api.get('/admin/statistics', statistics_api.get)
+api.get('/admin/cloudflare_usage', cloudflare_usage.get)
+api.put('/admin/cloudflare_usage', cloudflare_usage.save)
+api.delete('/admin/cloudflare_usage', cloudflare_usage.remove)
 
 // account settings
 api.get('/admin/account_settings', account_settings_api.get)
