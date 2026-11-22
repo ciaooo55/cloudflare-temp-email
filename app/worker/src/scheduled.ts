@@ -8,6 +8,7 @@ import { cleanupStaleRawMails } from './scheduled_raw_mails.ts';
 import { cleanupExpiredRateLimits } from './rate_limits.ts';
 import { cleanupWorkerStore, importStorePage } from './worker_store.ts';
 import { CRON_COST, reserveUsage } from './usage_budget.ts';
+import { cleanupMailStatistics } from './mail_statistics.ts';
 import {
     SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP,
     cleanupInterval, isTaskDueThisTick, markTaskRun,
@@ -22,6 +23,11 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
     if (!(await reserveUsage(env, "soft", CRON_COST).catch(() => false))) return;
     const now = event.scheduledTime;
     console.log("Scheduled event: ", event);
+    try {
+        await cleanupMailStatistics(env, now);
+    } catch (error) {
+        console.error('[scheduled] mail statistics cleanup failed:', error);
+    }
     try {
         await cleanupExpiredRateLimits(env.DB);
         await cleanupWorkerStore(env);

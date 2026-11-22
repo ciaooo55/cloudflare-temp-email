@@ -1162,7 +1162,8 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.Statistics": {
-    "scope": {"en":"Stored messages only: cleanup/deletion reduces these counts. Loads only on this page, with a 60-second server cache and no polling.","zh":"统计当前仍保存的邮件，清理或删除后数量会减少；只在打开本页或手动操作时读取，服务器缓存 60 秒，不后台轮询。"},
+    "scope": {"en":"Seven-day counts survive mail deletion and automatic cleanup. Loads only on this page, with a 60-second server cache and no polling.","zh":"近七天收发封数独立保留，删信或自动清理邮件不会清空统计；只在打开本页或手动操作时读取，服务器缓存 60 秒，不后台轮询。"},
+    "historyStart": {"en":"Counting started at {start} UTC. Earlier messages cannot be reconstructed; earlier dates show —, not zero.","zh":"统计启用时间：{start} UTC。启用前的邮件无法补计；更早日期显示 —，不是 0。"},
     "refresh": {"en":"Refresh statistics","zh":"刷新统计"},
     "loadFailed": {"en":"Message statistics could not load. Budget status below loads separately; retry later.","zh":"邮件统计暂时读不到，请稍后刷新；下方保护预算会独立读取。"},
     "weekTitle": {"en":"Last 7 days · received and sent","zh":"最近 7 天收发情况"},
@@ -1171,7 +1172,7 @@ export const MESSAGE_REGISTRY = {
     "most": {"en":"Most received · 7 days","zh":"收信最多的邮箱 · 7 天"},
     "least": {"en":"Least received · 7 days","zh":"收信最少的邮箱 · 7 天"},
     "messages": {"en":"messages","zh":"封"},
-    "rankingScope": {"en":"Today plus the previous 6 UTC dates. Includes all known mailboxes, including zero-message mailboxes; alphabetically first appears on ties. Only stored mail is counted, not lifetime delivery or rejections.","zh":"范围为 UTC 今天及前 6 天。排行包含所有已知邮箱，也包含 0 封；并列时按邮箱名称展示第一项。仅计算仍保存的邮件，不是历史投递总量，也不含拒收数量。"},
+    "rankingScope": {"en":"Today and the previous 6 UTC dates, since counting was enabled. Includes registered zero-message mailboxes and mailboxes active in this window; ties sort alphabetically. Counts successfully saved incoming mail (including internal notices) and sent-mail records, not rejections or records that failed to save. Only local mailbox, UTC date and counts are retained; expired summaries are deleted in budgeted batches.","zh":"按 UTC 今天及前 6 天，且从统计启用后开始计数。包含已登记但 0 封的邮箱及本期收发过信的邮箱；并列按邮箱名称排序。统计成功入库的收信（含站内通知）和发件记录，不含拒收或记录保存失败的邮件。汇总只留本地邮箱、日期和封数，过期汇总按预算分批删除。"},
     "mailboxTitle": {"en":"Messages per mailbox · 7 days","zh":"每个邮箱收发了几封 · 7 天"},
     "sort": {"en":"Mailbox sort order","zh":"邮箱排序"},
     "sortReceived": {"en":"Most received first","zh":"按收信数从多到少"},
@@ -1179,7 +1180,7 @@ export const MESSAGE_REGISTRY = {
     "mailbox": {"en":"Your mailbox","zh":"本地邮箱"},
     "noMailboxes": {"en":"No known mailboxes on this page.","zh":"本页暂无已知邮箱。"},
     "budgetTitle": {"en":"This app's D1 protection budget · estimated","zh":"本应用 D1 保护预算 · 估算"},
-    "budgetHelp": {"en":"Existing guard counters reserve estimated database rows, NOT Cloudflare's actual usage or bill. No new per-message tracking. Other apps, Worker requests and KV are not covered. The soft threshold pauses protected website/API actions; the hard threshold also pauses incoming mail.","zh":"直接读取已有保护计数，不增加每封邮件的记账操作。这些数是为防超额而预留的数据库读写行数，不是 Cloudflare 实际用量或账单；不包含其他项目、Worker 请求数和 KV 用量。达到软线会暂停受保护的网页/API 操作；达到硬线也会暂停收信。"},
+    "budgetHelp": {"en":"Existing guard counters reserve estimated database rows, NOT Cloudflare's actual usage or bill. Includes daily mailbox counter writes and budgeted summary cleanup. Other apps, Worker requests and KV are not covered. The soft threshold pauses protected website/API actions; the hard threshold also pauses incoming mail.","zh":"这些数是为防超额而预留的数据库读写行数，已计入新增的每日邮箱汇总写入和过期汇总清理预算；不是 Cloudflare 实际用量或账单，不含其他项目、Worker 请求数和 KV 用量。达到软线会暂停受保护的网页/API 操作；达到硬线也会暂停收信。"},
     "budgetUnavailable": {"en":"Protection counters unavailable or not initialized; unknown usage is not shown as zero.","zh":"保护计数暂不可用或尚未初始化，无法计算剩余；不会把未知用量当成 0。"},
     "today": {"en":"Today reserved","zh":"今天预留"},
     "yesterday": {"en":"Yesterday reserved","zh":"昨天预留"},
@@ -1194,25 +1195,17 @@ export const MESSAGE_REGISTRY = {
     "resetHelp": {"en":"Reset: 00:00 UTC (08:00 China time). Yesterday is history, unused allowance does not roll over. The 2-day total is not a spendable pool. No row means no reservation recorded, not zero Cloudflare usage.","zh":"每日 UTC 00:00（北京时间 08:00）重置。昨天只作历史参考，没用完的额度不会转到今天；两天合计只是对比，不能当成今天可用额度。某天没有预留记录按 0 展示，不代表 Cloudflare 当天零消耗。"},
     "accountNotConnected": {"en":"Cloudflare account-wide actual usage: not connected (no Analytics credentials).","zh":"Cloudflare 账户真实总用量：未连接（未配置 Analytics 读取凭据）。"},
     "accountLink": {"en":"View actual account usage in Cloudflare","zh":"前往 Cloudflare 查看实际用量"},
-    "activeAddressCount30days": {
-      "en": "30 days Active Address Count",
-      "zh": "30天活跃邮箱地址总数"
-    },
-    "activeAddressCount7days": {
-      "en": "7 days Active Address Count",
-      "zh": "7天活跃邮箱地址总数"
-    },
     "addressCount": {
-      "en": "Address Count",
-      "zh": "邮箱地址总数"
+      "en": "Mailboxes in this ranking",
+      "zh": "本期参与统计的邮箱"
     },
     "mailCount": {
-      "en": "Mail Count",
-      "zh": "邮件总数"
+      "en": "Received · 7 days recorded",
+      "zh": "近 7 天已记录收信"
     },
     "sendMailCount": {
-      "en": "Send Mail Count",
-      "zh": "发送邮件总数"
+      "en": "Sent · 7 days recorded",
+      "zh": "近 7 天已记录发信"
     }
   },
   "views.admin.SenderAccess": {

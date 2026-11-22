@@ -9,13 +9,13 @@ const now = Date.UTC(2026, 0, 1, 23, 59, 59);
 test("soft exhaustion keeps inbound storage available until the hard budget, then resets at UTC midnight", async () => {
     const DB = createD1();
     DB.sqlite.exec(USAGE_BUDGET_SCHEMA + WORKER_STORE_SCHEMA);
-    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "15", D1_DAILY_WRITE_HARD_LIMIT: "35" };
+    const env = { DB, D1_DAILY_WRITE_SOFT_LIMIT: "18", D1_DAILY_WRITE_HARD_LIMIT: "44" };
     assert.equal(await reserveInboundUsage(env, now), "full");
     assert.equal(await reserveReadUsage(env, now), false);
     assert.equal(await reserveInboundUsage(env, now), "receive-only");
     assert.equal(await reserveInboundUsage(env, now), "receive-only");
     assert.equal(await reserveInboundUsage(env, now), "paused");
-    assert.deepEqual({ ...(await getUsageStatus(env, now)).usage }, { row_reads: 107, row_writes: 35, inbound_emails: 3 });
+    assert.deepEqual({ ...(await getUsageStatus(env, now)).usage }, { row_reads: 119, row_writes: 44, inbound_emails: 3 });
     assert.equal(quotaRetryAfter(now), 1);
     assert.equal(await reserveInboundUsage(env, now + 1000), "full");
 });
