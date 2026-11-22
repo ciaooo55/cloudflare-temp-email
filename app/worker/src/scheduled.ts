@@ -69,12 +69,10 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
         console.log("[scheduled] auto cleanup batch skipped (not due).");
         return;
     }
-    let successful = true;
     const runCleanup = async (cleanType: string, days: number) => {
         try {
             await cleanup({ env } as Context<HonoCustomType>, cleanType, days);
         } catch (error) {
-            successful = false;
             console.error(`[scheduled] ${cleanType} cleanup failed:`, error);
         }
     };
@@ -124,15 +122,13 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
                         customSql
                     );
                     if (!result.success) {
-                        successful = false;
                         console.error(`Custom SQL cleanup [${customSql.name}] failed: ${result.error}`);
                     }
                 } catch (error) {
-                    successful = false;
                     console.error(`[scheduled] custom cleanup ${customSql.name} failed:`, error);
                 }
             }
         }
     }
-    if (successful) await markTaskRun(env, SCHEDULED_TASK_AUTO_CLEANUP, undefined, now);
+    await markTaskRun(env, SCHEDULED_TASK_AUTO_CLEANUP, undefined, now);
 }

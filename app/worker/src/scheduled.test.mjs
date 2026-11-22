@@ -90,7 +90,7 @@ test('cron resumes capped raw purges next tick without marking them complete', a
     assert.ok(f.marked(rawKey));
 });
 
-test('cron isolates category and custom SQL failures and only marks successful batches after work', async t => {
+test('cron isolates failures and marks attempted batches after all work to avoid early reruns', async t => {
     t.mock.method(console, 'error', () => {});
     const f = fixture({
         enableRawMailsAutoCleanup: false,
@@ -102,23 +102,20 @@ test('cron isolates category and custom SQL failures and only marks successful b
         ],
     });
     const prepare = f.env.DB.prepare;
-    let fail = true;
     f.env.DB.prepare = sql => {
         if (/DELETE FROM (raw_mails|sendbox|custom_rows)/.test(sql)) {
             assert.equal(f.marked(batchKey), undefined);
         }
-        if (fail && /DELETE FROM raw_mails/.test(sql)) throw new Error('mail cleanup failed');
+        if (/DELETE FROM raw_mails/.test(sql)) throw new Error('mail cleanup failed');
         return prepare(sql);
     };
     await f.run();
     assert.equal(f.count('sendbox'), 0);
     assert.equal(f.count('custom_rows'), 0);
     assert.equal(f.count('raw_mails'), 1);
-    assert.equal(f.marked(batchKey), undefined);
-    fail = false;
-    f.env.DB.sqlite.exec('CREATE TABLE missing_table (id INTEGER)');
+    assert.ok(f.marked(batchKey));
     await f.run();
-    assert.equal(f.count('raw_mails'), 0);
+    assert.equal(f.count('raw_mails'), 1);
     assert.ok(f.marked(batchKey));
 });
 
@@ -135,7 +132,7 @@ for (const flag of [
         });
         await f.run();
         assert.equal(f.count('custom_rows'), 0);
-        assert.equal(f.marked(batchKey), undefined);
+        assert.ok(f.marked(batchKey));
     });
 }
 
