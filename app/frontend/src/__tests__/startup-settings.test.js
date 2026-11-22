@@ -44,6 +44,12 @@ describe('startup settings', () => {
 })
 
 describe('HTTP error metadata', () => {
+    it('preserves partial cleanup progress on HTTP failures', async () => {
+        const data = { success: false, deleted: 100, complete: false, message: 'Budget exhausted' }
+        mocks.request.mockResolvedValue({ status: 500, data })
+        const { api } = await import('../api')
+        await expect(api.fetch('/admin/cleanup_raw_mails', { method: 'POST' })).rejects.toMatchObject({ status: 500, data })
+    })
     it.each([429, 503])('retains status and Retry-After on HTTP %s', async status => {
         const response = { status, data: { message: 'Try later' }, headers: { 'retry-after': '600' } }
         if (status === 503) mocks.request.mockRejectedValue({ response })

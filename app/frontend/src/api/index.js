@@ -26,6 +26,7 @@ const responseError = (response, prefix) => Object.assign(
     new Error(`${prefix}${response.data?.message || response.data}`),
     {
         status: response.status,
+        data: response.data,
         code: response.data?.code,
         retryAfter: response.headers?.get?.('retry-after') ?? response.headers?.['retry-after'],
         authRequired: ErrorCode.isAdminAuthError(response) || ErrorCode.isSiteAuthError(response),

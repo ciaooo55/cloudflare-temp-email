@@ -136,19 +136,39 @@ for (const flag of [
     });
 }
 
-test('manual raw cleanup preserves its response shape and only marks completed successes', async t => {
+test('manual raw cleanup returns progress and only marks completed successes', async t => {
     t.mock.method(console, 'error', () => {});
     const f = fixture();
     const context = {
         env: f.env,
         req: { json: async () => ({ minutes: 10 }), header: () => 'en' },
-        json: body => body,
+        json: (body, status = 200) => status >= 400 ? { body, status } : body,
         text: (body, status) => ({ body, status }),
     };
-    assert.deepEqual(await cleanupApi.cleanupRawMailsNow(context), { success: true, deleted: 1 });
+    assert.deepEqual(await cleanupApi.cleanupRawMailsNow(context), { success: true, deleted: 1, complete: true });
     assert.ok(f.marked(rawKey));
     f.env.DB.sqlite.prepare('DELETE FROM settings WHERE key=?').run(rawKey);
     f.env.DB.sqlite.exec('DROP INDEX idx_raw_mails_created_at');
     assert.equal((await cleanupApi.cleanupRawMailsNow(context)).status, 500);
     assert.equal(f.marked(rawKey), undefined);
+});
+
+test('manual raw cleanup reports capped successes and partial budget failures', async () => {
+    for (const limited of [false, true]) {
+        const f = fixture();
+        const insert = f.env.DB.sqlite.prepare("INSERT INTO raw_mails(address,created_at) VALUES ('a',datetime('now','-2 days'))");
+        for (let i = 0; i < 349; i++) insert.run();
+        if (limited) f.env.D1_DAILY_WRITE_SOFT_LIMIT = 500;
+        const context = {
+            env: f.env,
+            req: { json: async () => ({}), header: () => 'en' },
+            json: (body, status = 200) => ({ body, status }),
+        };
+        const response = await cleanupApi.cleanupRawMailsNow(context);
+        assert.equal(response.status, limited ? 500 : 200);
+        assert.equal(response.body.success, !limited);
+        assert.equal(response.body.deleted, limited ? 100 : 300);
+        assert.equal(response.body.complete, false);
+        assert.equal(f.marked(rawKey), undefined);
+    }
 });

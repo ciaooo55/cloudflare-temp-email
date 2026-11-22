@@ -86,6 +86,8 @@ const formatLastRun = (info) => {
     return info.affected != null ? `${d} (${t('rawMailsDeleted')} ${info.affected} ${t('rows')})` : d;
 }
 
+const rawCleanupProgress = result => `${t('rawMailsDeleted')} ${result.deleted} ${t('rows')}${result.complete ? '' : ` · ${t('rawMailsRemaining')}`}`;
+
 const cleanupRawMailsNow = async () => {
     dialog.warning({
         title: t('confirmTitle'),
@@ -98,10 +100,14 @@ const cleanupRawMailsNow = async () => {
                     method: 'POST',
                     body: JSON.stringify({ minutes: cleanupModel.value.cleanRawMailsMinutes })
                 });
-                message.success(`${t('cleanupSuccess')} (${t('rawMailsDeleted')} ${res?.deleted ?? 0} ${t('rows')})`);
+                const notify = res.complete ? message.success : message.warning;
+                notify(`${t('cleanupSuccess')} (${rawCleanupProgress(res)})`);
                 await fetchScheduledStatus();
             } catch (error) {
-                message.error(error.message || "error");
+                const progress = error.data;
+                message.error(typeof progress?.deleted === 'number'
+                    ? `${error.message} (${rawCleanupProgress(progress)})`
+                    : error.message || "error");
             }
         }
     })

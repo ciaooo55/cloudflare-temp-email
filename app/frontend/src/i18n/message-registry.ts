@@ -1810,6 +1810,10 @@ export const MESSAGE_REGISTRY = {
       "en": "deleted",
       "zh": "已删除"
     },
+    "rawMailsRemaining": {
+      "en": "More remaining; run cleanup again to continue",
+      "zh": "仍有待清理邮件，请再次执行以继续"
+    },
     "rawMailsDesc": {
       "en": "Every N minutes, delete mails received more than M minutes ago. These are the mails you see in the web mailbox - temporary mails are only kept for a short time anyway.",
       "zh": "每隔一段时间，把 N 分钟前收到的邮件删掉。删的是网页邮箱里能看到的那些邮件，临时邮箱的邮件本来就只保留很短时间。"

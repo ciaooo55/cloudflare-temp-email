@@ -151,16 +151,17 @@ export default {
     // 手动立即执行一次 raw_mails 清理
     cleanupRawMailsNow: async (c: Context<HonoCustomType>) => {
         const msgs = i18n.getMessagesByContext(c);
+        let result = { success: false, deleted: 0, complete: false };
         try {
             const body: { minutes?: number } = await c.req.json().catch(() => ({}));
             const minutes = Math.max(1, Math.floor(Number(body.minutes) || 10));
-            const result = await cleanupStaleRawMails(c.env, minutes);
-            if (!result.success) return c.text(msgs.OperationFailedMsg, 500);
+            result = await cleanupStaleRawMails(c.env, minutes);
+            if (!result.success) return c.json({ ...result, message: msgs.OperationFailedMsg }, 500);
             if (result.complete) await markTaskRun(c.env, SCHEDULED_TASK_RAW_MAILS, result.deleted);
-            return c.json({ success: true, deleted: result.deleted });
+            return c.json(result);
         } catch (error) {
             console.error(error);
-            return c.text(`${msgs.OperationFailedMsg}: ${(error as Error).message}`, 500)
+            return c.json({ ...result, success: false, message: `${msgs.OperationFailedMsg}: ${(error as Error).message}` }, 500)
         }
     },
 }
