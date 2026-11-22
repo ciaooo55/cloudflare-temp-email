@@ -140,9 +140,9 @@ wrangler.toml
 pnpm-lock.yaml
 
 # E2E test artifacts
-e2e/test-results/
-e2e/playwright-report/
-e2e/.e2e-pids
+skills-test/e2e/test-results/
+skills-test/e2e/playwright-report/
+skills-test/e2e/.e2e-pids
 
 # SMTP/IMAP proxy persisted IMAP flags (local dev / bare-metal runs)
 smtp_proxy_server/data/

@@ -30,7 +30,7 @@ npm run test:down
 1. Starts **Mailpit** (SMTP on :1025, HTTP API on :8025)
 2. Builds and starts the **Worker** (wrangler dev on :8787)
 3. Builds and starts the **Frontend** (vite dev on :5173)
-4. Builds and runs the **E2E runner** (Playwright), which waits for services, initializes the DB, and runs all tests
+4. Builds and runs the **E2E runner** (Playwright), which waits for services, initializes the DB, runs Mailpit unit tests, and runs API/browser tests. Sender-blacklist matching unit tests run separately with `cd app/worker && pnpm test`; E2E retains the real receive-pipeline cases.
 
 The exit code reflects the test result.
 
@@ -39,7 +39,17 @@ The exit code reflects the test result.
 | Project | Directory | What it tests |
 |---------|-----------|---------------|
 | `api` | `tests/api/` | Worker API endpoints — health check, address CRUD, send mail via SMTP |
-| `browser` | `tests/browser/` | Frontend UI — login, inbox view, reply with HTML, XSS sanitization |
+| `api-gzip` | `tests/api-gzip/` | Compressed mail storage and compatibility |
+| `browser` | `tests/browser/` | Admin auth loading, locale switching, inbox privacy, reply/forward drafts and mobile navigation |
+| `smtp-proxy` (opt-in) | `tests/smtp-proxy/` | External SMTP/IMAP servers; requires the environment variables above |
+
+管理员界面浏览器测试覆盖登录配置加载、语言切换、邮件隐私、回复/转发草稿及手机导航；发件人黑名单匹配单测移至 Worker，真实收信链路仍由 E2E 验证。
+
+## CI
+
+`.github/workflows/ci.yml` runs Worker lint/unit tests/dry-run build, frontend unit tests/build and bridge unit tests on pull requests and pushes to main, with frozen pnpm installs and optional typecheck scripts. Docker E2E is a separate local check because it builds six Worker instances, two frontends, Mailpit and a Playwright runner. Repository branch protection must require the CI checks to block merges.
+
+CI 在 PR 及 main 推送时运行各包检查，使用冻结锁文件，并在脚本存在时执行类型检查。Docker E2E 因需构建多个容器保留为本地检查；阻止未通过检查的合并还需在仓库分支保护中要求对应 CI 检查。
 
 ## Services
 

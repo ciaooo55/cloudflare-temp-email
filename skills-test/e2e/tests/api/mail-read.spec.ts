@@ -17,6 +17,7 @@ test.describe('Mail read status', () => {
       const historical = await request.post(`${WORKER_URL}/__test/seed_mail`, {
         data: {
           address: mailbox.address,
+          is_unread: null,
           source: 'sender@test.example.com',
           raw: 'From: sender@test.example.com\r\nSubject: Historical\r\n\r\nHistorical',
         },

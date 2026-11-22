@@ -1,8 +1,8 @@
 // Direct DB insert — bypasses the email() handler.
 const seedMail = async (request: Request, env: Bindings) => {
-    const { address, source, raw, message_id, created_at, address_updated_at, address_created_at } = await request.json<{
+    const { address, source, raw, message_id, created_at, address_updated_at, address_created_at, is_unread = 1 } = await request.json<{
         address: string; source?: string; raw: string; message_id?: string;
-        created_at?: string; address_updated_at?: string; address_created_at?: string;
+        created_at?: string; address_updated_at?: string; address_created_at?: string; is_unread?: 0 | 1 | null;
     }>();
     if (!address || !raw) {
         return new Response("address and raw are required", { status: 400 });
@@ -24,8 +24,8 @@ const seedMail = async (request: Request, env: Bindings) => {
     const msgId = message_id || `<e2e-${Date.now()}@test>`;
     const { success } = await env.DB.prepare(
         `INSERT INTO raw_mails (message_id, source, address, raw, created_at, is_unread)`
-        + ` VALUES (?, ?, ?, ?, COALESCE(?, datetime('now')), 1)`
-    ).bind(msgId, source || address, address, raw, created_at ?? null).run();
+        + ` VALUES (?, ?, ?, ?, COALESCE(?, datetime('now')), ?)`
+    ).bind(msgId, source || address, address, raw, created_at ?? null, is_unread).run();
     return Response.json({ success });
 };
 

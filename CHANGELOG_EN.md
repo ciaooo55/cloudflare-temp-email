@@ -8,6 +8,10 @@
 
 ## v1.13.0(main)
 
+- fix: |Tests| Restore Docker E2E entrypoint permissions, align browser selectors and historical-mail fixtures, move sender matching coverage to Worker units, and remove obsolete automatic-forwarding tests
+- fix: |Backend| Import the boolean helper used by admin address-password resets and cover successful, disabled, empty and failed writes
+- feat: |CI| Check Worker lint/tests/build, frontend tests/build and bridge tests on PRs and main pushes with Node 24, pnpm 10, frozen installs and optional typechecks; document separate Docker E2E and external SMTP tests
+
 - feat: |Statistics| Retain seven-day counts independently of mail cleanup; atomic triggers keep only local mailbox, UTC date and counts, expose activation/unknown history, and budget counter writes and bounded expiry
 - perf: |Statistics| Read compact summaries instead of mail tables, remove full-mail count scans and unused active-mailbox copy, and align totals/rankings to the same seven-day window
 - refactor: |Backend| Remove unreferenced retired mail-Webhook models and stale scheduler comments; retain active Telegram commands and KV/D1 data reads
