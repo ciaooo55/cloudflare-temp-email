@@ -28,8 +28,22 @@ test("raw cleanup caps each tick and resumes the backlog on the next invocation"
     assert.deepEqual(await cleanupStaleRawMails(env), { success: true, deleted: 300, complete: false });
     assert.deepEqual(await cleanupStaleRawMails(env), { success: true, deleted: 50, complete: true });
     const usage = env.DB.sqlite.prepare("SELECT row_reads, row_writes FROM worker_usage_day").get();
-    assert.equal(usage.row_reads, 4 * 203);
-    assert.equal(usage.row_writes, 4 * 401);
+    assert.equal(usage.row_reads, 350 * 2 + 4 * 3);
+    assert.equal(usage.row_writes, 350 * 4 + 4);
+});
+
+test("empty expiration queues do not reserve usage or write the budget ledger", async () => {
+    const env = makeEnv();
+    for (let tick = 0; tick < 10; tick++) {
+        assert.deepEqual(await cleanupStaleRawMails(env), { success: true, deleted: 0, complete: true });
+    }
+    assert.equal(env.DB.sqlite.prepare('SELECT count(*) AS n FROM worker_usage_day').get().n, 0);
+});
+
+test("small expiration queues reserve only their bounded deletion cost", async () => {
+    const env = { ...makeEnv(1), D1_DAILY_WRITE_SOFT_LIMIT: 10 };
+    assert.deepEqual(await cleanupStaleRawMails(env), { success: true, deleted: 1, complete: true });
+    assert.equal(env.DB.sqlite.prepare('SELECT row_writes FROM worker_usage_day').get().row_writes, 5);
 });
 
 test("raw cleanup reserves before each batch and stops when the budget is unavailable", async () => {
