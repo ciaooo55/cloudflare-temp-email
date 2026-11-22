@@ -13,7 +13,7 @@ vi.mock('../store', () => ({
         autoRefresh: ref(false), configAutoRefreshInterval: ref(60), loading: ref(false),
     }),
 }))
-vi.mock('../i18n/app', () => ({ useScopedI18n: () => ({ t: (key, values) => values ? key + ':' + Object.values(values).join('/') : key }) }))
+vi.mock('../i18n/app', () => ({ useScopedI18n: () => ({ locale: ref('zh'), t: (key, values) => values ? key + ':' + Object.values(values).join('/') : key }) }))
 vi.mock('../utils', () => ({ utcToLocalDate: value => value }))
 vi.mock('../utils/composables', () => ({ useIsMobile: () => ref(false) }))
 vi.mock('naive-ui', async () => {
@@ -69,6 +69,17 @@ function mount() {
 }
 
 describe('per-message image consent', () => {
+    it('preserves Chinese reader guidance when no message is selected', () => {
+        host = document.createElement('div')
+        document.body.append(host)
+        app = createApp({ render: () => h(MailBox, {
+            fetchMailData: async () => ({ results: [], count: 0 }),
+        }) })
+        app.mount(host)
+        expect(host.querySelector('.reader-placeholder p').textContent).toBe('选择一封邮件')
+        expect(host.querySelector('.reader-placeholder span').textContent).toBe('文字优先 · 图片仅在点击后加载')
+    })
+
     it('shows the inbox first and renders the reader after a message is selected', async () => {
         const item = mail(1, 'original@example.com')
         host = document.createElement('div')
