@@ -3,6 +3,7 @@ import { CONSTANTS } from '../constants.ts';
 import utils from '../utils.ts';
 import { getStoreImportStatus, importStorePage, WORKER_STORE_SCHEMA, WORKER_STORE_TRIGGER } from '../worker_store.ts';
 import { getUsageStatus, USAGE_BUDGET_SCHEMA } from '../usage_budget.ts';
+import { initializeMailStatistics } from '../mail_statistics.ts';
 
 const DB_INIT_QUERIES = `
 CREATE TABLE IF NOT EXISTS raw_mails (
@@ -74,6 +75,7 @@ ${USAGE_BUDGET_SCHEMA}
 async function initializeSchema(db: D1Database) {
     await db.exec(DB_INIT_QUERIES.replace(/[\r\n]/g, "").split(";").map(query => query.trim()).join(";\n"));
     await db.prepare(WORKER_STORE_TRIGGER).run();
+    await initializeMailStatistics(db);
 }
 
 const needsLegacyMigration = (version: string | null, maxPatch: number) => {

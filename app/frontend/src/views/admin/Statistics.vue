@@ -6,7 +6,7 @@ const { t } = useScopedI18n('views.admin.Statistics')
 const statistics = ref(null), budget = ref(null), page = ref(1), sort = ref('received')
 const loading = ref(false), budgetLoading = ref(false), failed = ref(false), budgetFailed = ref(false)
 const number = value => typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : '—'
-const total = key => (statistics.value?.days || []).reduce((sum, day) => sum + day[key], 0)
+const total = key => (statistics.value?.days || []).reduce((sum, day) => sum + (day[key] ?? 0), 0)
 const peak = computed(() => Math.max(1, ...(statistics.value?.days || []).flatMap(day => [day.received, day.sent])))
 const hasBudget = computed(() => budget.value?.days?.length === 2 && budget.value.days.every(row =>
   Number.isFinite(row.usage?.row_reads) && Number.isFinite(row.usage?.row_writes)))
@@ -39,6 +39,7 @@ onMounted(refresh)
     <div class="statistics-grid"><div v-for="key in ['mailCount', 'sendMailCount', 'addressCount']" :key="key" class="statistic"><span>{{ t(key) }}</span><strong>{{ number(statistics?.[key]) }}</strong></div></div>
     <section class="statistics-surface">
       <h2>{{ t('weekTitle') }}</h2><p v-if="statistics?.period">{{ statistics.period.start }} — {{ statistics.period.end }} · UTC</p>
+      <p v-if="statistics?.period?.startedAt" class="history-start">{{ t('historyStart', { start: statistics.period.startedAt.replace('T', ' ').replace('Z', '') }) }}</p>
       <div class="chart-legend"><span class="received">{{ t('received') }} {{ number(statistics ? total('received') : undefined) }}</span><span class="sent">{{ t('sent') }} {{ number(statistics ? total('sent') : undefined) }}</span></div>
       <div class="week-chart" :aria-label="t('weekTitle')"><div v-for="day in statistics?.days || []" :key="day.day" class="chart-day" :title="day.day"><div class="bar-pair"><div class="bar received-bar" :style="{ height: `${day.received / peak * 100}%` }"></div><div class="bar sent-bar" :style="{ height: `${day.sent / peak * 100}%` }"></div></div><span class="chart-values"><span class="received">{{ number(day.received) }}</span> / <span class="sent">{{ number(day.sent) }}</span></span><span>{{ day.day.slice(5) }}</span></div></div>
       <div class="mailbox-highlights"><div v-for="key in ['most', 'least']" :key="key"><span>{{ t(key) }}</span><strong>{{ statistics?.mailboxes?.[key]?.address || '—' }}</strong><span>{{ number(statistics?.mailboxes?.[key]?.count) }} {{ t('messages') }}</span></div></div>
