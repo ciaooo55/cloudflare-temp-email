@@ -41,8 +41,6 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "@vicons/fa": "^0.13.0",
-    "@vicons/material": "^0.13.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "jsdom": "^28.1.0",
     "typescript": "5.4.5",

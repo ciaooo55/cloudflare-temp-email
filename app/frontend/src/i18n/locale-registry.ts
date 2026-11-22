@@ -26,11 +26,13 @@ type LocaleRegistryEntry = {
   browserMatches: string[]
   naive: NaiveLocaleConfig
   turnstileLocale: string
+  dateTimeLocale: string
 }
 
 export const LOCALE_REGISTRY = [
   {
     locale: 'zh',
+    dateTimeLocale: 'zh-CN',
     label: '中文',
     browserMatches: ['zh'],
     naive: { locale: zhCN, dateLocale: dateZhCN },
@@ -38,6 +40,7 @@ export const LOCALE_REGISTRY = [
   },
   {
     locale: 'en',
+    dateTimeLocale: 'en-US',
     label: 'English',
     browserMatches: ['en'],
     naive: { locale: enUS, dateLocale: dateEnUS },
@@ -45,6 +48,7 @@ export const LOCALE_REGISTRY = [
   },
   {
     locale: 'es',
+    dateTimeLocale: 'es-ES',
     label: 'Español',
     browserMatches: ['es'],
     naive: { locale: esAR, dateLocale: dateEsAR },
@@ -52,6 +56,7 @@ export const LOCALE_REGISTRY = [
   },
   {
     locale: 'pt-BR',
+    dateTimeLocale: 'pt-BR',
     label: 'Português (Brasil)',
     browserMatches: ['pt'],
     naive: { locale: ptBR, dateLocale: datePtBR },
@@ -59,6 +64,7 @@ export const LOCALE_REGISTRY = [
   },
   {
     locale: 'ja',
+    dateTimeLocale: 'ja-JP',
     label: '日本語',
     browserMatches: ['ja'],
     naive: { locale: jaJP, dateLocale: dateJaJP },
@@ -66,6 +72,7 @@ export const LOCALE_REGISTRY = [
   },
   {
     locale: 'de',
+    dateTimeLocale: 'de-DE',
     label: 'Deutsch',
     browserMatches: ['de'],
     naive: { locale: deDE, dateLocale: dateDeDE },
@@ -81,20 +88,12 @@ const localeRegistryMap = Object.fromEntries(
   LOCALE_REGISTRY.map((entry) => [entry.locale, entry]),
 ) as Record<SupportedLocale, (typeof LOCALE_REGISTRY)[number]>
 
-export const getLocaleRegistryEntry = (locale: SupportedLocale) => {
+const getLocaleRegistryEntry = (locale: SupportedLocale) => {
   return localeRegistryMap[locale]
 }
 
 export const getLocaleLabel = (locale: SupportedLocale) => {
   return getLocaleRegistryEntry(locale).label
-}
-
-export const getLocaleOptions = () => {
-  return LOCALE_REGISTRY.map(({ locale, label }) => ({
-    label,
-    value: locale,
-    key: locale,
-  }))
 }
 
 export const getNaiveLocaleConfig = (locale: SupportedLocale) => {
@@ -104,4 +103,3 @@ export const getNaiveLocaleConfig = (locale: SupportedLocale) => {
 export const getTurnstileLocale = (locale: SupportedLocale) => {
   return getLocaleRegistryEntry(locale).turnstileLocale
 }
-

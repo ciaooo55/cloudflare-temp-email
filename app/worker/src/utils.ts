@@ -323,7 +323,7 @@ export const getEnvStringList = (value: string | string[] | undefined): string[]
     return value.filter((item) => item.length > 0);
 }
 
-export const isGlobalTurnstileEnabled = (c: Context<HonoCustomType>): boolean => {
+const isGlobalTurnstileEnabled = (c: Context<HonoCustomType>): boolean => {
     return getBooleanValue(c.env.ENABLE_GLOBAL_TURNSTILE_CHECK)
         && !!c.env.CF_TURNSTILE_SITE_KEY
         && !!c.env.CF_TURNSTILE_SECRET_KEY;

@@ -16,9 +16,9 @@ export type SnapshotBinding = {
 };
 
 /** 永久有效绑定的 expiresAt 哨兵值：2100-01-01T00:00:00Z。所有 `expiresAt <= Date.now()` 的过期检查对它都返回 false。 */
-export const SNAPSHOT_BINDING_PERMANENT_MS = 4102444800000;
+const SNAPSHOT_BINDING_PERMANENT_MS = 4102444800000;
 
-export function isPermanentSnapshotBinding(expiresAt: number): boolean {
+function isPermanentSnapshotBinding(expiresAt: number): boolean {
     return expiresAt >= SNAPSHOT_BINDING_PERMANENT_MS;
 }
 

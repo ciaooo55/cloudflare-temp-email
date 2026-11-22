@@ -16,7 +16,7 @@ const getAdminSendMailErrorMessage = (
         : msgs.OperationFailedMsg;
 }
 
-export const sendMailbyAdmin = async (c: Context<HonoCustomType>) => {
+export const sendMailByAdmin = async (c: Context<HonoCustomType>) => {
     const msgs = i18n.getMessagesByContext(c);
     let reqJson;
     try {

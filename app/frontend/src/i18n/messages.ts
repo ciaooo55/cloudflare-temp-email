@@ -73,11 +73,3 @@ export const loadLocaleMessages = async (locale: SupportedLocale) => {
   additionalLocaleSources[locale] ||= await localeLoaders[locale]()
   return buildAdditionalLocaleMessages(locale)
 }
-
-export const getLocalizedMessage = (
-  locale: AdditionalLocale,
-  namespace: MessageNamespace,
-  key: string,
-) => {
-  return additionalLocaleSources[locale]?.[`${namespace}.${key}`]
-}

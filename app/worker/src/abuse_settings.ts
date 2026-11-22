@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 
-export const ABUSE_SETTINGS_KEY = 'abuse_protection_settings';
+const ABUSE_SETTINGS_KEY = 'abuse_protection_settings';
 export const DEFAULT_ABUSE_SETTINGS = {
     inboundEnabled: true,
     inboundWindowMinutes: 10,

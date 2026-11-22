@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS worker_usage_day (
 `;
 
 // Includes the atomic mailbox/day counter trigger.
-export const MAIL_CORE_COST = { reads: 28, writes: 12 };
-export const MAIL_FULL_COST = { reads: 60, writes: 17 };
-export const API_WRITE_COST = { reads: 104, writes: 15 };
+const MAIL_CORE_COST = { reads: 28, writes: 12 };
+const MAIL_FULL_COST = { reads: 60, writes: 17 };
+const API_WRITE_COST = { reads: 104, writes: 15 };
 const API_READ_COST = { reads: 50, writes: 2 };
 const SNAPSHOT_READ_COST = { reads: 52, writes: 4 };
 export const CRON_COST = { reads: 122, writes: 5 };

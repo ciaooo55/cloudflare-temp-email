@@ -25,19 +25,19 @@ export type TelegramBotEntry = {
     webhookSecret?: string;
 };
 
-export type BarkDeviceEntry = {
+type BarkDeviceEntry = {
     id: string;
     name: string;
     keys: string;
     enabled: boolean;
 };
 
-export type BarkSettings = {
+type BarkSettings = {
     devices: BarkDeviceEntry[];
     pushUrl: string;
 };
 
-export type SnapshotSettings = {
+type SnapshotSettings = {
     ttlHours: number;
     /**
      * 绑定快照边缘缓存开关：默认关闭。
@@ -49,13 +49,12 @@ export type SnapshotSettings = {
     boundCacheTtl?: number;
 };
 
-export type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
 
 export const DEFAULT_BARK_PUSH_URL = "https://bark-worker.18715260182.workers.dev/push";
-export const DEFAULT_SNAPSHOT_TTL_HOURS = 24;
+const DEFAULT_SNAPSHOT_TTL_HOURS = 24;
 /** 绑定快照边缘缓存默认关闭；开启时默认 10 秒 */
-export const DEFAULT_BOUND_CACHE_ENABLED = false;
-export const DEFAULT_BOUND_CACHE_TTL = 10;
+const DEFAULT_BOUND_CACHE_ENABLED = false;
+const DEFAULT_BOUND_CACHE_TTL = 10;
 /** 前端时间挡位（秒）：10秒 / 30秒 / 1分钟 / 5分钟 */
 export const BOUND_CACHE_TTL_PRESETS = [10, 30, 60, 300];
 

@@ -23,7 +23,7 @@ function humanFileSize(size) {
 
 // 原始接收邮箱：从原始邮件 To 头提取第一个地址（口径与后端 email/index.ts 一致）。
 // item.address 是系统归一化后的收件地址，转发/改写场景下与原始收件不同，详情页单独展示原始值。
-export function extractOriginalRecipient(raw) {
+function extractOriginalRecipient(raw) {
     try {
         const headerSection = String(raw || '').split(/\r?\n\r?\n/)[0] || '';
         const m = headerSection.match(/^To:[ \t]*([^\r\n]*(?:\r?\n[ \t][^\r\n]*)*)/im);

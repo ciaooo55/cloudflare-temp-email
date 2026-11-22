@@ -136,7 +136,7 @@ const formatAiExtractForTelegram = (
     return `${msgs.TgAiExtractResultMsg}\n${label}: ${result}${displayText}\n\n`;
 }
 
-export const getTelegramCommands = (c: Context<HonoCustomType>) => {
+const getTelegramCommands = (c: Context<HonoCustomType>) => {
     return getBooleanValue(c.env.TG_ALLOW_USER_LANG)
         ? COMMANDS
         : COMMANDS.filter(cmd => cmd.command !== "lang");

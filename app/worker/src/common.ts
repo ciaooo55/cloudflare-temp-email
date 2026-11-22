@@ -31,7 +31,7 @@ const areValidDomainLabels = (labels: string[]): boolean => {
 /**
  * Check if send mail is enabled for a specific domain
  */
-export const isSendMailEnabled = (
+const isSendMailEnabled = (
     c: Context<HonoCustomType>,
     mailDomain: string
 ): boolean => {
@@ -265,7 +265,7 @@ export function updateAddressUpdatedAt(
     })());
 }
 
-export const generateRandomPassword = (): string => {
+const generateRandomPassword = (): string => {
     const charset = "abcdefghijklmnopqrstuvwxyz0123456789";
     let password = "";
     for (let i = 0; i < 8; i++) {
@@ -664,7 +664,7 @@ export const handleListQuery = async (
     return c.json({ results: filteredResults, count });
 }
 
-export const hideObjectFields = <T extends Record<string, unknown>>(
+const hideObjectFields = <T extends Record<string, unknown>>(
     row: T,
     fields: string[]
 ): T => {

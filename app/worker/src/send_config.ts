@@ -39,12 +39,12 @@
 import type { WorkerMailerOptions } from 'worker-mailer';
 import { getJsonObjectValue, normalizeDomain } from './utils.ts';
 
-export type SendChannelRef =
+type SendChannelRef =
     | { provider: 'cf'; binding?: string }
     | { provider: 'resend'; key: string }
     | { provider: 'smtp'; config: string };
 
-export type DomainPushConfig = {
+type DomainPushConfig = {
     /** secret names holding telegram bot tokens */
     telegram?: string[];
     /** secret names holding comma-separated bark device keys */
@@ -57,7 +57,7 @@ export type DomainRouteConfig = {
     push?: DomainPushConfig;
 };
 
-export type SendRoutesConfig = {
+type SendRoutesConfig = {
     domains?: Record<string, DomainRouteConfig>;
 };
 
@@ -71,7 +71,7 @@ const readSecret = (env: Bindings, name: string): string => {
     return typeof v === 'string' ? v.trim() : '';
 };
 
-export const parseSendRoutes = (env: Bindings): SendRoutesConfig | null => {
+const parseSendRoutes = (env: Bindings): SendRoutesConfig | null => {
     const raw = (env as unknown as Record<string, unknown>).SEND_ROUTES;
     const parsed = getJsonObjectValue<SendRoutesConfig>(raw as string);
     if (!parsed || typeof parsed !== 'object' || !parsed.domains) {

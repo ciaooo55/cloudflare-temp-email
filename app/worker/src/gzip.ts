@@ -10,7 +10,7 @@ export async function compressText(text: string): Promise<ArrayBuffer> {
     return new Response(stream).arrayBuffer();
 }
 
-export async function decompressBlob(buffer: ArrayBuffer): Promise<string> {
+async function decompressBlob(buffer: ArrayBuffer): Promise<string> {
     const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
     return new Response(stream).text();
 }
