@@ -11,6 +11,7 @@ export async function extractEmailInfo(
         && !/content-transfer-encoding:\s*(?:base64|quoted-printable)/i.test(context.rawEmail)) return null;
     try {
         const parsed = await commonParseMail(context);
+        if (!parsed) return null;
         const body = parsed.text || decodeHTML(stripVerificationHtml(parsed.html || ''));
         const code = extractCode(joinSubjectAndBody(parsed.subject, body));
         if (!code) return null;

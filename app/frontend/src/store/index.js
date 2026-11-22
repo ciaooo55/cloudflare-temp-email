@@ -62,6 +62,7 @@ export const useGlobalState = createGlobalState(
         );
         const telegramApp = ref(window.Telegram?.WebApp || {});
         const isTelegram = ref(!!window.Telegram?.WebApp?.initData);
+        /** @type {import('vue').Ref<string>} */
         const browserFingerprint = ref('');
         return {
             isDark,

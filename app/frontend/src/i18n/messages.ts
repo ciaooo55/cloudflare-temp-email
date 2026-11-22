@@ -4,7 +4,7 @@ import type { MessageKey, MessageNamespace } from './message-registry'
 
 import type { SupportedLocale } from './locale-registry'
 
-type LocaleTree = Record<string, unknown>
+interface LocaleTree { [key: string]: string | LocaleTree }
 type SourceLocale = Extract<SupportedLocale, 'en' | 'zh'>
 type AdditionalLocale = Exclude<SupportedLocale, SourceLocale>
 
@@ -16,7 +16,7 @@ const localeLoaders = {
   de: () => import('./locales/source/de').then(module => module.deMessages),
 }
 
-const setNestedValue = (target: LocaleTree, path: string, value: unknown) => {
+const setNestedValue = (target: LocaleTree, path: string, value: string | LocaleTree) => {
   const segments = path.split('.')
   let current: LocaleTree = target
 

@@ -16,7 +16,7 @@ export type TelegramBotEntry = {
     name: string;
     token: string;
     enabled: boolean;
-    createdAt: string;
+    createdAt: string | number;
     /** 用户ID白名单（逗号分隔），留空表示不限制 */
     allowedChatIds?: string;
     /** 群组ID白名单（逗号分隔），留空表示不限制 */
