@@ -1594,9 +1594,9 @@ export const MESSAGE_REGISTRY = {
   },
   "views.admin.AccountSettings": {
     "guide": {"en":"Choose whether to block a sender everywhere, a domain for one mailbox, or all new mail to a mailbox. Type an entry and press Enter; Save all mailbox rules at the bottom applies changes. Removing a rule restores future delivery, not previously rejected mail.","zh":"下面三种规则分别管：所有邮箱都不收某个发件人的信、只让一个邮箱不收某个域名的信、停用一个收件邮箱。输入一项后按回车，最后点底部「保存全部邮箱规则」才生效。删掉规则只能恢复之后的收信，不能找回之前已拒收的邮件。"},
-    "fromExample": {"en":"Example: spam@example.com blocks sender addresses containing it for all mailboxes. @ads.example also matches user@ads.example. This is text containment, not exact matching; short fragments may block unrelated senders. Blank means no additional block.","zh":"例：填 spam@example.com，所有邮箱都会拒收发件地址包含它的信；填 @ads.example，也会拒收 user@ads.example 的信。这是「包含文字」而非精确匹配，别只填太短的片段，避免误拦。留空表示不额外拦截。"},
-    "domainExample": {"en":"Example: your mailbox work@example.net on the left, the other party's domain ads.example on the right (no @). Only that mailbox rejects ads.example and its subdomains; other mailboxes still receive it. Use your mailbox address as shown in the mailbox list.","zh":"例：左边填自己的收件邮箱 work@example.net，右边填对方的域名 ads.example（不带 @）。只有 work@example.net 拒收 ads.example 及其子域名的信，其他邮箱照常收。左侧请用邮箱列表里显示的地址。"},
-    "mailboxExample": {"en":"Example: add old@example.net to reject all new mail to it. Existing messages remain readable. Remove it and save to resume receiving; this is not mailbox deletion.","zh":"例：加入 old@example.net 后，任何人再往这个邮箱发信都会被拒收，旧邮件仍可查看。移除并保存后恢复接收新信；这里不是删除邮箱。"},
+    "fromExample": {"en":"Example: spam{'@'}example.com blocks sender addresses containing it for all mailboxes. {'@'}ads.example also matches user{'@'}ads.example. This is text containment, not exact matching; short fragments may block unrelated senders. Blank means no additional block.","zh":"例：填 spam{'@'}example.com，所有邮箱都会拒收发件地址包含它的信；填 {'@'}ads.example，也会拒收 user{'@'}ads.example 的信。这是「包含文字」而非精确匹配，别只填太短的片段，避免误拦。留空表示不额外拦截。"},
+    "domainExample": {"en":"Example: your mailbox work{'@'}example.net on the left, the other party's domain ads.example on the right (no {'@'}). Only that mailbox rejects ads.example and its subdomains; other mailboxes still receive it. Use your mailbox address as shown in the mailbox list.","zh":"例：左边填自己的收件邮箱 work{'@'}example.net，右边填对方的域名 ads.example（不带 {'@'}）。只有 work{'@'}example.net 拒收 ads.example 及其子域名的信，其他邮箱照常收。左侧请用邮箱列表里显示的地址。"},
+    "mailboxExample": {"en":"Example: add old{'@'}example.net to reject all new mail to it. Existing messages remain readable. Remove it and save to resume receiving; this is not mailbox deletion.","zh":"例：加入 old{'@'}example.net 后，任何人再往这个邮箱发信都会被拒收，旧邮件仍可查看。移除并保存后恢复接收新信；这里不是删除邮箱。"},
     "sendingGuide": {"en":"Outgoing controls do not block incoming mail. These are this site's sending limits, not Cloudflare's free allowance. All mailboxes share daily/monthly limits, resetting at UTC midnight/month start. 0 stops sends; -1 removes that limit. Keep sensible limits enabled.","zh":"下面只管「往外发信」，不影响收信；这是你给本网站设的发信上限，不是 Cloudflare 免费额度。日/月上限由所有邮箱共享，分别按 UTC 零点/月初重置。0 表示停发，-1 表示该项不限，建议保留合理上限。"},
     "fromHelp": {"en":"All mailboxes reject a message when its delivery sender or displayed From address contains an entry (case-sensitive). Rejected messages are not stored or pushed. Rejection can still use Worker/database resources.","zh":"只要实际投递方或邮件上显示的发件地址包含你填的内容，所有邮箱都拒收，区分大小写。拒收后不保存、不推送；但请求已经到达服务器，仍可能消耗 Worker/数据库资源，并非零额度。"},
     "domainHelp": { "en": "Blocks a sender domain and its subdomains for one recipient only. Your mailbox goes left; their sender domain goes right.", "zh": "左边填你的收件邮箱，右边填对方发件域名；只对该邮箱拦截这个域名及子域名，不影响其他邮箱。" },
@@ -1666,8 +1666,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "自己的完整收件邮箱"
     },
     "blockedSenderDomain": {
-      "en": "Their sender domain (without @)",
-      "zh": "对方发件域名（不带 @）"
+      "en": "Their sender domain (without {'@'})",
+      "zh": "对方发件域名（不带 {'@'}）"
     },
     "manualInputPrompt": {
       "en": "Type and press Enter to add",
