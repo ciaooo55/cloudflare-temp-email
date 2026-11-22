@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import addressApi from './address_api.ts';
 import statisticsApi from './statistics_api.ts';
 import { createD1 } from '../../test-loader/d1.mjs';
+import { initializeMailStatistics } from '../mail_statistics.ts';
 
 function fixture() {
     const DB = createD1();
@@ -33,7 +34,12 @@ test('mailbox directory search is parameterized and case insensitive', async () 
     assert.equal((await (await addressApi.listAddresses(context(DB, { query: "' OR 1=1 --" }))).json()).count, 0);
 });
 
-test('compact statistics count catch-all addresses and preserve existing registered mailboxes', async () => {
-    const body = await (await statisticsApi.get(context(fixture()))).json();
-    assert.deepEqual([body.mailCount, body.sendMailCount, body.addressCount], [2, 1, 3]);
+test('statistics retain new catch-all arrivals without scanning or backfilling old mail', async () => {
+    const DB = fixture();
+    DB.sqlite.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)');
+    await initializeMailStatistics(DB);
+    DB.sqlite.exec("INSERT INTO raw_mails (address) VALUES ('new@example.com')");
+    const body = await (await statisticsApi.get(context(DB))).json();
+    assert.deepEqual([body.mailCount, body.sendMailCount, body.addressCount], [1, 0, 2]);
+    assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM raw_mails').get().n, 3);
 });
