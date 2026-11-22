@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |Cleanup budget| Conservatively include candidate probes, deletion subqueries and primary-key lookups in read reservations
 - fix: |Mailbox polling| Use absolute retry deadlines for backoff and Retry-After so time spent in hidden tabs counts toward the wait
 - fix: |Manual cleanup| Return deleted counts and completion state on success and partial failure, with remaining-work feedback in the web UI
 - fix: |Scheduled cleanup| Record each completed batch attempt after isolated rule failures so successful rules are not rerun before the configured interval

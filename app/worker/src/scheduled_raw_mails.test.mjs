@@ -28,7 +28,7 @@ test("raw cleanup caps each tick and resumes the backlog on the next invocation"
     assert.deepEqual(await cleanupStaleRawMails(env), { success: true, deleted: 300, complete: false });
     assert.deepEqual(await cleanupStaleRawMails(env), { success: true, deleted: 50, complete: true });
     const usage = env.DB.sqlite.prepare("SELECT row_reads, row_writes FROM worker_usage_day").get();
-    assert.equal(usage.row_reads, 350 * 2 + 4 * 3);
+    assert.equal(usage.row_reads, 350 * 3 + 4 * 3);
     assert.equal(usage.row_writes, 350 * 4 + 4);
 });
 

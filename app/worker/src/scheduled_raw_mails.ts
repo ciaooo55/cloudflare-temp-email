@@ -14,11 +14,10 @@ export async function cleanupStaleRawMails(env: Bindings, olderThanMinutes = 10)
             const candidates = await env.DB.prepare(`SELECT id FROM raw_mails INDEXED BY idx_raw_mails_created_at
                 WHERE created_at < datetime('now', ?) ORDER BY created_at, id LIMIT ?`)
                 .bind(`-${minutes} minutes`, BATCH_SIZE).all<{ id: number }>();
-            if (candidates.success === false) throw new Error('Raw mail expiration lookup failed');
             const size = candidates.results.length;
             if (size === 0) return { success: true, deleted, complete: true };
             // Includes both indexed scans, the primary key and three secondary indexes.
-            if (!await reserveUsage(env, 'soft', { reads: size * 2 + 2, writes: size * 4 })) {
+            if (!await reserveUsage(env, 'soft', { reads: size * 3 + 2, writes: size * 4 })) {
                 return { success: false, deleted, complete: false };
             }
             const result = await env.DB.prepare(`DELETE FROM raw_mails WHERE id IN (
