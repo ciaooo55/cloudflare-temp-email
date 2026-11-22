@@ -20,7 +20,7 @@ const props = defineProps({
   saveToS3: { type: Function, default: async () => {} },
   updateMailReadStatus: { type: Function, default: async () => {} },
 })
-const { t } = useScopedI18n('components.MailBox')
+const { t, locale } = useScopedI18n('components.MailBox')
 const emit = defineEmits(['reply', 'forward'])
 const { useUTCDate, autoRefresh, configAutoRefreshInterval, loading } = useGlobalState()
 const message = useMessage()
