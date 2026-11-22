@@ -37,7 +37,7 @@ const icons = {
   statistics: 'M4 4v16h16 M8 16v-5 M12 16V7 M16 16V9',
   maintenance_tasks: 'M5 7h14 M9 7V4h6v3 M7 7l1 14h8l1-14 M10 10v7 M14 10v7',
 }
-const { adminAuth, showAdminAuth, adminTab, loading, showAdminPage, openSettings } = useGlobalState()
+const { adminAuth, showAuth, showAdminAuth, adminTab, loading, showAdminPage, openSettings } = useGlobalState()
 const { t, locale } = useScopedI18n('views.Admin')
 const message = useMessage()
 const isMobile = useIsMobile()
@@ -45,7 +45,8 @@ const showNavigation = ref(false)
 const cfToken = ref('')
 const turnstileRef = ref(null)
 const tmpAdminAuth = ref('')
-const showAdminPasswordModal = computed(() => !showAdminPage.value || showAdminAuth.value)
+const siteUnlocked = computed(() => !showAuth.value && !openSettings.value.needAuth)
+const showAdminPasswordModal = computed(() => siteUnlocked.value && (!showAdminPage.value || showAdminAuth.value))
 const activeLabel = computed(() => {
   const item = adminGroups.flatMap(group => group.items).find(([key]) => key === adminTab.value)
   return item ? t(item[1]) : t('mails')
@@ -80,7 +81,7 @@ onMounted(() => { if (!openSettings.value.fetched) return api.getOpenSettings(me
         <n-button @click="authFunc" type="primary" :loading="loading">{{ t('ok') }}</n-button>
       </template>
     </n-modal>
-    <template v-if="showAdminPage">
+    <template v-if="siteUnlocked && showAdminPage && !showAdminAuth">
       <aside v-if="!isMobile" class="workspace-sidebar">
         <button class="compose-button" type="button" @click="navigate('sendMail')">
           <span aria-hidden="true">＋</span>{{ t('sendMail') }}

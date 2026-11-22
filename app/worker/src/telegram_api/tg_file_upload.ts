@@ -30,13 +30,17 @@ export async function sendTelegramAttachments(
                     ...(i === 0 && j === 0 ? { caption } : {}),
                 });
                 const blob = new Blob([att.content], { type: 'application/octet-stream' });
-                formData.append(attachKey, blob, att.filename || `attachment_${j}`);
+                formData.append(batch.length === 1 ? 'document' : attachKey, blob, att.filename || `attachment_${j}`);
             }
             formData.append('chat_id', chatId);
-            formData.append('media', JSON.stringify(media));
+            if (batch.length === 1) {
+                if (i === 0) formData.append('caption', caption);
+            } else {
+                formData.append('media', JSON.stringify(media));
+            }
             const res = await fetch(
-                `https://api.telegram.org/bot${botToken}/sendMediaGroup`,
-                { method: 'POST', body: formData }
+                `https://api.telegram.org/bot${botToken}/${batch.length === 1 ? 'sendDocument' : 'sendMediaGroup'}`,
+                { method: 'POST', body: formData, signal: AbortSignal.timeout(15000) }
             );
             if (!res.ok) {
                 const text = await res.text();

@@ -685,7 +685,7 @@ export async function sendMailNotifications(
             form.append("document", new Blob([fullMail], { type: "text/plain;charset=utf-8" }), "完整邮件.txt");
             form.append("caption", "超长链接完整保存在原文文件中，可复制使用。");
             const response = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
-                method: "POST", body: form
+                method: "POST", body: form, signal: AbortSignal.timeout(15000)
             });
             if (!response.ok) throw new Error(`Telegram original mail upload failed: ${response.status}`);
         }

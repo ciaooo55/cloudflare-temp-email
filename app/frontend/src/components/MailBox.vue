@@ -6,6 +6,7 @@ import { useGlobalState } from '../store'
 import { useIsMobile } from '../utils/composables'
 import { processItem, refreshParsedItem, releaseMailResources } from '../utils/email-parser'
 import { utcToLocalDate } from '../utils'
+import { createMailPolling } from '../utils/mail-polling'
 import AiExtractInfo from './AiExtractInfo.vue'
 
 const MailContentRenderer = defineAsyncComponent(() => import('./MailContentRenderer.vue'))
@@ -35,6 +36,7 @@ const refreshing = ref(false)
 const multiActionMode = ref(false)
 const selected = ref([])
 const seconds = ref(configAutoRefreshInterval.value)
+const polling = createMailPolling(() => configAutoRefreshInterval.value)
 const data = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return query ? rawData.value.filter(mail =>
@@ -72,12 +74,17 @@ const refresh = async () => {
     if (page.value === 1 || response.count > 0) count.value = Number(response.count) || 0
     curMail.value = next.find(mail => mail.id === selectedId) || null
     selected.value = selected.value.filter(id => next.some(mail => mail.id === id))
+    seconds.value = polling.reset()
   } catch (error) {
-    message.error(error.message || 'error')
+    if (disposed || currentVersion !== version) return
+    const failure = polling.fail(error)
+    seconds.value = failure.delay
+    if (failure.notify) message.error(error.message || 'error')
   } finally { if (currentVersion === version) refreshing.value = false }
 }
-const refreshFirstPage = () => {
+const refreshFirstPage = (manual = true) => {
   if (refreshing.value) return
+  if (manual) seconds.value = polling.reset()
   if (page.value !== 1) page.value = 1
   else void refresh()
 }
@@ -145,14 +152,15 @@ const rendererProps = computed(() => ({
   onSaveToS3: (filename, blob) => props.saveToS3(curMail.value.id, filename, blob),
 }))
 watch([page, pageSize], () => { curMail.value = null; void refresh() })
-watch(configAutoRefreshInterval, value => { seconds.value = value })
+watch(configAutoRefreshInterval, value => {
+  seconds.value = polling.failures ? Math.max(seconds.value, value) : value
+})
 onMounted(() => {
   void refresh()
   timer = setInterval(() => {
-    if (!autoRefresh.value || document.hidden || loading.value || refreshing.value || multiActionMode.value) return
+    if (!autoRefresh.value || polling.paused || document.hidden || loading.value || refreshing.value || multiActionMode.value) return
     if (--seconds.value <= 0) {
-      seconds.value = configAutoRefreshInterval.value
-      refreshFirstPage()
+      refreshFirstPage(false)
     }
   }, 1000)
 })
