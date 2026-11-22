@@ -10,6 +10,7 @@
 
 - feat: |Statistics| Retain seven-day counts independently of mail cleanup; atomic triggers keep only local mailbox, UTC date and counts, expose activation/unknown history, and budget counter writes and bounded expiry
 - perf: |Statistics| Read compact summaries instead of mail tables, remove full-mail count scans and unused active-mailbox copy, and align totals/rankings to the same seven-day window
+- refactor: |Backend| Remove unreferenced retired mail-Webhook models and stale scheduler comments; retain active Telegram commands and KV/D1 data reads
 - feat: |statistics| Add seven-day received/sent trends, zero-inclusive mailbox rankings and paged send counts; show two-day D1 guard reservations and today's remaining budget on demand, distinct from actual account usage
 - docs: |settings| Explain incoming block scopes, send balances and API access rules with examples, entry/save steps and recovery behavior
 - fix: |frontend| Preserve Chinese reader guidance when no message is selected

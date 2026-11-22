@@ -1,29 +1,3 @@
-export class AdminWebhookSettings {
-    enableAllowList: boolean;
-    allowList: string[];
-
-    constructor(enableAllowList: boolean, allowList: string[]) {
-        this.enableAllowList = enableAllowList;
-        this.allowList = allowList;
-    }
-}
-
-export type WebhookMail = {
-    id: string;
-    url?: string;
-    attachments?: { filename: string, mimeType: string, url: string }[];
-    from: string;
-    to: string;
-    subject: string;
-    raw: string;
-    parsedText: string;
-    parsedHtml: string;
-    aiExtract: ExtractResult | null;
-    aiExtractType: string;
-    aiExtractResult: string;
-    aiExtractResultText: string;
-}
-
 export type CustomSqlCleanup = {
     id: string;           // Unique identifier
     name: string;         // Cleanup task name
@@ -46,17 +20,17 @@ export type CleanupSettings = {
     enableEmptyAddressAutoCleanup: boolean | undefined;
     cleanEmptyAddressDays: number;
     customSqlCleanupList: CustomSqlCleanup[] | undefined;
-    // 定时任务调度（网页可配）：raw_mails 定时清理（替代原独立 dinshi worker）
+    // 定时任务调度（网页可配）
     enableRawMailsAutoCleanup: boolean | undefined;
-    // 删除多少分钟前的 raw_mails，默认 10（与原 dinshi 一致）
+    // 删除多少分钟前的 raw_mails，默认 10
     cleanRawMailsMinutes: number | undefined;
-    // raw_mails 清理每多少分钟执行一次，默认 3（与原 dinshi 一致）
+    // raw_mails 清理每多少分钟执行一次，默认 10
     rawMailsIntervalMinutes: number | undefined;
     // 自动清理整批任务每多少分钟检查执行一次，默认 60
     autoCleanupIntervalMinutes: number | undefined;
 }
 
-// 定时任务上次执行记录（存 KV）
+// 定时任务上次执行记录
 export type ScheduledTaskRunInfo = {
     // 上次执行时间戳（毫秒）
     at: number;
@@ -103,28 +77,6 @@ export class AddressCreationSettings {
         const { enableSubdomainMatch } = data || {};
         this.enableSubdomainMatch = enableSubdomainMatch;
     }
-}
-
-export class WebhookSettings {
-    enabled: boolean = false
-    url: string = ''
-    method: string = 'POST'
-    headers: string = JSON.stringify({
-        "Content-Type": "application/json"
-    }, null, 2)
-    body: string = JSON.stringify({
-        "id": "${id}",
-        "url": "${url}",
-        "from": "${from}",
-        "to": "${to}",
-        "subject": "${subject}",
-        "raw": "${raw}",
-        "parsedText": "${parsedText}",
-        "parsedHtml": "${parsedHtml}",
-        "aiExtractType": "${aiExtractType}",
-        "aiExtractResult": "${aiExtractResult}",
-        "aiExtractResultText": "${aiExtractResultText}",
-    }, null, 2)
 }
 
 export type EmailRuleSettings = {
