@@ -1162,6 +1162,38 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.Statistics": {
+    "scope": {"en":"Stored messages only: cleanup/deletion reduces these counts. Loads only on this page, with a 60-second server cache and no polling.","zh":"统计当前仍保存的邮件，清理或删除后数量会减少；只在打开本页或手动操作时读取，服务器缓存 60 秒，不后台轮询。"},
+    "refresh": {"en":"Refresh statistics","zh":"刷新统计"},
+    "loadFailed": {"en":"Message statistics could not load. Budget status below loads separately; retry later.","zh":"邮件统计暂时读不到，请稍后刷新；下方保护预算会独立读取。"},
+    "weekTitle": {"en":"Last 7 days · received and sent","zh":"最近 7 天收发情况"},
+    "received": {"en":"Received","zh":"收信"},
+    "sent": {"en":"Sent","zh":"发信"},
+    "most": {"en":"Most received · 7 days","zh":"收信最多的邮箱 · 7 天"},
+    "least": {"en":"Least received · 7 days","zh":"收信最少的邮箱 · 7 天"},
+    "messages": {"en":"messages","zh":"封"},
+    "rankingScope": {"en":"Today plus the previous 6 UTC dates. Includes all known mailboxes, including zero-message mailboxes; alphabetically first appears on ties. Only stored mail is counted, not lifetime delivery or rejections.","zh":"范围为 UTC 今天及前 6 天。排行包含所有已知邮箱，也包含 0 封；并列时按邮箱名称展示第一项。仅计算仍保存的邮件，不是历史投递总量，也不含拒收数量。"},
+    "mailboxTitle": {"en":"Messages per mailbox · 7 days","zh":"每个邮箱收发了几封 · 7 天"},
+    "sort": {"en":"Mailbox sort order","zh":"邮箱排序"},
+    "sortReceived": {"en":"Most received first","zh":"按收信数从多到少"},
+    "sortSent": {"en":"Most sent first","zh":"按发信数从多到少"},
+    "mailbox": {"en":"Your mailbox","zh":"本地邮箱"},
+    "noMailboxes": {"en":"No known mailboxes on this page.","zh":"本页暂无已知邮箱。"},
+    "budgetTitle": {"en":"This app's D1 protection budget · estimated","zh":"本应用 D1 保护预算 · 估算"},
+    "budgetHelp": {"en":"Existing guard counters reserve estimated database rows, NOT Cloudflare's actual usage or bill. No new per-message tracking. Other apps, Worker requests and KV are not covered. The soft threshold pauses protected website/API actions; the hard threshold also pauses incoming mail.","zh":"直接读取已有保护计数，不增加每封邮件的记账操作。这些数是为防超额而预留的数据库读写行数，不是 Cloudflare 实际用量或账单；不包含其他项目、Worker 请求数和 KV 用量。达到软线会暂停受保护的网页/API 操作；达到硬线也会暂停收信。"},
+    "budgetUnavailable": {"en":"Protection counters unavailable or not initialized; unknown usage is not shown as zero.","zh":"保护计数暂不可用或尚未初始化，无法计算剩余；不会把未知用量当成 0。"},
+    "today": {"en":"Today reserved","zh":"今天预留"},
+    "yesterday": {"en":"Yesterday reserved","zh":"昨天预留"},
+    "twoDays": {"en":"2-day total","zh":"两天合计"},
+    "metric": {"en":"Estimated D1 rows","zh":"D1 行数估算"},
+    "reads": {"en":"Rows read","zh":"读取行数"},
+    "writes": {"en":"Rows written","zh":"写入行数"},
+    "softRemaining": {"en":"Today: until soft stop","zh":"今日距软线剩余"},
+    "hardRemaining": {"en":"Today: until hard stop","zh":"今日距硬线剩余"},
+    "hardLimit": {"en":"Daily hard limit","zh":"每日保护硬上限"},
+    "freeReference": {"en":"Cloudflare Free reference per UTC day: {reads} rows read / {writes} rows written, shared across the account. This guard stops earlier; remaining budget is not account-wide remaining allowance.","zh":"Cloudflare Free 每个 UTC 日参考上限：读 {reads} 行、写 {writes} 行，整个账户共享。本应用提前保护暂停，表里的「剩余」不等于账户还剩的免费额度。"},
+    "resetHelp": {"en":"Reset: 00:00 UTC (08:00 China time). Yesterday is history, unused allowance does not roll over. The 2-day total is not a spendable pool. No row means no reservation recorded, not zero Cloudflare usage.","zh":"每日 UTC 00:00（北京时间 08:00）重置。昨天只作历史参考，没用完的额度不会转到今天；两天合计只是对比，不能当成今天可用额度。某天没有预留记录按 0 展示，不代表 Cloudflare 当天零消耗。"},
+    "accountNotConnected": {"en":"Cloudflare account-wide actual usage: not connected (no Analytics credentials).","zh":"Cloudflare 账户真实总用量：未连接（未配置 Analytics 读取凭据）。"},
+    "accountLink": {"en":"View actual account usage in Cloudflare","zh":"前往 Cloudflare 查看实际用量"},
     "activeAddressCount30days": {
       "en": "30 days Active Address Count",
       "zh": "30天活跃邮箱地址总数"
@@ -1184,6 +1216,7 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.SenderAccess": {
+    "guide": {"en":"This controls sending from each local mailbox, not receiving. Remaining sends is a message count, not money. Enabled with 10 remaining allows up to 10 successful sends. Disabled or 0 blocks ordinary sending; balance-exempt mailboxes are an exception but still obey site-wide limits. Confirming Modify saves immediately and creates an internal status notice. Delete removes only the sending-permission record, not mailboxes or messages.","zh":"这里管理每个本地邮箱「能不能发信、还能发几封」，不影响收信。「剩余可发封数」不是钱：启用并设为 10，就是最多还能成功发 10 封。停用或设为 0 会阻止普通发信；邮箱设置中的免余额检查名单例外，但仍受全站上限限制。点修改并确认会立即保存，并产生一封站内状态通知；删除只移除发信权限记录，不删邮箱和邮件。"},
     "action": {
       "en": "Action",
       "zh": "操作"
@@ -1193,8 +1226,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "邮箱地址"
     },
     "balance": {
-      "en": "Balance",
-      "zh": "余额"
+      "en": "Remaining sends",
+      "zh": "剩余可发封数"
     },
     "created_at": {
       "en": "Created At",
@@ -1225,8 +1258,8 @@ export const MESSAGE_REGISTRY = {
       "zh": "总数"
     },
     "modalTip": {
-      "en": "Please input the sender balance",
-      "zh": "请输入发件额度"
+      "en": "Set remaining successful sends (0 blocks ordinary sending)",
+      "zh": "设置还能成功发送的封数（0 会阻止普通发信）"
     },
     "modify": {
       "en": "Modify",
@@ -1246,6 +1279,7 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.IpBlacklistSettings": {
+    "accessGuide": {"en":"These settings affect protected create-address/send APIs, not incoming email. A visitor IP is a network address. The ASN field matches the network company NAME, such as Amazon, not an ASN number. Fingerprints identify browsers, not people. A network-company block can affect many users. Type each entry and press Enter, then Save access rules. Protection above saves separately.","zh":"这部分管创建邮箱、发信等受保护 API 的访问者，不是屏蔽邮件发件人。IP 是访问者的网络地址；这里的 ASN 实际填网络公司名称（如 Amazon），不是编号，拉黑后可能影响很多人；指纹只是浏览器标识，不等于一个人。每项输入后按回车，再点下方「保存访问规则」；上面的收信/快照防刷单独保存。"},
     "accessTitle": { "en": "Website and API access", "zh": "网页与 API 访问" },
     "saveAccess": { "en": "Save access rules", "zh": "保存访问规则" },
     "ipHelp": { "en": "Blocks IPs on protected address/send endpoints, not email senders or snapshot links. Regular expressions are supported.", "zh": "拦截创建邮箱和发信等受保护接口的访问 IP，不是邮件发件人，也不覆盖快照。支持正则表达式。" },
@@ -1559,7 +1593,12 @@ export const MESSAGE_REGISTRY = {
     }
   },
   "views.admin.AccountSettings": {
-    "fromHelp": {"en":"Blocks all mailboxes by case-sensitive text contained in the envelope or From sender address. Enter addresses or domain fragments carefully; a fragment can match multiple senders. Matching mail is rejected without storage or notifications.","zh":"对所有邮箱生效，按信封或 From 发件地址包含的文本匹配，区分大小写。可填地址或域名片段，片段可能匹配多个发件人；命中后拒收，不存信、不推送。"},
+    "guide": {"en":"Choose whether to block a sender everywhere, a domain for one mailbox, or all new mail to a mailbox. Type an entry and press Enter; Save all mailbox rules at the bottom applies changes. Removing a rule restores future delivery, not previously rejected mail.","zh":"下面三种规则分别管：所有邮箱都不收某个发件人的信、只让一个邮箱不收某个域名的信、停用一个收件邮箱。输入一项后按回车，最后点底部「保存全部邮箱规则」才生效。删掉规则只能恢复之后的收信，不能找回之前已拒收的邮件。"},
+    "fromExample": {"en":"Example: spam@example.com blocks sender addresses containing it for all mailboxes. @ads.example also matches user@ads.example. This is text containment, not exact matching; short fragments may block unrelated senders. Blank means no additional block.","zh":"例：填 spam@example.com，所有邮箱都会拒收发件地址包含它的信；填 @ads.example，也会拒收 user@ads.example 的信。这是「包含文字」而非精确匹配，别只填太短的片段，避免误拦。留空表示不额外拦截。"},
+    "domainExample": {"en":"Example: your mailbox work@example.net on the left, the other party's domain ads.example on the right (no @). Only that mailbox rejects ads.example and its subdomains; other mailboxes still receive it. Use your mailbox address as shown in the mailbox list.","zh":"例：左边填自己的收件邮箱 work@example.net，右边填对方的域名 ads.example（不带 @）。只有 work@example.net 拒收 ads.example 及其子域名的信，其他邮箱照常收。左侧请用邮箱列表里显示的地址。"},
+    "mailboxExample": {"en":"Example: add old@example.net to reject all new mail to it. Existing messages remain readable. Remove it and save to resume receiving; this is not mailbox deletion.","zh":"例：加入 old@example.net 后，任何人再往这个邮箱发信都会被拒收，旧邮件仍可查看。移除并保存后恢复接收新信；这里不是删除邮箱。"},
+    "sendingGuide": {"en":"Outgoing controls do not block incoming mail. These are this site's sending limits, not Cloudflare's free allowance. All mailboxes share daily/monthly limits, resetting at UTC midnight/month start. 0 stops sends; -1 removes that limit. Keep sensible limits enabled.","zh":"下面只管「往外发信」，不影响收信；这是你给本网站设的发信上限，不是 Cloudflare 免费额度。日/月上限由所有邮箱共享，分别按 UTC 零点/月初重置。0 表示停发，-1 表示该项不限，建议保留合理上限。"},
+    "fromHelp": {"en":"All mailboxes reject a message when its delivery sender or displayed From address contains an entry (case-sensitive). Rejected messages are not stored or pushed. Rejection can still use Worker/database resources.","zh":"只要实际投递方或邮件上显示的发件地址包含你填的内容，所有邮箱都拒收，区分大小写。拒收后不保存、不推送；但请求已经到达服务器，仍可能消耗 Worker/数据库资源，并非零额度。"},
     "domainHelp": { "en": "Blocks a sender domain and its subdomains for one recipient only. Your mailbox goes left; their sender domain goes right.", "zh": "左边填你的收件邮箱，右边填对方发件域名；只对该邮箱拦截这个域名及子域名，不影响其他邮箱。" },
     "mailboxHelp": { "en": "Rejects incoming mail to these mailboxes without deleting existing messages. Remove an entry to resume delivery.", "zh": "停用这些收件邮箱的来信，不删除已有邮件；移出名单即可恢复收信。" },
     "sendBlockHelp": {"en":"Blocks outgoing mail whose destination address contains an entry (case-sensitive). These are recipient addresses or domain fragments, not your local sender mailboxes. Incoming mail is unaffected.","zh":"禁止向包含这些文本的收件地址发信，区分大小写。填对方收件地址或域名片段，不是你自己的发件邮箱；不影响收信。"},
@@ -1611,40 +1650,40 @@ export const MESSAGE_REGISTRY = {
       "zh": "仅影响新建邮箱时的域名校验。例如开启后，foo.example.com 可以匹配已配置的基础域名 example.com。"
     },
     "fromBlockList": {
-      "en": "Global sender blacklist (keywords)",
-      "zh": "全局发件人黑名单（关键词）"
+      "en": "All mailboxes: block sender text",
+      "zh": "所有邮箱：屏蔽发件人"
     },
     "blockedMailboxList": {
-      "en": "Disabled mailboxes (reject all mail)",
-      "zh": "停用邮箱（拒收所有邮件）"
+      "en": "Stop all new mail to a mailbox",
+      "zh": "停用邮箱：不再接收新邮件"
     },
     "mailboxDomainBlockList": {
-      "en": "Mailbox-specific domain blacklist",
-      "zh": "邮箱级域名拉黑"
+      "en": "One mailbox: block a sender domain",
+      "zh": "单个邮箱：屏蔽对方域名"
     },
     "mailboxAddress": {
-      "en": "Mailbox address",
-      "zh": "邮箱地址"
+      "en": "Your full recipient mailbox address",
+      "zh": "自己的完整收件邮箱"
     },
     "blockedSenderDomain": {
-      "en": "Sender domain (includes subdomains)",
-      "zh": "发件人域名（含子域名）"
+      "en": "Their sender domain (without @)",
+      "zh": "对方发件域名（不带 @）"
     },
     "manualInputPrompt": {
       "en": "Type and press Enter to add",
       "zh": "输入后按回车键添加"
     },
     "noLimitSendAddressList": {
-      "en": "No Balance Limit Send Address List",
-      "zh": "无余额限制发送地址列表"
+      "en": "Local mailboxes exempt from individual balance checks",
+      "zh": "不检查单邮箱发信余额的邮箱"
     },
     "save": {
-      "en": "Save",
-      "zh": "保存"
+      "en": "Save all mailbox rules",
+      "zh": "保存全部邮箱规则"
     },
     "send_address_block_list": {
-      "en": "Address Block Keywords for send email",
-      "zh": "发送邮件地址屏蔽关键词"
+      "en": "Blocked outgoing destinations (text match)",
+      "zh": "禁止往这些对方地址发信（包含匹配）"
     },
     "send_mail_daily_limit": {
       "en": "Daily Limit",

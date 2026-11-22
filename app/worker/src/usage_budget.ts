@@ -99,9 +99,18 @@ export async function reserveHttpUsage(env: Bindings, readOnly: boolean, snapsho
 
 export async function getUsageStatus(env: Bindings, now = Date.now()) {
     const day = utcDay(now);
-    const usage = await env.DB.prepare("SELECT row_reads, row_writes, inbound_emails FROM worker_usage_day WHERE day = ?")
-        .bind(day).first<DailyUsage>();
-    return { day, ...usageLimits(env), usage: usage ?? { row_reads: 0, row_writes: 0, inbound_emails: 0 } };
+    const yesterday = utcDay(now - 86_400_000);
+    const { results } = await env.DB.prepare("SELECT day, row_reads, row_writes, inbound_emails FROM worker_usage_day WHERE day IN (?, ?)")
+        .bind(day, yesterday).all<DailyUsage & { day: string }>();
+    const days = [day, yesterday].map(date => {
+        const row = results.find(row => row.day === date);
+        return { day: date, recorded: !!row, usage: {
+            row_reads: row?.row_reads ?? 0,
+            row_writes: row?.row_writes ?? 0,
+            inbound_emails: row?.inbound_emails ?? 0,
+        } };
+    });
+    return { day, ...usageLimits(env), free: FREE, usage: days[0].usage, days };
 }
 
 export function quotaRetryAfter(now = Date.now()) {

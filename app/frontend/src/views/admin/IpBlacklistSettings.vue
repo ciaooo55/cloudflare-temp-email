@@ -77,6 +77,7 @@ onMounted(async () => {
   <div class="settings-page">
     <AbuseProtection />
     <h2 class="access-heading">{{ t('accessTitle') }}</h2>
+    <p class="access-guide">{{ t('accessGuide') }}</p>
     <details class="settings-note">
       <summary>{{ t('tip_scope') }}</summary>
       <p>{{ t('tip_whitelist') }}<br>{{ t('tip_ip') }}<br>{{ t('tip_asn') }}<br>{{ t('tip_fingerprint') }}<br>{{ t('tip_daily_limit') }}</p>
@@ -107,4 +108,5 @@ onMounted(async () => {
 <style scoped>
 .access-heading { font-size: 16px; font-weight: 550; margin: 28px 0 12px; }
 .access-actions { margin-top: 18px; }
+.access-guide { color: var(--mail-muted); font-size: 13px; line-height: 1.8; }
 </style>

@@ -1,5 +1,17 @@
 # 项目本体
 
+## 网页统计 / Web statistics
+
+- 「统计」按 UTC 今天及前六天展示仍保存的收发记录。删除或清理会减少数量；不是不可变的历史投递账本。排行包含邮箱目录及实际收/发过信的地址，含零收信邮箱；并列按地址排序。邮箱明细每页 20 项，可按收信或发信数排序。
+- `GET /admin/statistics?offset=0&sort=received`（或 `sort=sent`）保留总数，并返回七个日期及分页邮箱计数。日期查询使用现有时间索引，不读取邮件正文；结果在当前 Worker 实例内缓存 60 秒（最多 20 页），跨 UTC 日期失效。只在打开统计页、翻页、排序或手动刷新时读取，没有后台轮询、定时统计、额外收信写操作或新依赖。
+- `GET /admin/storage_status` 的 `budget.days` 返回 UTC 今天、昨天的现有 D1 保护预留计数，`budget.free` 仅是免费计划参考上限。它不是 Cloudflare 的实际行消耗/账单，也不覆盖其他项目、Workers 请求或 KV；预留批次未用完也不返还。剩余分别按今天距软线、硬线计算，最低为 0；两天合计不代表可以跨日使用的额度。
+- 计数表缺失/读取失败显示「不可用」而不是 0。此接口原有的认证与额度耗尽时可诊断的行为不变；不在页面修改保护上限。账户真实总用量保留「未连接」说明和 Cloudflare 控制台入口，不新增 Analytics 凭据、绑定、迁移或生产设置写入。
+
+- Statistics cover stored messages for today and the previous six UTC dates; deleting/cleaning messages reduces counts. Rankings include known and catch-all received/sent mailboxes, including zero-receive mailboxes, with alphabetical tie-breaking. Mailbox details are paged by 20 and sortable by received/sent count.
+- `GET /admin/statistics?offset=0&sort=received` (or `sort=sent`) keeps totals and adds seven daily buckets and paged mailbox counts. Date ranges use existing indexes; no mail bodies are read. Results are isolate-cached for 60 seconds (up to 20 pages), expiring across UTC dates. Reads happen only on opening, paging, sorting or manual refresh: no polling, scheduled aggregation, extra per-mail writes or dependencies.
+- Existing `GET /admin/storage_status` adds today's/yesterday's guard reservations in `budget.days`, with Free-plan reference limits in `budget.free`. These estimates are not metered Cloudflare usage/billing and exclude other apps, Worker requests and KV; unused reservations are not refunded. Remaining budget is today's distance from soft/hard thresholds, clamped at zero. Two-day totals are historical comparisons, not rollover allowance.
+- Missing/unreadable counters show unavailable, not zero. Authentication and the existing diagnostic availability after quota exhaustion remain unchanged; guard limits are not editable here. Actual account-wide usage is explicitly not connected, with a Cloudflare dashboard link. No Analytics credentials, bindings, migrations or production settings writes are added.
+
 Cloudflare 临时邮箱的核心服务，包含前端和后端。当前 Cloudflare 上运行的就是这套代码。
 
 ## 结构
