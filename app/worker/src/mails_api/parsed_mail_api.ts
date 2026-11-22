@@ -2,6 +2,7 @@ import { Context } from 'hono'
 
 import { commonParseMail, handleMailListQuery, updateAddressUpdatedAt } from '../common.ts'
 import { resolveRawEmailRow } from '../gzip.ts'
+import type { RawMailRow } from '../models/index.ts'
 
 const toParsedMailRow = async (row: Record<string, unknown>): Promise<Record<string, unknown>> => {
     const raw = typeof row.raw === 'string' ? row.raw : '';
@@ -43,7 +44,7 @@ const getParsedMail = async (c: Context<HonoCustomType>) => {
     const { mail_id } = c.req.param();
     const row = await c.env.DB.prepare(
         `SELECT * FROM raw_mails where id = ? and address = ?`
-    ).bind(mail_id, address).first();
+    ).bind(mail_id, address).first<RawMailRow>();
     if (!row) return c.json(null);
     const resolved = await resolveRawEmailRow(row);
     return c.json(await toParsedMailRow(resolved as Record<string, unknown>));

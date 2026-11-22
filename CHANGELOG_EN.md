@@ -12,6 +12,8 @@
 - fix: |Backend| Import the boolean helper used by admin address-password resets and cover successful, disabled, empty and failed writes
 - feat: |CI| Check Worker lint/tests/build, frontend tests/build and bridge tests on PRs and main pushes with Node 24, pnpm 10, frozen installs and optional typechecks; document separate Docker E2E and external SMTP tests
 
+- fix: |Backend| Fix the missing boolean-config helper in admin mailbox password resets; cover enabled/disabled settings, empty passwords and failed writes
+- refactor: |Type checking| Pin TypeScript 5.4.5 and add frontend/worker typecheck scripts; type D1 results, environment variables, translations and state, support Worker .ts imports, and skip code extraction when MIME parsing fails
 - feat: |Statistics| Retain seven-day counts independently of mail cleanup; atomic triggers keep only local mailbox, UTC date and counts, expose activation/unknown history, and budget counter writes and bounded expiry
 - perf: |Statistics| Read compact summaries instead of mail tables, remove full-mail count scans and unused active-mailbox copy, and align totals/rankings to the same seven-day window
 - refactor: |Backend| Remove unreferenced retired mail-Webhook models and stale scheduler comments; retain active Telegram commands and KV/D1 data reads

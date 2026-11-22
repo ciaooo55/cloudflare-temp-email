@@ -6,7 +6,7 @@ import type { WorkerMailerOptions } from 'worker-mailer';
 import { getBooleanValue, getDomains, getStringArray, getStringValue, getIntValue, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword, getJsonObjectValue, getRandomSubdomainDomains, getDomainMapValue, isDomainOrSubdomain, normalizeDomains, trimLower } from './utils.ts';
 import { unbindTelegramByAddress } from './telegram_api/common.ts';
 import { CONSTANTS } from './constants.ts';
-import { AddressCreationSettings } from './models/index.ts';
+import { AddressCreationSettings, type RawMailRow } from './models/index.ts';
 import i18n from './i18n/index.ts';
 import { consumeRateLimit } from './rate_limits.ts';
 
@@ -697,7 +697,7 @@ export const handleMailListQuery = async (
     const resultsQuery = `${query} order by ${orderClause} limit ? offset ?`;
     const { results } = await c.env.DB.prepare(resultsQuery).bind(
         ...params, limit, offset
-    ).all();
+    ).all<RawMailRow>();
     const resolvedResults = await resolveRawEmailList(results);
     const count = offset == 0 ? await c.env.DB.prepare(
         countQuery
@@ -735,7 +735,7 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
             attachments: (parsedEmail.attachments || []).map(att => ({
                 filename: att.filename || "attachment",
                 mimeType: att.mimeType || "application/octet-stream",
-                content: new Uint8Array(att.content),
+                content: new Uint8Array(att.content as ArrayBuffer),
                 disposition: att.disposition || "attachment",
             })),
         };

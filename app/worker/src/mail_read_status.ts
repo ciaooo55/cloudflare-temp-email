@@ -10,7 +10,7 @@ export async function updateMailReadStatus(c: Context<HonoCustomType>, address?:
         return c.json({ error: 'isUnread must be a boolean' }, 400);
     }
     const value = isUnread ? 1 : 0;
-    const params: (string | number)[] = [value, c.req.param('id')];
+    const params = [value, c.req.param('id')];
     if (address !== undefined) params.push(address);
     params.push(value);
     const { success } = await c.env.DB.prepare(

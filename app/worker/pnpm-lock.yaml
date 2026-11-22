@@ -56,6 +56,9 @@ importers:
       globals:
         specifier: ^16.5.0
         version: 16.5.0
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
       typescript-eslint:
         specifier: ^8.70.0
         version: 8.70.0(eslint@9.39.1)(typescript@5.4.5)

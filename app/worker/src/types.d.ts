@@ -54,6 +54,7 @@ type Bindings = {
     DISABLE_ANONYMOUS_USER_CREATE_EMAIL: string | boolean | undefined
     ENABLE_USER_DELETE_EMAIL: string | boolean | undefined
     ENABLE_ADDRESS_PASSWORD: string | boolean | undefined
+    ENABLE_GLOBAL_TURNSTILE_CHECK?: string | boolean
     ENABLE_AGENT_EMAIL_INFO: string | boolean | undefined
     SMTP_IMAP_PROXY_CONFIG: string | SmtpImapProxyConfig | undefined
     DEFAULT_SEND_BALANCE: number | string | undefined
