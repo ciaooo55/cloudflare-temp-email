@@ -4,10 +4,11 @@ import i18n from './i18n/index.ts';
 import { matchesSecret } from './secret_compare.ts';
 import { checkIsAdmin, getBooleanValue, getEnvStringList, getPasswords } from './utils.ts';
 
-export async function limitAuthentication(c: Context<HonoCustomType>, scope: 'admin' | 'site' | 'mailbox') {
+export async function limitAuthentication(c: Context<HonoCustomType>, scope: 'admin' | 'site' | 'mailbox', kind: 'login' | 'header') {
     const ip = c.req.header('cf-connecting-ip');
-    if (!c.env.AUTH_RATE_LIMITER || !ip) return null;
-    const { success } = await c.env.AUTH_RATE_LIMITER.limit({ key: `auth:${scope}:${ip}` });
+    const limiter = kind === 'login' ? c.env.AUTH_LOGIN_RATE_LIMITER : c.env.AUTH_HEADER_RATE_LIMITER;
+    if (!limiter || !ip) return null;
+    const { success } = await limiter.limit({ key: `auth:${scope}:${ip}` });
     if (success) return null;
     c.header('Retry-After', '60');
     return c.text('Too many authentication attempts', 429);

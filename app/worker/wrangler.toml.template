@@ -175,9 +175,14 @@ DEFAULT_DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo
 DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo.de5.net", "free555.de5.net", "free55.de5.net", "free5.us.ci", "kkk88.ccwu.cc", "yyy22.de5.net", "ciaooo66.dpdns.org", "ciaooo77.dpdns.org", "ciaooo77.us.ci"]
 
 [[ratelimits]]
-name = "AUTH_RATE_LIMITER"
+name = "AUTH_LOGIN_RATE_LIMITER"
 namespace_id = "1001"
-simple = { limit = 30, period = 60 }
+simple = { limit = 20, period = 60 }
+
+[[ratelimits]]
+name = "AUTH_HEADER_RATE_LIMITER"
+namespace_id = "1002"
+simple = { limit = 600, period = 60 }
 
 [[d1_databases]]
 binding = "DB"

@@ -76,7 +76,10 @@ test('webhooks reject absent, empty and incorrect secrets before parsing updates
 
 test('authentication limits cover header checks and body logins before any D1 access', async t => {
     const keys = [];
-    const { request, DB } = fixture(t, { AUTH_RATE_LIMITER: { async limit({ key }) { keys.push(key); return { success: false }; } } });
+    const limiter = kind => ({ async limit({ key }) { keys.push([kind, key]); return { success: false }; } });
+    const { request, DB } = fixture(t, {
+        AUTH_LOGIN_RATE_LIMITER: limiter('login'), AUTH_HEADER_RATE_LIMITER: limiter('header'),
+    });
     const changes = DB.sqlite.prepare('SELECT total_changes() AS n').get().n;
     for (const [path, body, headers, scope] of [
         ['/admin/address', undefined, { 'x-admin-auth': 'guess' }, 'admin'],
@@ -89,15 +92,17 @@ test('authentication limits cover header checks and body logins before any D1 ac
         const response = await request(path, body, headers);
         assert.equal(response.status, 429);
         assert.equal(response.headers.get('Retry-After'), '60');
-        assert.equal(keys.at(-1), `auth:${scope}:203.0.113.1`);
+        assert.deepEqual(keys.at(-1), [path.includes('login') ? 'login' : 'header', `auth:${scope}:203.0.113.1`]);
     }
     assert.equal(DB.sqlite.prepare('SELECT total_changes() AS n').get().n, changes);
 });
 
 test('native limiter allows successful and rejected authentication and is optional', async t => {
     const { request, env } = fixture(t, { PASSWORDS: ['site-password'] });
-    for (const limiter of [undefined, { async limit() { return { success: true }; } }]) {
-        env.AUTH_RATE_LIMITER = limiter;
+    const allowed = { async limit() { return { success: true }; } };
+    for (const [login, header] of [[undefined, undefined], [allowed, undefined], [undefined, allowed], [allowed, allowed]]) {
+        env.AUTH_LOGIN_RATE_LIMITER = login;
+        env.AUTH_HEADER_RATE_LIMITER = header;
         const headers = { 'x-custom-auth': 'site-password', 'x-admin-auth': 'admin-password' };
         assert.equal((await request('/admin/notify/telegram_bots', undefined, headers)).status, 200);
         assert.equal((await request('/admin/notify/telegram_bots', undefined,
@@ -109,6 +114,31 @@ test('native limiter allows successful and rejected authentication and is option
         assert.equal((await request('/open_api/admin_login', { password: 'wrong' })).status, 401);
         assert.equal((await request('/open_api/site_login', { password: 'wrong' })).status, 401);
     }
+});
+
+test('polling consumes only header limits while login requests use independent IP and scope keys', async t => {
+    const calls = { login: [], header: [] };
+    const limiter = kind => ({ async limit({ key }) { calls[kind].push(key); return { success: true }; } });
+    const { request } = fixture(t, { PASSWORDS: ['site-password'],
+        AUTH_LOGIN_RATE_LIMITER: limiter('login'), AUTH_HEADER_RATE_LIMITER: limiter('header') });
+    const headers = { 'x-admin-auth': 'admin-password', 'x-custom-auth': 'site-password' };
+    for (let i = 0; i < 40; i++) {
+        assert.equal((await request('/admin/notify/telegram_bots', undefined, headers)).status, 200);
+    }
+    assert.deepEqual(calls.login, []);
+    assert.equal(calls.header.filter(key => key === 'auth:admin:203.0.113.1').length, 40);
+    assert.equal(calls.header.filter(key => key === 'auth:site:203.0.113.1').length, 40);
+    calls.header.length = 0;
+    for (const [path, scope, body] of [
+        ['/open_api/site_login', 'site', { password: await hashPassword('site-password') }],
+        ['/open_api/admin_login', 'admin', { password: await hashPassword('admin-password') }],
+        ['/api/address_login', 'mailbox', { email: 'alice@example.com', password: 'password-hash' }],
+    ]) {
+        assert.equal((await request(path, body, { ...headers, 'cf-connecting-ip': '203.0.113.2' })).status, 200);
+        assert.equal(calls.login.at(-1), `auth:${scope}:203.0.113.2`);
+    }
+    assert.equal(calls.login.length, 3);
+    assert.deepEqual(calls.header, Array(3).fill(['auth:site:203.0.113.2', 'auth:admin:203.0.113.2']).flat());
 });
 
 test('mailbox password errors are uniform and existing password hashes and JWTs still work', async t => {
@@ -185,7 +215,7 @@ test('placeholder JWT keys are refused and uncaught server failures do not discl
 });
 
 test('limiter failures fail closed with generic errors rather than falling through authentication', async t => {
-    const { request } = fixture(t, { AUTH_RATE_LIMITER: { async limit() { throw new Error('private-binding-detail'); } } });
+    const { request } = fixture(t, { AUTH_HEADER_RATE_LIMITER: { async limit() { throw new Error('private-binding-detail'); } } });
     const response = await request('/admin/notify/telegram_bots', undefined, { 'x-admin-auth': 'admin-password' });
     assert.equal(response.status, 500);
     assert.equal((await response.json()).message, 'Internal server error');

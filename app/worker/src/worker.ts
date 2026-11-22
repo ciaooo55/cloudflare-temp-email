@@ -60,13 +60,19 @@ app.use('/*', async (c, next) => {
 	const msgs = i18n.getMessages(lang || c.env.DEFAULT_LANG);
 
 	// check header x-custom-auth
-	for (const [header, scope, loginPath] of [
-		['x-custom-auth', 'site', '/open_api/site_login'],
-		['x-admin-auth', 'admin', '/open_api/admin_login'],
-		['', 'mailbox', '/api/address_login'],
+	for (const [loginPath, scope] of [
+		['/open_api/site_login', 'site'],
+		['/open_api/admin_login', 'admin'],
+		['/api/address_login', 'mailbox'],
 	] as const) {
-		if ((header && c.req.header(header)) || c.req.path === loginPath) {
-			const limited = await limitAuthentication(c, scope);
+		if (c.req.path === loginPath) {
+			const limited = await limitAuthentication(c, scope, 'login');
+			if (limited) return limited;
+		}
+	}
+	for (const [header, scope] of [['x-custom-auth', 'site'], ['x-admin-auth', 'admin']] as const) {
+		if (c.req.header(header)) {
+			const limited = await limitAuthentication(c, scope, 'header');
 			if (limited) return limited;
 		}
 	}
