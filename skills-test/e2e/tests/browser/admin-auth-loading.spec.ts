@@ -48,7 +48,7 @@ test('waits for access settings before showing the Admin password dialog', async
     releaseSettings();
   }
 
-  await expect(page.getByRole('heading', { name: '收件箱', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '邮件', exact: true })).toBeVisible();
   await expect(page.getByText('管理员密码', { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => (
     window as Window & { __adminPasswordRendered?: boolean }

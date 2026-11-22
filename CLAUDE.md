@@ -28,14 +28,18 @@ npm test              # Build, run all tests, exit
 npm run test:down     # Clean up containers
 ```
 
-Test categories: `tests/api/` (API tests), `tests/browser/` (UI tests with Chromium), `tests/smtp-proxy/` (SMTP/IMAP proxy tests).
+Test categories: `tests/api/` (API tests), `tests/api-gzip/` (compressed mail), `tests/browser/` (admin workspace with Chromium). The runner also runs `tests/unit/` (Mailpit events); sender matching and verification rules run with `pnpm test` in `app/worker`.
 
-The Docker frontend serves over **HTTPS** (self-signed cert) with Vite proxy to worker — required for WebAuthn (`navigator.credentials`) and `crypto.subtle` which need a secure context. Browser tests use `ignoreHTTPSErrors: true`.
+SMTP/IMAP servers are no longer shipped here. `tests/smtp-proxy/` is opt-in via `SMTP_PROXY_HOST`; TLS cases additionally require `SMTP_PROXY_TLS_HOST`. The default Compose suite does not build a proxy server.
+
+`.github/workflows/ci.yml` checks Worker lint/tests/build, frontend tests/build, bridge tests and typecheck scripts when present on PRs and pushes to main. Docker E2E remains a separate local check.
+
+The Docker frontend serves over **HTTPS** (self-signed cert) with Vite proxy to worker — `crypto.subtle` needs a secure context. Browser tests use `ignoreHTTPSErrors: true`.
 
 Key patterns for browser tests:
-- Frontend hashes passwords with SHA-256 (`crypto.subtle`) before sending — API test registration must use pre-hashed passwords if UI login is needed.
+- Frontend hashes passwords with SHA-256 (`crypto.subtle`) before sending — address password API tests must use the same hashes.
 - VueUse `useStorage('key', '')` with string default uses **raw string** serialization — set localStorage with raw value, not `JSON.stringify()`.
-- WebAuthn browser tests use CDP virtual authenticator (`WebAuthn.enable` + `WebAuthn.addVirtualAuthenticator`).
+- Browser tests target the admin workspace; the multi-user/WebAuthn UI has been removed.
 
 ## Architecture
 

@@ -10,4 +10,4 @@ RUN npm ci
 
 COPY skills-test/e2e/ .
 
-ENTRYPOINT ["/repo/skills-test/e2e/scripts/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "/repo/skills-test/e2e/scripts/docker-entrypoint.sh"]

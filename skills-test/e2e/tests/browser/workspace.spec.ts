@@ -30,18 +30,18 @@ test('admin workspace reads catch-all mail privately and opens reply and forward
   await expect.poll(() => imageRequests).toBe(1);
   await page.getByRole('button', { name: 'Reply', exact: true }).click();
   await expect(page.locator('#admin-send-mail-recipient-address')).toHaveValue(`sender@${TEST_DOMAIN}`);
-  await expect(page.locator('#send-mail-subject')).toHaveValue(`Reply: ${subject}`);
-  await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+  await expect(page.locator('#admin-send-mail-subject')).toHaveValue(`Reply: ${subject}`);
+  await page.getByRole('button', { name: 'Emails', exact: true }).click();
   await page.locator('.message-row').filter({ hasText: subject }).click();
   await page.getByRole('button', { name: 'Forward', exact: true }).click();
-  await expect(page.locator('#send-mail-subject')).toHaveValue(`Forward: ${subject}`);
+  await expect(page.locator('#admin-send-mail-subject')).toHaveValue(`Forward: ${subject}`);
 });
 
 test('mobile starts on the inbox and has no removed destinations', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => sessionStorage.setItem('adminTab', 'appearance'));
   await page.goto(`${FRONTEND_URL}/en/admin`);
-  await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Emails', exact: true })).toBeVisible();
   await page.locator('.mobile-navigation button').last().click();
   for (const name of ['AI Extraction', 'Database Manager', 'Create Address', 'Webhook', 'Appearance', 'About']) {
     await expect(page.locator('.n-drawer').getByText(name, { exact: true })).toHaveCount(0);
