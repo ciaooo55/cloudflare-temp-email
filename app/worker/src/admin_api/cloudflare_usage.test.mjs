@@ -22,7 +22,7 @@ test('optional analytics stays admin-only, verifies on save, and never returns t
     }, bindings);
     const upstream = t.mock.method(globalThis, 'fetch', async (url, options) => {
         assert.equal(url, 'https://api.cloudflare.com/client/v4/graphql');
-        assert.equal(options.redirect, 'error');
+        assert.equal(options.redirect, 'manual');
         assert.equal(options.method, 'POST');
         const body = JSON.parse(options.body);
         assert.equal(body.variables.account, accountId);
@@ -63,6 +63,10 @@ test('optional analytics stays admin-only, verifies on save, and never returns t
     const rejected = await request('PUT', { accountId, token: 'y'.repeat(40) });
     assert.equal(rejected.status, 422);
     assert.doesNotMatch(await rejected.text(), /yyyy/);
+    assert.equal(stored(), firstConfig);
+    upstream.mock.mockImplementationOnce(async () => Response.redirect('https://redirect.example', 307), upstream.mock.callCount());
+    assert.equal((await request('PUT', { accountId, token })).status, 422);
+    assert.equal(upstream.mock.callCount(), 4);
     assert.equal(stored(), firstConfig);
     const rotatedKey = { ...env, JWT_SECRET: 'new-test-key', DB: { prepare: DB.prepare.bind(DB) } };
     assert.deepEqual(await (await request('GET', undefined, true, rotatedKey)).json(), { state: 'unavailable', accountId });

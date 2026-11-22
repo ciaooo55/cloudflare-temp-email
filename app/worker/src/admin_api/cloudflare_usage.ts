@@ -42,7 +42,7 @@ async function query(accountId: string, token: string): Promise<Usage> {
     const now = new Date();
     const day = utcDay(now);
     const response = await fetch(API, {
-        method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5_000),
+        method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(5_000),
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: QUERY, variables: { account: accountId, day } })
     });
