@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |Mailbox polling| Use absolute retry deadlines for backoff and Retry-After so time spent in hidden tabs counts toward the wait
 - fix: |Manual cleanup| Return deleted counts and completion state on success and partial failure, with remaining-work feedback in the web UI
 - fix: |Scheduled cleanup| Record each completed batch attempt after isolated rule failures so successful rules are not rerun before the configured interval
 - fix: |Mail cleanup| Skip deletion-budget reservations for empty expiration queues and size small batches to their candidate count

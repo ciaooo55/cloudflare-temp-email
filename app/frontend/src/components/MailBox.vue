@@ -36,7 +36,12 @@ const refreshing = ref(false)
 const multiActionMode = ref(false)
 const selected = ref([])
 const seconds = ref(configAutoRefreshInterval.value)
+const nextAllowedAt = ref(Date.now() + seconds.value * 1000)
 const polling = createMailPolling(() => configAutoRefreshInterval.value)
+const scheduleRefresh = delay => {
+  nextAllowedAt.value = Date.now() + delay * 1000
+  seconds.value = delay
+}
 const data = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return query ? rawData.value.filter(mail =>
@@ -74,17 +79,17 @@ const refresh = async () => {
     if (page.value === 1 || response.count > 0) count.value = Number(response.count) || 0
     curMail.value = next.find(mail => mail.id === selectedId) || null
     selected.value = selected.value.filter(id => next.some(mail => mail.id === id))
-    seconds.value = polling.reset()
+    scheduleRefresh(polling.reset())
   } catch (error) {
     if (disposed || currentVersion !== version) return
     const failure = polling.fail(error)
-    seconds.value = failure.delay
+    scheduleRefresh(failure.delay)
     if (failure.notify) message.error(error.message || 'error')
   } finally { if (currentVersion === version) refreshing.value = false }
 }
 const refreshFirstPage = (manual = true) => {
   if (refreshing.value) return
-  if (manual) seconds.value = polling.reset()
+  if (manual) scheduleRefresh(polling.reset())
   if (page.value !== 1) page.value = 1
   else void refresh()
 }
@@ -153,21 +158,25 @@ const rendererProps = computed(() => ({
 }))
 watch([page, pageSize], () => { curMail.value = null; void refresh() })
 watch(configAutoRefreshInterval, value => {
-  seconds.value = polling.failures ? Math.max(seconds.value, value) : value
+  const deadline = Date.now() + value * 1000
+  nextAllowedAt.value = polling.failures ? Math.max(nextAllowedAt.value, deadline) : deadline
+  seconds.value = Math.max(0, Math.ceil((nextAllowedAt.value - Date.now()) / 1000))
 })
+const poll = () => {
+  seconds.value = Math.max(0, Math.ceil((nextAllowedAt.value - Date.now()) / 1000))
+  if (!autoRefresh.value || polling.paused || document.hidden || loading.value || refreshing.value || multiActionMode.value) return
+  if (seconds.value <= 0) refreshFirstPage(false)
+}
 onMounted(() => {
   void refresh()
-  timer = setInterval(() => {
-    if (!autoRefresh.value || polling.paused || document.hidden || loading.value || refreshing.value || multiActionMode.value) return
-    if (--seconds.value <= 0) {
-      refreshFirstPage(false)
-    }
-  }, 1000)
+  timer = setInterval(poll, 1000)
+  document.addEventListener('visibilitychange', poll)
 })
 onBeforeUnmount(() => {
   disposed = true
   version++
   clearInterval(timer)
+  document.removeEventListener('visibilitychange', poll)
   rawData.value.forEach(releaseMailResources)
 })
 </script>

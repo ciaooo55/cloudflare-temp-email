@@ -81,6 +81,7 @@ it.each([401, 403])('pauses on %s until a manual refresh and does not toast expe
     fetchMailData.mockRejectedValue(Object.assign(new Error('unlock required'), { status, authRequired: true }))
     await mount()
     await vi.advanceTimersByTimeAsync(600000)
+    document.dispatchEvent(new Event('visibilitychange'))
     expect(fetchMailData).toHaveBeenCalledTimes(1)
     expect(mocks.error).not.toHaveBeenCalled()
     fetchMailData.mockResolvedValue({ results: [], count: 0 })
@@ -88,6 +89,26 @@ it.each([401, 403])('pauses on %s until a manual refresh and does not toast expe
     await vi.advanceTimersByTimeAsync(10000)
     expect(fetchMailData).toHaveBeenCalledTimes(3)
 });
+
+it.each([undefined, '90', 'date'])('uses elapsed wall time for hidden-tab backoff with Retry-After %s', async retryAfter => {
+    if (retryAfter === 'date') retryAfter = new Date(Date.now() + 90000).toUTCString()
+    fetchMailData.mockRejectedValueOnce(Object.assign(new Error('offline'), { status: 503, retryAfter }))
+        .mockResolvedValue({ results: [], count: 0 })
+    await mount()
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    await vi.advanceTimersByTimeAsync(10000)
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetchMailData).toHaveBeenCalledTimes(1)
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    vi.setSystemTime(Date.now() + 120000)
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetchMailData).toHaveBeenCalledTimes(2)
+    expect(mocks.error).toHaveBeenCalledTimes(1)
+})
 
 it('does not overlap requests or refresh while hidden and stops after unmount', async () => {
     let resolve
