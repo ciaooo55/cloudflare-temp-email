@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc --noEmit",
     "build": "vite build -m prod --emptyOutDir",
     "build:release": "vite build -m example --emptyOutDir",
     "build:pages": "vite build -m pages --emptyOutDir",
@@ -44,6 +45,7 @@
     "@vicons/material": "^0.13.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "jsdom": "^28.1.0",
+    "typescript": "5.4.5",
     "unplugin-auto-import": "^20.3.0",
     "unplugin-vue-components": "^30.0.0",
     "vite": "^7.3.6",

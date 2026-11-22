@@ -22,6 +22,17 @@ test('ordinary plain mail needs no MIME parse or metadata write', async () => {
     assert.equal(await extractEmailInfo({ rawEmail: 'Subject: Hello\r\n\r\nOrdinary message' }, {}, null), null);
 });
 
+test('failed MIME parsing returns no extraction and does not write metadata', async t => {
+    const { default: PostalMime } = await import('postal-mime');
+    t.mock.method(PostalMime, 'parse', async () => { throw new Error('Invalid MIME'); });
+    const errors = t.mock.method(console, 'error', () => {});
+    const prepare = t.mock.fn(() => { throw new Error('Unexpected metadata write'); });
+    const result = await extractEmailInfo({ rawEmail: 'Your verification code is 123456' }, { DB: { prepare } }, 'mail-id');
+    assert.equal(result, null);
+    assert.equal(prepare.mock.callCount(), 0);
+    assert.equal(errors.mock.callCount(), 1);
+});
+
 test('unencoded HTML code split by tags is parsed before extraction', async () => {
     const rawEmail = 'Subject: Login\r\nContent-Type: text/html\r\n\r\n<p>Verification code: <span>123456</span></p>';
     assert.equal((await extractEmailInfo({ rawEmail }, {}, null)).result, '123456');

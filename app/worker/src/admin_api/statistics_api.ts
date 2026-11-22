@@ -12,6 +12,15 @@ const mailboxCounts = `WITH counts AS (
     ) WHERE address IS NOT NULL AND address != '' GROUP BY address
 )`;
 type MailboxRow = { address: string; received: number; sent: number };
+type DailyRow = { day: string; received: number; sent: number };
+type SummaryRow = {
+    count: number;
+    most_address: string | null;
+    most_count: number | null;
+    least_address: string | null;
+    least_count: number | null;
+    started_at: string | null;
+};
 const cache = new WeakMap<D1Database, { day: string; pages: Map<string, { expires: number; data: Promise<Awaited<ReturnType<typeof readStatistics>>> }> }>();
 
 export async function readStatistics(DB: D1Database, offset = 0, sort = 'received', now = Date.now()) {
@@ -29,10 +38,10 @@ export async function readStatistics(DB: D1Database, offset = 0, sort = 'receive
             (SELECT received FROM counts ORDER BY received, address LIMIT 1) AS least_count,
             (SELECT value FROM settings WHERE key = ?) AS started_at FROM counts`).bind(start, end, MAIL_STATISTICS_START_KEY),
         DB.prepare(`${mailboxCounts} SELECT * FROM counts ORDER BY ${order} LIMIT ? OFFSET ?`).bind(start, end, PAGE_SIZE, offset),
-    ]);
-    const rows = mailboxes.results as MailboxRow[];
+    ]) as [D1Result<DailyRow>, D1Result<SummaryRow>, D1Result<MailboxRow>];
+    const rows = mailboxes.results;
     const info = summary.results[0];
-    const startedAt = info?.started_at as string | undefined;
+    const startedAt = info?.started_at;
     if (!startedAt) throw new Error('Mail statistics have not been initialized');
     const days = Array.from({ length: 7 }, (_, index) => {
         const day = new Date(now - (6 - index) * DAY).toISOString().slice(0, 10);

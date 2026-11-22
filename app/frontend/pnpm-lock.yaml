@@ -69,6 +69,9 @@ importers:
       jsdom:
         specifier: ^28.1.0
         version: 28.1.0
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
       unplugin-auto-import:
         specifier: ^20.3.0
         version: 20.3.0(@vueuse/core@14.4.0(vue@3.5.42(typescript@5.4.5)))
@@ -6263,8 +6266,7 @@ snapshots:
       possible-typed-array-names: 1.1.0
       reflect.getprototypeof: 1.0.10
 
-  typescript@5.4.5:
-    optional: true
+  typescript@5.4.5: {}
 
   ufo@1.6.4: {}
 

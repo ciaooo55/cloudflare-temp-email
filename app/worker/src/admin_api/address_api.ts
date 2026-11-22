@@ -3,6 +3,7 @@ import { Jwt } from 'hono/utils/jwt'
 
 import i18n from '../i18n/index.ts'
 import { handleListQuery } from '../common.ts'
+import { getBooleanValue } from '../utils.ts'
 
 const listAddresses = async (c: Context<HonoCustomType>) => {
     const { limit, offset, query, sort_by, sort_order, include_received } = c.req.query();

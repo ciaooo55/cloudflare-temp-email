@@ -1891,16 +1891,16 @@ export const getMessageSource = <N extends MessageNamespace>(
 ) => {
   const entry = MESSAGE_REGISTRY[namespace]?.[key] as unknown
   if (entry == null || typeof entry !== 'object' || Array.isArray(entry)) return undefined
-  const record = entry as Record<string, unknown>
+  const record = entry as Record<string, string | Record<string, string>>
   // 普通叶子 { en, zh }
   if (locale in record && (typeof record[locale] === 'string' || record[locale] == null)) {
     return record[locale]
   }
   // 嵌套组（如 labels: { KEY: { en, zh } }）：逐项解析 locale
-  const out: Record<string, unknown> = {}
+  const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(record)) {
     if (v != null && typeof v === 'object' && !Array.isArray(v) && locale in (v as Record<string, unknown>)) {
-      out[k] = (v as Record<string, unknown>)[locale]
+      out[k] = v[locale]
     }
   }
   return out
