@@ -6,6 +6,7 @@ export type LocaleMessages = {
     UserAcceesTokenExpiredMsg: string
     NeedAdminPasswordMsg: string
     AdminApiIpNotAllowedMsg: string
+    BarkHttpsUrlRequiredMsg: string
 
     KVNotAvailableMsg: string
     DBNotAvailableMsg: string

@@ -8,10 +8,6 @@ const API_PATHS = [
     "/redeem_api/",
 ];
 
-// Backend worker URL - proxies API requests to the production worker.
-// Configurable via Pages env var BACKEND_URL; defaults to the canonical domain.
-const DEFAULT_BACKEND_URL = "https://api.ciaooo55.de5.net";
-
 export async function onRequest(context) {
     const reqPath = new URL(context.request.url).pathname;
     if (API_PATHS.map(path => reqPath.startsWith(path)).some(Boolean)) {
@@ -19,7 +15,10 @@ export async function onRequest(context) {
         if (context.env.BACKEND) {
             return context.env.BACKEND.fetch(context.request);
         }
-        const backendUrl = context.env.BACKEND_URL || DEFAULT_BACKEND_URL;
+        const backendUrl = context.env.BACKEND_URL;
+        if (!backendUrl) {
+            return new Response('Configure BACKEND or BACKEND_URL for API requests', { status: 503 });
+        }
         // Fallback: proxy via HTTPS to the backend worker
         const url = new URL(context.request.url);
         url.host = new URL(backendUrl).host;

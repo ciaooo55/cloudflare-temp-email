@@ -10,6 +10,7 @@ import i18n from '../i18n/index.ts'
 import { CONSTANTS } from '../constants.ts'
 import { getJsonSetting, generateSecureHexToken } from '../utils.ts'
 import type { TelegramBotEntry } from '../admin_api/notify_settings.ts'
+import { secretEquals } from '../secret_compare.ts'
 
 export const api = new Hono<HonoCustomType>();
 export { sendMailNotifications }
@@ -40,11 +41,9 @@ const handleTelegramWebhook = async (
 ) => {
     // Security: verify the request actually came from Telegram
     // Telegram sends the secret_token in X-Telegram-Bot-Api-Secret-Token header
-    if (storedSecret) {
-        const providedSecret = c.req.header("X-Telegram-Bot-Api-Secret-Token");
-        if (providedSecret !== storedSecret) {
-            return c.text("unauthorized", 401);
-        }
+    const providedSecret = c.req.header("X-Telegram-Bot-Api-Secret-Token");
+    if (!storedSecret || !providedSecret || !secretEquals(providedSecret, storedSecret)) {
+        return c.text("unauthorized", 401);
     }
     if (!token) {
         const msgs = i18n.getMessagesByContext(c);

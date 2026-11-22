@@ -4,6 +4,7 @@ import utils from './utils.ts';
 import { CONSTANTS } from './constants.ts';
 import { isS3Enabled } from './mails_api/s3_attachment.ts';
 import { isAnySendMailEnabled } from './common.ts';
+import { matchesSecret } from './secret_compare.ts';
 
 const api = new Hono<HonoCustomType>
 
@@ -13,7 +14,7 @@ api.get('/open_api/settings', async (c) => {
     const passwords = utils.getPasswords(c);
     if (passwords && passwords.length > 0) {
         const auth = c.req.raw.headers.get("x-custom-auth");
-        needAuth = !auth || !passwords.includes(auth);
+        needAuth = !auth || !matchesSecret(auth, passwords);
     }
     const smtpImapProxyConfig = utils.getJsonObjectValue<SmtpImapProxyConfig>(
         c.env.SMTP_IMAP_PROXY_CONFIG

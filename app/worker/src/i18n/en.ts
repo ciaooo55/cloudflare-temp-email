@@ -8,6 +8,7 @@ const messages: LocaleMessages = {
     UserAcceesTokenExpiredMsg: "Your access token has expired, please refresh the page",
     NeedAdminPasswordMsg: "You need to provide the admin password to access this page",
     AdminApiIpNotAllowedMsg: "Your IP address isn't on the admin whitelist",
+    BarkHttpsUrlRequiredMsg: "Bark push URL must be a valid HTTPS URL",
 
     KVNotAvailableMsg: "KV is not available, please contact the administrator",
     DBNotAvailableMsg: "DB is not available, please contact the administrator",
