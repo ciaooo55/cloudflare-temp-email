@@ -20,7 +20,7 @@ const props = defineProps({
   saveToS3: { type: Function, default: async () => {} },
   updateMailReadStatus: { type: Function, default: async () => {} },
 })
-const { t, locale } = useScopedI18n('components.MailBox')
+const { t } = useScopedI18n('components.MailBox')
 const emit = defineEmits(['reply', 'forward'])
 const { useUTCDate, autoRefresh, configAutoRefreshInterval, loading } = useGlobalState()
 const message = useMessage()
@@ -38,7 +38,7 @@ const seconds = ref(configAutoRefreshInterval.value)
 const data = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return query ? rawData.value.filter(mail =>
-    [mail.subject, mail.text, mail.source, mail.address, mail.originalRecipient].some(value => String(value || '').toLowerCase().includes(query))
+    [mail.subject, mail.text, mail.preview, mail.source, mail.originalSource, mail.address, mail.originalRecipient].some(value => String(value || '').toLowerCase().includes(query))
   ) : rawData.value
 })
 const drawerOpen = computed({ get: () => !!curMail.value, set: value => { if (!value) curMail.value = null } })
@@ -187,10 +187,10 @@ onBeforeUnmount(() => {
     </div>
     <div class="mailbox-panes">
       <section class="message-list">
-        <div class="list-caption"><span>{{ locale === 'zh' ? '邮件' : 'Messages' }} <b>{{ count }}</b></span><span v-if="autoRefresh">{{ seconds }}s</span></div>
+        <div class="list-caption"><span>{{ keyword.trim() ? t('filteredCount', { matched: data.length, total: count }) : t('messageCount', { total: count }) }}</span><span v-if="autoRefresh">{{ seconds }}s</span></div>
         <div v-if="!data.length" class="mail-empty">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M4 4h16v16H4z M4 13h5l2 3h2l2-3h5" /></svg>
-          <p>{{ t('emptyMessages') }}</p>
+          <p>{{ t(keyword.trim() ? 'noFilterMatches' : 'emptyMessages') }}</p>
         </div>
         <div class="message-rows">
           <div v-for="row in data" :key="row.id" class="message-row"
@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
               :aria-pressed="curMail?.id === row.id || selected.includes(row.id)" @click.stop="openMail(row)">
               <div class="message-sender"><span>{{ row.listSource || row.source }}</span><time>{{ utcToLocalDate(row.created_at, useUTCDate) }}</time></div>
               <div class="message-subject">{{ row.subject }}</div>
-              <div class="message-preview">{{ row.text || row.subject }}</div>
+              <div v-if="row.preview || row.text" class="message-preview">{{ row.preview || row.text }}</div>
               <div class="message-recipient" v-if="showEMailTo">{{ row.address }}</div>
             </button>
             <div class="message-original-addresses">
@@ -259,7 +259,6 @@ onBeforeUnmount(() => {
 .mailbox-panes { display: grid; grid-template-columns: minmax(270px, 34%) minmax(0, 1fr); border: 1px solid var(--mail-border); border-radius: 12px; overflow: hidden; min-height: 65vh; background: var(--mail-panel); }
 .message-list { min-width: 0; border-right: 1px solid var(--mail-border); display: flex; flex-direction: column; }
 .list-caption { display: flex; justify-content: space-between; padding: 14px 18px; color: #8590a6; font-size: 11px; border-bottom: 1px solid var(--mail-border); }
-.list-caption b { color: #bfc8db; font-weight: 500; margin-left: 6px; }
 .message-rows { max-height: 66vh; overflow-y: auto; }
 .message-row { display: block; background: transparent; color: #c5cddd; border: 0; border-bottom: 1px solid #232936; width: 100%; text-align: left; padding: 18px; cursor: pointer; font: inherit; position: relative; }
 .message-row:hover { background: #1a1f2b; }

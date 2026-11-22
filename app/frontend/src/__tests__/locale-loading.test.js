@@ -38,4 +38,14 @@ describe('on-demand translations', () => {
         expect(messages.emptyMessages).toBe(expected)
         expect(messages.emptyInbox).toBeUndefined()
     })
+
+    it.each(['en', 'zh', 'de', 'es', 'ja', 'pt-BR'])('explains filtering, cleanup units and save scopes in %s', async locale => {
+        await ensureLocaleMessages(locale)
+        const messages = i18n.global.getLocaleMessage(locale)
+        expect(messages.components.MailBox.filteredCount).toContain('{matched}')
+        expect(messages.components.MailBox.filteredCount).toContain('{total}')
+        expect(messages.views.admin.Maintenance.minutesPlaceholder).toBeTruthy()
+        expect(messages.views.admin.Maintenance.minutesUnit).toBeTruthy()
+        expect(messages.views.admin.IpBlacklistSettings.saveAccess).toBeTruthy()
+    })
 })

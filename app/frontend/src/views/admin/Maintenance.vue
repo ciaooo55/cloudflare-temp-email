@@ -174,10 +174,14 @@ onMounted(async () => {
                         </n-form-item-row>
                         <div class="task-desc">{{ t('rawMailsDesc') }}</div>
                         <n-form-item-row :label="t('rawMailsIntervalLabel')">
-                            <n-input-number v-model:value="cleanupModel.rawMailsIntervalMinutes" :min="5" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.rawMailsIntervalMinutes" :min="5" :precision="0" :placeholder="t('minutesPlaceholder')" :aria-label="t('rawMailsIntervalLabel')">
+                                <template #suffix>{{ t('minutesUnit') }}</template>
+                            </n-input-number>
                         </n-form-item-row>
                         <n-form-item-row :label="t('rawMailsOlderThanLabel')">
-                            <n-input-number v-model:value="cleanupModel.cleanRawMailsMinutes" :min="1" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.cleanRawMailsMinutes" :min="1" :precision="0" :placeholder="t('minutesPlaceholder')" :aria-label="t('rawMailsOlderThanLabel')">
+                                <template #suffix>{{ t('minutesUnit') }}</template>
+                            </n-input-number>
                             <n-button @click="cleanupRawMailsNow">
                                 <template #icon>
                                     <n-icon :component="CleaningServicesFilled" />
@@ -190,7 +194,9 @@ onMounted(async () => {
                         </n-form-item-row>
                         <n-divider />
                         <n-form-item-row :label="t('autoCleanupIntervalLabel')">
-                            <n-input-number v-model:value="cleanupModel.autoCleanupIntervalMinutes" :min="5" :placeholder="t('tip')" />
+                            <n-input-number v-model:value="cleanupModel.autoCleanupIntervalMinutes" :min="5" :precision="0" :placeholder="t('minutesPlaceholder')" :aria-label="t('autoCleanupIntervalLabel')">
+                                <template #suffix>{{ t('minutesUnit') }}</template>
+                            </n-input-number>
                         </n-form-item-row>
                         <div class="task-desc">{{ t('autoCleanupDesc') }}</div>
                         <n-form-item-row :label="t('lastRun')">
