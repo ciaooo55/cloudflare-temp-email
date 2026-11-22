@@ -142,7 +142,7 @@ function isWhitelisted(value: string | null | undefined, whitelist: string[] | u
  * @param c - Hono context
  * @returns IP blacklist settings (may be null or have undefined fields)
  */
-export async function getIpBlacklistSettings(
+async function getIpBlacklistSettings(
     c: Context<HonoCustomType>
 ): Promise<IpBlacklistSettings | null> {
     return await getJsonSetting<IpBlacklistSettings>(

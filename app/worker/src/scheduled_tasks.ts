@@ -6,7 +6,7 @@ export const SCHEDULED_TASK_RAW_MAILS = 'raw_mails';
 export const SCHEDULED_TASK_AUTO_CLEANUP = 'auto_cleanup';
 
 const LAST_RUN_PREFIX = 'scheduled:last_run:';
-export const MIN_CRON_INTERVAL_MINUTES = 5;
+const MIN_CRON_INTERVAL_MINUTES = 5;
 
 export function cleanupInterval(value: unknown, fallback: number): number {
     const n = Math.floor(Number(value));

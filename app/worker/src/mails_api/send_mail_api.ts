@@ -34,7 +34,7 @@ api.post('/api/request_send_mail_access', async (c) => {
     return c.text(msgs.OperationFailedMsg, 500)
 })
 
-export const sendMailToVerifyAddress = async (
+const sendMailToVerifyAddress = async (
     c: Context<HonoCustomType>, address: string,
     reqJson: {
         from_name: string, to_mail: string, to_name: string,
@@ -58,7 +58,7 @@ export const sendMailToVerifyAddress = async (
     await c.env.SEND_MAIL.send(message);
 }
 
-export const sendMailByBinding = async (
+const sendMailByBinding = async (
     c: Context<HonoCustomType>, address: string,
     reqJson: {
         from_name: string, to_mail: string, to_name: string,
@@ -329,7 +329,7 @@ api.post('/external/api/send_mail', async (c) => {
     }
 })
 
-export const getSendbox = async (
+const getSendbox = async (
     c: Context<HonoCustomType>,
     address: string, limit: string, offset: string
 ): Promise<Response> => {

@@ -1,16 +1,12 @@
 import { LOCALE_REGISTRY, SUPPORTED_LOCALES } from './locale-registry'
 import { APP_CONFIG } from '../config'
 
-export { SUPPORTED_LOCALES } from './locale-registry'
 export type { SupportedLocale } from './locale-registry'
 
 import type { SupportedLocale } from './locale-registry'
 
 export const FALLBACK_LOCALE: SupportedLocale = 'zh'
-export const PREFERRED_LOCALE_STORAGE_KEY = 'preferredLocale'
-export const EMPTY_LOCALE_MESSAGES = Object.fromEntries(
-  SUPPORTED_LOCALES.map((supportedLocale) => [supportedLocale, {}]),
-) as Record<SupportedLocale, Record<string, never>>
+const PREFERRED_LOCALE_STORAGE_KEY = 'preferredLocale'
 
 export const isSupportedLocale = (locale: unknown): locale is SupportedLocale => {
   return typeof locale === 'string' && SUPPORTED_LOCALES.includes(locale as SupportedLocale)
@@ -32,7 +28,7 @@ export const resolveSupportedLocale = (locale: string | null | undefined): Suppo
 export const DEFAULT_LOCALE: SupportedLocale = resolveSupportedLocale(APP_CONFIG.DEFAULT_LANG)
   || FALLBACK_LOCALE
 
-export const matchSupportedLocale = (locale: string | null | undefined): SupportedLocale | null => {
+const matchSupportedLocale = (locale: string | null | undefined): SupportedLocale | null => {
   if (!locale) return null
   const normalizedLocale = locale.trim().toLowerCase()
 
@@ -86,7 +82,7 @@ const splitPathSuffix = (fullPath: string) => {
   }
 }
 
-export const stripLocaleFromPath = (path: string): string => {
+const stripLocaleFromPath = (path: string): string => {
   if (!path || path === '/') return '/'
 
   const pathLocale = resolveSupportedLocale(path.split('/')[1])
@@ -105,7 +101,7 @@ export const stripLocaleFromPath = (path: string): string => {
   return path
 }
 
-export const getPathWithLocale = (path: string, locale: SupportedLocale): string => {
+const getPathWithLocale = (path: string, locale: SupportedLocale): string => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const basePath = stripLocaleFromPath(normalizedPath)
 
@@ -123,19 +119,4 @@ export const getPathWithLocale = (path: string, locale: SupportedLocale): string
 export const replaceLocaleInFullPath = (fullPath: string, locale: SupportedLocale): string => {
   const { path, suffix } = splitPathSuffix(fullPath)
   return `${getPathWithLocale(path, locale)}${suffix}`
-}
-
-const getLocaleAliasPath = (path: string, locale: SupportedLocale): string => {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  const basePath = stripLocaleFromPath(normalizedPath)
-
-  if (locale === DEFAULT_LOCALE) {
-    if (basePath === '/') {
-      return `/${locale}/`
-    }
-
-    return `/${locale}${basePath}`
-  }
-
-  return getPathWithLocale(basePath, locale)
 }

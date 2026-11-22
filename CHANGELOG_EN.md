@@ -8,6 +8,9 @@
 
 ## v1.13.0(main)
 
+- refactor: |Cleanup| Remove unreferenced frontend locale utilities, internal exports and icon devDependencies; narrow Worker helper/type exports and normalize admin-send naming, retaining Pages middleware and caller-specific address creation policies
+- fix: |Date locale| Read date formatting locales from the locale registry, fix pt-BR falling back to Chinese, and test every locale plus empty/invalid values without changing other locale formats
+
 - fix: |Tests| Restore Docker E2E entrypoint permissions, align browser selectors and historical-mail fixtures, move sender matching coverage to Worker units, and remove obsolete automatic-forwarding tests
 - fix: |Backend| Import the boolean helper used by admin address-password resets and cover successful, disabled, empty and failed writes
 - feat: |CI| Check Worker lint/tests/build, frontend tests/build and bridge tests on PRs and main pushes with Node 24, pnpm 10, frozen installs and optional typechecks; document separate Docker E2E and external SMTP tests

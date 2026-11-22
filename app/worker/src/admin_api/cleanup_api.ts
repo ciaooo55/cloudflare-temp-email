@@ -33,7 +33,7 @@ const getValidationErrorMsg = (errorType: SqlValidationError, msgs: LocaleMessag
 };
 
 // Validate custom SQL cleanup statement
-export const validateCustomSql = (sql: string): { valid: boolean; errorType?: SqlValidationError } => {
+const validateCustomSql = (sql: string): { valid: boolean; errorType?: SqlValidationError } => {
     if (!sql || !sql.trim()) {
         return { valid: false, errorType: 'empty' };
     }

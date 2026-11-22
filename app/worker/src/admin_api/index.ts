@@ -8,7 +8,7 @@ import account_settings_api from './account_settings_api.ts'
 import cleanup_api from './cleanup_api.ts'
 import admin_mail_api from './admin_mail_api.ts'
 import { updateMailReadStatus } from '../mail_read_status.ts'
-import { sendMailbyAdmin, sendMailByBindingAdmin } from './send_mail.ts'
+import { sendMailByAdmin, sendMailByBindingAdmin } from './send_mail.ts'
 import db_api from './db_api.ts'
 import ip_blacklist_settings from './ip_blacklist_settings.ts'
 import notify_settings from './notify_settings.ts'
@@ -55,7 +55,7 @@ api.post('/admin/cleanup_raw_mails', cleanup_api.cleanupRawMailsNow)
 
 
 // send mail by admin
-api.post('/admin/send_mail', sendMailbyAdmin)
+api.post('/admin/send_mail', sendMailByAdmin)
 api.post('/admin/send_mail_by_binding', sendMailByBindingAdmin)
 
 // db api
