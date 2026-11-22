@@ -1,8 +1,7 @@
 import { Context } from 'hono';
 import { cleanup } from './common.ts'
 import { CONSTANTS } from './constants.ts'
-import { getJsonSetting } from './utils.ts';
-import { CleanupSettings } from './models/index.ts';
+import type { CleanupSettings } from './models/index.ts';
 import { executeCustomSqlCleanup } from './admin_api/cleanup_api.ts';
 import { cleanupStaleRawMails } from './scheduled_raw_mails.ts';
 import { cleanupExpiredRateLimits } from './rate_limits.ts';
@@ -23,6 +22,19 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
     if (!(await reserveUsage(env, "soft", CRON_COST).catch(() => false))) return;
     const now = event.scheduledTime;
     console.log("Scheduled event: ", event);
+    let settings: CleanupSettings;
+    try {
+        const row = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+            .bind(CONSTANTS.AUTO_CLEANUP_KEY).first<{ value: string }>();
+        const parsed = row === null ? {} : JSON.parse(row.value);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('Invalid cleanup settings');
+        }
+        settings = parsed;
+    } catch (error) {
+        console.error('[scheduled] cleanup settings unavailable:', error);
+        return;
+    }
     try {
         await cleanupMailStatistics(env, now);
     } catch (error) {
@@ -37,18 +49,16 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
     } catch (error) {
         console.error("[scheduled] rate limit cleanup failed:", error);
     }
-    const settings: CleanupSettings = (await getJsonSetting<CleanupSettings>(
-        { env: env, } as Context<HonoCustomType>,
-        CONSTANTS.AUTO_CLEANUP_KEY
-    )) ?? ({} as CleanupSettings);
 
     // 任务一：raw_mails 定时清理（替代原独立 dinshi worker），默认开启以保持原有行为
     const rawMailsEnabled = settings.enableRawMailsAutoCleanup !== false;
     const rawMailsInterval = cleanupInterval(settings.rawMailsIntervalMinutes, 10);
     const rawMailsOlderThan = asPositiveInt(settings.cleanRawMailsMinutes, 10);
     if (rawMailsEnabled && await isTaskDueThisTick(env, SCHEDULED_TASK_RAW_MAILS, rawMailsInterval, now)) {
-        const deleted = await cleanupStaleRawMails(env, rawMailsOlderThan);
-        await markTaskRun(env, SCHEDULED_TASK_RAW_MAILS, deleted, now);
+        const result = await cleanupStaleRawMails(env, rawMailsOlderThan);
+        if (result.success && result.complete) {
+            await markTaskRun(env, SCHEDULED_TASK_RAW_MAILS, result.deleted, now);
+        }
     } else {
         console.log("[scheduled] raw_mails cleanup skipped (disabled or not due).");
     }
@@ -59,45 +69,47 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
         console.log("[scheduled] auto cleanup batch skipped (not due).");
         return;
     }
-    await markTaskRun(env, SCHEDULED_TASK_AUTO_CLEANUP, undefined, now);
+    let successful = true;
+    const runCleanup = async (cleanType: string, days: number) => {
+        try {
+            await cleanup({ env } as Context<HonoCustomType>, cleanType, days);
+        } catch (error) {
+            successful = false;
+            console.error(`[scheduled] ${cleanType} cleanup failed:`, error);
+        }
+    };
     if (settings.enableMailsAutoCleanup) {
-        await cleanup(
-            { env: env, } as Context<HonoCustomType>,
+        await runCleanup(
             "mails",
             settings.cleanMailsDays
         );
     }
     if (settings.enableUnknowMailsAutoCleanup) {
-        await cleanup(
-            { env: env, } as Context<HonoCustomType>,
+        await runCleanup(
             "mails_unknow",
             settings.cleanUnknowMailsDays
         );
     }
     if (settings.enableSendBoxAutoCleanup) {
-        await cleanup(
-            { env: env, } as Context<HonoCustomType>,
+        await runCleanup(
             "sendbox",
             settings.cleanSendBoxDays
         );
     }
     if (settings.enableInactiveAddressAutoCleanup) {
-        await cleanup(
-            { env: env, } as Context<HonoCustomType>,
+        await runCleanup(
             "inactiveAddress",
             settings.cleanInactiveAddressDays
         );
     }
     if (settings.enableAddressAutoCleanup) {
-        await cleanup(
-            { env: env, } as Context<HonoCustomType>,
+        await runCleanup(
             "addressCreated",
             settings.cleanAddressDays
         );
     }
     if (settings.enableEmptyAddressAutoCleanup) {
-        await cleanup(
-            { env: env, } as Context<HonoCustomType>,
+        await runCleanup(
             "emptyAddress",
             settings.cleanEmptyAddressDays
         );
@@ -106,14 +118,21 @@ export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) 
     if (settings.customSqlCleanupList && settings.customSqlCleanupList.length > 0) {
         for (const customSql of settings.customSqlCleanupList) {
             if (customSql.enabled && customSql.sql) {
-                const result = await executeCustomSqlCleanup(
-                    { env: env, } as Context<HonoCustomType>,
-                    customSql
-                );
-                if (!result.success) {
-                    console.error(`Custom SQL cleanup [${customSql.name}] failed: ${result.error}`);
+                try {
+                    const result = await executeCustomSqlCleanup(
+                        { env: env, } as Context<HonoCustomType>,
+                        customSql
+                    );
+                    if (!result.success) {
+                        successful = false;
+                        console.error(`Custom SQL cleanup [${customSql.name}] failed: ${result.error}`);
+                    }
+                } catch (error) {
+                    successful = false;
+                    console.error(`[scheduled] custom cleanup ${customSql.name} failed:`, error);
                 }
             }
         }
     }
+    if (successful) await markTaskRun(env, SCHEDULED_TASK_AUTO_CLEANUP, undefined, now);
 }

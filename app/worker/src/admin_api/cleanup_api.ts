@@ -3,11 +3,11 @@ import { Context } from 'hono';
 import { cleanup } from '../common.ts';
 import { CONSTANTS } from '../constants.ts';
 import { getJsonSetting, saveSetting } from '../utils.ts';
-import { CleanupSettings, CustomSqlCleanup, ScheduledTaskRunInfo } from '../models/index.ts';
+import type { CleanupSettings, CustomSqlCleanup, ScheduledTaskRunInfo } from '../models/index.ts';
 import { cleanupInterval, getTaskRunInfo, markTaskRun, SCHEDULED_TASK_RAW_MAILS, SCHEDULED_TASK_AUTO_CLEANUP } from '../scheduled_tasks.ts';
 import { cleanupStaleRawMails } from '../scheduled_raw_mails.ts';
 import i18n from '../i18n/index.ts';
-import { LocaleMessages } from '../i18n/type.ts';
+import type { LocaleMessages } from '../i18n/type.ts';
 
 // SQL validation error types
 type SqlValidationError = 'empty' | 'too_long' | 'not_delete' | 'multiple_statements' | 'has_comments';
@@ -154,9 +154,10 @@ export default {
         try {
             const body: { minutes?: number } = await c.req.json().catch(() => ({}));
             const minutes = Math.max(1, Math.floor(Number(body.minutes) || 10));
-            const deleted = await cleanupStaleRawMails(c.env, minutes);
-            await markTaskRun(c.env, SCHEDULED_TASK_RAW_MAILS, deleted);
-            return c.json({ success: true, deleted });
+            const result = await cleanupStaleRawMails(c.env, minutes);
+            if (!result.success) return c.text(msgs.OperationFailedMsg, 500);
+            if (result.complete) await markTaskRun(c.env, SCHEDULED_TASK_RAW_MAILS, result.deleted);
+            return c.json({ success: true, deleted: result.deleted });
         } catch (error) {
             console.error(error);
             return c.text(`${msgs.OperationFailedMsg}: ${(error as Error).message}`, 500)

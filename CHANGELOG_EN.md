@@ -8,6 +8,7 @@
 
 ## v1.13.0(main)
 
+- fix: |Reliability| Skip scheduled cleanup when configuration reads or parsing fail, isolate cleanup tasks and record only successful completion; purge raw mail in budgeted resumable batches and update extraction metadata only on the inserted mail
 - refactor: |Cleanup| Remove unreferenced frontend locale utilities, internal exports and icon devDependencies; narrow Worker helper/type exports and normalize admin-send naming, retaining Pages middleware and caller-specific address creation policies
 - fix: |Date locale| Read date formatting locales from the locale registry, fix pt-BR falling back to Chinese, and test every locale plus empty/invalid values without changing other locale formats
 

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { test } from 'node:test';
 import { extractEmailInfo } from './code_extract.ts';
+import { createD1 } from '../../test-loader/d1.mjs';
 
 test('verification extraction never calls configured AI or custom services', async t => {
     const network = t.mock.method(globalThis, 'fetch', () => { throw new Error('Unexpected external service'); });
@@ -27,10 +28,35 @@ test('failed MIME parsing returns no extraction and does not write metadata', as
     t.mock.method(PostalMime, 'parse', async () => { throw new Error('Invalid MIME'); });
     const errors = t.mock.method(console, 'error', () => {});
     const prepare = t.mock.fn(() => { throw new Error('Unexpected metadata write'); });
-    const result = await extractEmailInfo({ rawEmail: 'Your verification code is 123456' }, { DB: { prepare } }, 'mail-id');
+    const result = await extractEmailInfo({ rawEmail: 'Your verification code is 123456' }, { DB: { prepare } }, 1);
     assert.equal(result, null);
     assert.equal(prepare.mock.callCount(), 0);
     assert.equal(errors.mock.callCount(), 1);
+});
+
+test('extraction updates only the inserted row even when Message-ID is shared', async () => {
+    const DB = createD1();
+    DB.sqlite.exec(`
+        CREATE TABLE raw_mails (id INTEGER PRIMARY KEY, address TEXT, message_id TEXT, metadata TEXT);
+        INSERT INTO raw_mails VALUES (1, 'a@example.com', 'shared', '{"keep":true}'),
+            (2, 'b@example.com', 'shared', NULL), (3, 'c@example.com', NULL, NULL);
+    `);
+    const rawEmail = 'Subject: Login\r\n\r\nYour verification code is 123456.';
+    assert.equal((await extractEmailInfo({ rawEmail }, { DB }, 2)).result, '123456');
+    assert.equal(DB.sqlite.prepare('SELECT metadata FROM raw_mails WHERE id=1').get().metadata, '{"keep":true}');
+    assert.equal(JSON.parse(DB.sqlite.prepare('SELECT metadata FROM raw_mails WHERE id=2').get().metadata).ai_extract.result, '123456');
+    await extractEmailInfo({ rawEmail }, { DB }, 3);
+    assert.equal(JSON.parse(DB.sqlite.prepare('SELECT metadata FROM raw_mails WHERE id=3').get().metadata).ai_extract.result, '123456');
+});
+
+test('extraction without a stored row id does not write and database errors are contained', async t => {
+    const rawEmail = 'Subject: Login\r\n\r\nYour verification code is 123456.';
+    const prepare = t.mock.fn(() => { throw new Error('D1 unavailable'); });
+    t.mock.method(console, 'error', () => {});
+    assert.equal((await extractEmailInfo({ rawEmail }, { DB: { prepare } }, undefined)).result, '123456');
+    assert.equal(prepare.mock.callCount(), 0);
+    assert.equal(await extractEmailInfo({ rawEmail }, { DB: { prepare } }, 1), null);
+    assert.equal(prepare.mock.callCount(), 1);
 });
 
 test('unencoded HTML code split by tags is parsed before extraction', async () => {
