@@ -8,6 +8,12 @@
 
 ## v1.13.0(main)
 
+- fix: |Telegram| Detach framing restrictions only for Mini App mail routes and locale aliases, restoring Telegram Web embedding while retaining same-origin protection elsewhere
+
+- fix: |Security| Split optional authentication limits into login (20/minute) and password-header (600/minute) bindings keyed by IP and scope, keeping normal API polling out of login allowances
+
+- fix: |Security| Fail closed on missing Telegram webhook secrets, share admin mail-read policy and exclude disabled bots; add optional native authentication limits, constant-time secret comparisons, uniform login errors and generic 500 responses, reject placeholder JWT keys; require an explicit Pages backend, restrict framing and require HTTPS for Bark saves while preserving existing mailboxes, JWTs and notification settings
+
 - refactor: |Cleanup| Remove unreferenced frontend locale utilities, internal exports and icon devDependencies; narrow Worker helper/type exports and normalize admin-send naming, retaining Pages middleware and caller-specific address creation policies
 - fix: |Date locale| Read date formatting locales from the locale registry, fix pt-BR falling back to Chinese, and test every locale plus empty/invalid values without changing other locale formats
 

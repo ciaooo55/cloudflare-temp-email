@@ -9,6 +9,8 @@ import { TelegramSettings } from './settings.ts';
 import type { TelegramBotEntry } from '../admin_api/notify_settings.ts';
 import i18n from '../i18n/index.ts';
 import type { RawMailRow } from '../models/index.ts';
+import { secretEquals } from '../secret_compare.ts';
+import { requireAdminPolicy, requireSitePassword } from '../auth_policy.ts';
 
 const encoder = new TextEncoder();
 const TG_AUTH_TIMEOUT = 300;
@@ -40,7 +42,7 @@ const verifyInitDataHash = async (
     const calcHash = Array.from(new Uint8Array(calcHmac))
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
-    return calcHash === hash;
+    return secretEquals(calcHash, hash);
 };
 
 const checkTelegramAuth = async (
@@ -68,7 +70,7 @@ const checkTelegramAuth = async (
     try {
         const bots = await getJsonSetting<TelegramBotEntry[]>(c, CONSTANTS.TELEGRAM_BOTS_KEY) || [];
         for (const b of bots) {
-            if (b.token && !candidates.includes(b.token)) candidates.push(b.token);
+            if (b.enabled !== false && b.token && !candidates.includes(b.token)) candidates.push(b.token);
         }
     } catch {
         // 读不到网页机器人配置就只用默认 token
@@ -168,6 +170,8 @@ async function getMail(c: Context<HonoCustomType>): Promise<Response> {
     const msgs = i18n.getMessagesByContext(c);
     try {
         if (checkIsAdmin(c)) {
+            const denied = requireSitePassword(c) || requireAdminPolicy(c);
+            if (denied) return denied;
             const result = await c.env.DB.prepare(
                 `SELECT * FROM raw_mails where id = ?`
             ).bind(mailId).first<RawMailRow>();

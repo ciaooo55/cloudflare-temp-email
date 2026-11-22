@@ -106,7 +106,7 @@ export default {
             }
         } catch (error) {
             console.error(error);
-            return c.text(`${msgs.OperationFailedMsg}: ${(error as Error).message}`, 500)
+            return c.text(msgs.OperationFailedMsg, 500)
         }
         return c.json({ success: true })
     },
@@ -159,7 +159,7 @@ export default {
             return c.json({ success: true, deleted });
         } catch (error) {
             console.error(error);
-            return c.text(`${msgs.OperationFailedMsg}: ${(error as Error).message}`, 500)
+            return c.text(msgs.OperationFailedMsg, 500)
         }
     },
 }

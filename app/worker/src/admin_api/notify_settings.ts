@@ -10,6 +10,7 @@ import {
     updateSnapshotBindingExpiry,
 } from '../telegram_api/mail_snapshot.ts';
 import type { SnapshotBinding } from '../telegram_api/mail_snapshot.ts';
+import i18n from '../i18n/index.ts';
 
 export type TelegramBotEntry = {
     id: string;
@@ -272,6 +273,11 @@ async function saveBark(c: Context<HonoCustomType>): Promise<Response> {
         };
     }).filter(d => d.keys);
     const pushUrl = (body.pushUrl || "").trim() || DEFAULT_BARK_PUSH_URL;
+    try {
+        if (new URL(pushUrl).protocol !== 'https:') throw new Error('HTTPS required');
+    } catch {
+        return c.json({ message: i18n.getMessagesByContext(c).BarkHttpsUrlRequiredMsg }, 400);
+    }
     await saveSetting(c, CONSTANTS.BARK_SETTINGS_KEY, JSON.stringify({ devices, pushUrl }));
     return c.json({ success: true });
 }
