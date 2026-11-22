@@ -142,6 +142,7 @@ onMounted(async () => {
 
 <template>
   <div>
+    <p class="sender-guide">{{ t('guide') }}</p>
     <n-modal v-model:show="showModal" preset="dialog">
       <p>{{ curRow.address }}</p>
       <p>{{ t('modalTip') }}</p>
@@ -172,5 +173,6 @@ onMounted(async () => {
 
 <style scoped>
 .sender-search { max-width: 480px; margin-bottom: 20px; }
+.sender-guide { color: var(--mail-muted); font-size: 13px; line-height: 1.8; margin: 0 0 20px; }
 .sender-pagination { display: flex; justify-content: flex-end; padding-top: 20px; }
 </style>

@@ -6,12 +6,12 @@ import { createD1 } from '../../test-loader/d1.mjs';
 
 function fixture() {
     const DB = createD1();
-    DB.sqlite.exec("CREATE TABLE address (id INTEGER PRIMARY KEY, name TEXT, password TEXT, source_meta TEXT, created_at TEXT, updated_at TEXT); CREATE TABLE raw_mails (address TEXT, created_at TEXT); CREATE TABLE sendbox (address TEXT); INSERT INTO address VALUES (1, 'registered@example.com', 'secret', 'legacy', '2026-01-01', '2026-01-01'); INSERT INTO raw_mails VALUES ('new@example.com', '2026-11-20'), ('new@example.com', '2026-11-21'); INSERT INTO sendbox VALUES ('sent@example.com');");
+    DB.sqlite.exec("CREATE TABLE address (id INTEGER PRIMARY KEY, name TEXT, password TEXT, source_meta TEXT, created_at TEXT, updated_at TEXT); CREATE TABLE raw_mails (address TEXT, created_at TEXT); CREATE TABLE sendbox (address TEXT, created_at TEXT); INSERT INTO address VALUES (1, 'registered@example.com', 'secret', 'legacy', '2026-01-01', '2026-01-01'); INSERT INTO raw_mails VALUES ('new@example.com', '2026-11-20'), ('new@example.com', '2026-11-21'); INSERT INTO sendbox VALUES ('sent@example.com', '2026-11-21');");
     return DB;
 }
 const context = (DB, query = {}) => ({
-    env: { DB }, req: { query: () => ({ limit: '20', offset: '0', include_received: '1', ...query }) },
-    get: () => 'en', json: body => Response.json(body),
+    env: { DB }, req: { query: key => key ? ({ limit: '20', offset: '0', include_received: '1', ...query })[key] : ({ limit: '20', offset: '0', include_received: '1', ...query }) },
+    get: () => 'en', json: body => Response.json(body), header() {},
 });
 
 test('mailbox directory includes unregistered received and sent addresses without creating records', async () => {
@@ -35,5 +35,5 @@ test('mailbox directory search is parameterized and case insensitive', async () 
 
 test('compact statistics count catch-all addresses and preserve existing registered mailboxes', async () => {
     const body = await (await statisticsApi.get(context(fixture()))).json();
-    assert.deepEqual(body, { mailCount: 2, sendMailCount: 1, addressCount: 3 });
+    assert.deepEqual([body.mailCount, body.sendMailCount, body.addressCount], [2, 1, 3]);
 });

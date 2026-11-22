@@ -60,3 +60,19 @@ test("an unrelated D1 error does not disable HTTP budgeting", async () => {
     assert.equal(await reserveHttpUsage({ DB }, true), false);
     assert.equal(await reserveHttpUsage({ DB }, false), false);
 });
+
+test('budget history reads only today/yesterday, preserves estimates, and never writes', async () => {
+    const DB = createD1();
+    DB.sqlite.exec(USAGE_BUDGET_SCHEMA + `INSERT INTO worker_usage_day VALUES
+        ('2025-12-30', 9999, 9999, 9), ('2025-12-31', 123, 45, 2), ('2026-01-01', 456, 78, 3);`);
+    const before = DB.sqlite.prepare('SELECT * FROM worker_usage_day ORDER BY day').all();
+    const status = await getUsageStatus({ DB }, now);
+    assert.deepEqual(status.days.map(row => row.day), ['2026-01-01', '2025-12-31']);
+    assert.deepEqual(status.usage, { row_reads: 456, row_writes: 78, inbound_emails: 3 });
+    assert.equal(status.days[1].usage.row_reads, 123);
+    assert.deepEqual(status.free, { reads: 5000000, writes: 100000 });
+    assert.deepEqual(DB.sqlite.prepare('SELECT * FROM worker_usage_day ORDER BY day').all(), before);
+    const next = await getUsageStatus({ DB }, now + 1000);
+    assert.equal(next.days[0].recorded, false);
+    assert.deepEqual(next.usage, { row_reads: 0, row_writes: 0, inbound_emails: 0 });
+});

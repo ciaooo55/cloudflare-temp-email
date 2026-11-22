@@ -8,6 +8,8 @@
 
 ## v1.13.0(main)
 
+- feat: |statistics| Add seven-day received/sent trends, zero-inclusive mailbox rankings and paged send counts; show two-day D1 guard reservations and today's remaining budget on demand, distinct from actual account usage
+- docs: |settings| Explain incoming block scopes, send balances and API access rules with examples, entry/save steps and recovery behavior
 - fix: |frontend| Preserve Chinese reader guidance when no message is selected
 - fix: |frontend| Clarify cleanup units and save scopes, constrain mobile snapshot-table scrolling, show filter match counts, and use searchable plain-text HTML previews
 - feat: |Mail list| Show original sender and recipient addresses in message summaries, copy the original recipient directly, and reveal full addresses on hover
