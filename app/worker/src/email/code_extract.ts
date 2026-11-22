@@ -4,7 +4,7 @@ import { extractCode, stripVerificationHtml, joinSubjectAndBody } from '../../..
 import type { ExtractResult } from '../models/index.ts';
 
 export async function extractEmailInfo(
-    context: ParsedEmailContext, env: Bindings, messageId: string | null
+    context: ParsedEmailContext, env: Bindings, storedMailId: number | null | undefined
 ): Promise<ExtractResult | null> {
     if (!extractCode(context.rawEmail)
         && !/content-type:\s*text\/html/i.test(context.rawEmail)
@@ -17,9 +17,9 @@ export async function extractEmailInfo(
         if (!code) return null;
         const result: ExtractResult = { type: 'auth_code', result: code, result_text: '' };
         // Retain the stored key so existing clients and historical messages remain readable.
-        if (messageId) {
-            await env.DB.prepare('UPDATE raw_mails SET metadata = ? WHERE message_id = ?')
-                .bind(JSON.stringify({ ai_extract: result, extracted_at: new Date().toISOString() }), messageId).run();
+        if (storedMailId != null) {
+            await env.DB.prepare('UPDATE raw_mails SET metadata = ? WHERE id = ?')
+                .bind(JSON.stringify({ ai_extract: result, extracted_at: new Date().toISOString() }), storedMailId).run();
         }
         return result;
     } catch (error) {

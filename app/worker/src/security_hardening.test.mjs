@@ -228,11 +228,22 @@ test('cleanup handlers log failures without returning database details', async t
         env: { DEFAULT_LANG: 'en', DB: { prepare() { throw new Error('private-cleanup-detail'); } } },
         req: { json: async () => ({ cleanType: 'mails', cleanDays: 1 }) },
         text: (body, status) => new Response(body, { status }),
+        json: (body, status) => Response.json(body, { status }),
     };
     for (const method of ['cleanup', 'cleanupRawMailsNow']) {
         const response = await cleanupApi[method](ctx);
         assert.equal(response.status, 500);
         assert.equal((await response.text()).includes('private-cleanup-detail'), false);
     }
+    const response = await cleanupApi.cleanupRawMailsNow({
+        ...ctx,
+        req: { json() { throw new Error('private-cleanup-detail'); } },
+    });
+    assert.equal(response.status, 500);
+    const progress = await response.json();
+    assert.equal(progress.success, false);
+    assert.equal(progress.deleted, 0);
+    assert.equal(progress.complete, false);
+    assert.equal(progress.message.includes('private-cleanup-detail'), false);
     assert.ok(logs.some(log => log.includes('private-cleanup-detail')));
 });

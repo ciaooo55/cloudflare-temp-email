@@ -136,7 +136,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     if (admission === "receive-only") return;
 
-    const extractResult = await extractEmailInfo(parsedEmailContext, env, message_id);
+    const extractResult = await extractEmailInfo(parsedEmailContext, env, storedMailId);
 
     // bound snapshot: overwrite the fixed snapshot url with the newest mail
     try {

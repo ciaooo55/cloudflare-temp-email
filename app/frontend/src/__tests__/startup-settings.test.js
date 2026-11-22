@@ -42,3 +42,34 @@ describe('startup settings', () => {
         expect(mocks.state.openSettings.value.domains).toEqual([{ label: 'example.com', value: 'example.com' }])
     })
 })
+
+describe('HTTP error metadata', () => {
+    it('preserves partial cleanup progress on HTTP failures', async () => {
+        const data = { success: false, deleted: 100, complete: false, message: 'Budget exhausted' }
+        mocks.request.mockResolvedValue({ status: 500, data })
+        const { api } = await import('../api')
+        await expect(api.fetch('/admin/cleanup_raw_mails', { method: 'POST' })).rejects.toMatchObject({ status: 500, data })
+    })
+    it.each([429, 503])('retains status and Retry-After on HTTP %s', async status => {
+        const response = { status, data: { message: 'Try later' }, headers: { 'retry-after': '600' } }
+        if (status === 503) mocks.request.mockRejectedValue({ response })
+        else mocks.request.mockResolvedValue(response)
+        const { api } = await import('../api')
+        await expect(api.fetch('/admin/mails')).rejects.toMatchObject({ status, retryAfter: '600', message: expect.stringContaining('Try later') })
+    })
+
+    it('keeps authentication challenges visible to callers and opens the matching dialog', async () => {
+        mocks.request.mockResolvedValue({ status: 401, data: { code: 'AUTH_ADMIN_CREDENTIAL_INVALID', message: 'Admin password required' } })
+        const { api } = await import('../api')
+        await expect(api.fetch('/admin/mails')).rejects.toMatchObject({ status: 401, authRequired: true })
+        expect(mocks.state.showAdminAuth.value).toBe(true)
+        await expect(api.fetch('/open_api/admin_login', { method: 'POST' })).rejects.toThrow('Admin password required')
+    })
+
+    it('does not swallow wrong global passwords on the explicit site-login endpoint', async () => {
+        mocks.request.mockResolvedValue({ status: 401, data: { code: 'AUTH_SITE_PASSWORD_INVALID', message: 'Wrong site password' } })
+        const { api } = await import('../api')
+        await expect(api.fetch('/open_api/site_login', { method: 'POST' })).rejects.toThrow('Wrong site password')
+        expect(mocks.state.showAuth.value).toBe(true)
+    })
+})

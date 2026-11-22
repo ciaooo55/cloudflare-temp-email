@@ -22,6 +22,16 @@ const instance = axios.create({
     validateStatus: (status) => status >= 200 && status <= 500
 });
 
+const responseError = (response, prefix) => Object.assign(
+    new Error(`${prefix}${response.data?.message || response.data}`),
+    {
+        status: response.status,
+        data: response.data,
+        code: response.data?.code,
+        retryAfter: response.headers?.get?.('retry-after') ?? response.headers?.['retry-after'],
+        authRequired: ErrorCode.isAdminAuthError(response) || ErrorCode.isSiteAuthError(response),
+    }
+);
 
 const apiFetch = async (path, options = {}) => {
     const showLoading = options.showLoading !== false;
@@ -55,13 +65,13 @@ const apiFetch = async (path, options = {}) => {
             showAuth.value = true;
         }
         if (response.status >= 300) {
-            throw new Error(`[${response.status}]: ${response.data?.message || response.data}`);
+            throw responseError(response, `[${response.status}]: `);
         }
         const data = response.data;
         return data;
     } catch (error) {
         if (error.response) {
-            throw new Error(`Code ${error.response.status}: ${error.response.data?.message || error.response.data}`);
+            throw responseError(error.response, `Code ${error.response.status}: `);
         }
         throw error;
     } finally {

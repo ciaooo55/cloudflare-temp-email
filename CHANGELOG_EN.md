@@ -8,6 +8,13 @@
 
 ## v1.13.0(main)
 
+- fix: |Cleanup budget| Conservatively include candidate probes, deletion subqueries and primary-key lookups in read reservations
+- fix: |Mailbox polling| Use absolute retry deadlines for backoff and Retry-After so time spent in hidden tabs counts toward the wait
+- fix: |Manual cleanup| Return deleted counts and completion state on success and partial failure, with remaining-work feedback in the web UI
+- fix: |Scheduled cleanup| Record each completed batch attempt after isolated rule failures so successful rules are not rerun before the configured interval
+- fix: |Mail cleanup| Skip deletion-budget reservations for empty expiration queues and size small batches to their candidate count
+- fix: |Notifications and login| Send singleton Telegram attachments as documents and time out native uploads; back off mailbox polling with jitter, Retry-After and auth pauses without repeated error toasts; sequence site/admin unlock prompts and avoid background auth errors during normal login
+- fix: |Reliability| Skip scheduled cleanup when configuration reads or parsing fail, isolate cleanup tasks and record only successful completion; purge raw mail in budgeted resumable batches and update extraction metadata only on the inserted mail
 - fix: |Telegram| Detach framing restrictions only for Mini App mail routes and locale aliases, restoring Telegram Web embedding while retaining same-origin protection elsewhere
 
 - fix: |Security| Split optional authentication limits into login (20/minute) and password-header (600/minute) bindings keyed by IP and scope, keeping normal API polling out of login allowances
