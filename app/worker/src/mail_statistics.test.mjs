@@ -17,7 +17,7 @@ async function setup() {
 test('atomic counters survive updates, physical mail/address deletion and UTC rollover', async () => {
     const { DB } = await setup();
     let day = '2026-11-21';
-    DB.sqlite.function('date', () => day);
+    DB.sqlite.function('date', value => { assert.equal(value, 'now'); return day; });
     DB.sqlite.exec(`INSERT INTO raw_mails (address, raw, created_at) VALUES ('a@example.com','secret body','2000-01-01');
         INSERT INTO sendbox (address, raw) VALUES ('a@example.com','secret recipient');
         UPDATE raw_mails SET is_unread = 0, raw = NULL;
