@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { matchesSecret } from './secret_compare.ts';
 
 export const getJsonObjectValue = <T = any>(
     value: string | any
@@ -303,7 +304,7 @@ export const checkIsAdmin = (c: Context<HonoCustomType>): boolean => {
     const adminPasswords = getAdminPasswords(c);
     if (!adminPasswords.length) return false;
     const adminAuth = c.req.raw.headers.get("x-admin-auth");
-    return !!adminAuth && adminPasswords.includes(adminAuth);
+    return !!adminAuth && matchesSecret(adminAuth, adminPasswords);
 }
 
 export const getEnvStringList = (value: string | string[] | undefined): string[] => {

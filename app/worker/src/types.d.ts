@@ -20,6 +20,7 @@ type Bindings = {
     D1_DAILY_READ_HARD_LIMIT?: string | number
     D1_DAILY_WRITE_HARD_LIMIT?: string | number
     RATE_LIMITER: RateLimit
+    AUTH_RATE_LIMITER?: RateLimit
     SEND_MAIL: SendEmail
     ASSETS: Fetcher
 

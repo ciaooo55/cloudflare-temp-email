@@ -1,5 +1,27 @@
 # 项目本体
 
+## 安全升级 / Security hardening
+
+**中文**
+
+- 保留现有 `JWT_SECRET`，不要轮换：运行时拒绝空值与已知占位值 `xxx`，其余旧 JWT 与邮箱无需迁移。模板不再提供活动占位值；已有部署的 `keep_vars = true` 与继承线上绑定的发布流程保留原值。新安装须先配置随机 Worker 密钥。
+- Pages 必须显式配置 `BACKEND` 服务绑定或 `BACKEND_URL`（HTTPS 后端地址）；缺失时 API 返回 503，不再向固定外部域名转发。当前 `cloudflare-temp-email` 项目的 production/preview 已显式指向本站 API。
+- 可选 `AUTH_RATE_LIMITER` 使用免费的 Workers Rate Limiting 绑定，不使用 D1/KV 计数。Wrangler 配置为 `[[ratelimits]]`、`name = "AUTH_RATE_LIMITER"`、`namespace_id = "1001"`、`simple = { limit = 30, period = 60 }`。同一 IP 的管理员、站点、邮箱密码认证分别共享每分钟 30 次额度（包括成功请求），不按 URL 拆分；超限返回 429/Retry-After。缺少绑定时保持旧行为。使用继承线上绑定的发布工具时，须把新绑定加入发布元数据，否则限流不会启用。Cloudflare 原生限流按位置执行，不是全局精确计数；管理员 IP 白名单仍可继续使用。
+- **部署前操作**：Telegram Webhook 现在必须携带已存储的密钥。只读检查发现默认机器人尚无密钥，且无网页机器人配置；先在现有通知页面为默认机器人执行「设置 Webhook」，或向 `https://api.ciaooo55.de5.net/admin/notify/telegram_bots/env/webhook` 发起带现有 `x-admin-auth` 和（如配置）`x-custom-auth` 的 POST。现有接口自动生成、向 Telegram 注册并保存密钥，不返回密钥。确认 JSON `ok: true` 后再发布，避免回调中断。也可使用现有 `POST /admin/telegram/init`。任何后续新增网页机器人亦须执行各自的设置 Webhook 操作；未经初始化的回调返回 401。不要把密钥放入日志或提交。
+- `/telegram/get_mail` 的管理员分支与 `/admin/*` 使用相同站点密码及 IP 白名单策略；正常 Telegram Mini App 身份验证保留，停用的网页机器人不再可用于认证。
+- Bark 保存时只接受有效 HTTPS URL，错误直接显示在通知网页；现有存储的 HTTP 地址仍可读取、测试与推送，但下次保存须改成 HTTPS。设备密钥继续脱敏并可网页编辑。Pages 仅添加同源嵌入限制，不启用可能破坏邮件渲染的完整 CSP。
+- **暂缓的审计问题（PR 说明）**：bridge HMAC 仍只签收件人，泄露的签名可重放；本次按要求不更改邮件桥协议。后续应协同升级双方以签收件人、时间与正文摘要；严格一次性重放防护需要共享状态写入，与本次约束不兼容。
+
+**English**
+
+- Keep the existing `JWT_SECRET`; do not rotate it. Runtime rejects empty values and the known placeholder `xxx`; other existing mailbox JWTs need no migration. The template no longer supplies an active placeholder. Existing `keep_vars = true` and live-binding inheritance retain the live key; fresh installs must provision a random Worker secret.
+- Pages requires an explicit `BACKEND` service binding or `BACKEND_URL` (an HTTPS backend). Missing configuration returns 503 instead of forwarding API credentials to a hard-coded external host. Both production and preview on the current `cloudflare-temp-email` project explicitly select this installation's API.
+- Optional `AUTH_RATE_LIMITER` uses the free Workers Rate Limiting binding, with no D1/KV counters. Wrangler uses `[[ratelimits]]`, `name = "AUTH_RATE_LIMITER"`, `namespace_id = "1001"`, `simple = { limit = 30, period = 60 }`. Admin, site and mailbox password checks each share a 30/minute per-IP allowance across paths, including successful checks; denials return 429/Retry-After. Missing binding preserves legacy behavior. A deployment tool inheriting live bindings must explicitly add this new binding to upload metadata or throttling will remain disabled. Native limits are location-local, not precise global counters; admin IP restrictions remain available.
+- **Before deployment:** webhook requests now require a stored secret. Read-only inspection found no default-bot secret and no web-configured bots. On the existing notification page, use the default bot's Set Webhook action, or POST to `https://api.ciaooo55.de5.net/admin/notify/telegram_bots/env/webhook` with the existing `x-admin-auth` and, if configured, `x-custom-auth`. The existing endpoint generates, registers with Telegram and stores the secret without returning it. Confirm JSON `ok: true` before deploying to avoid an interruption. Existing `POST /admin/telegram/init` also works. Future web-configured bots need their own Set Webhook action; uninitialized callbacks return 401. Never log or commit secret values.
+- The admin branch of `/telegram/get_mail` shares the `/admin/*` site-password/IP policy. Normal Telegram Mini App authentication remains available; disabled web-configured bots cannot authenticate.
+- Bark saves require a valid HTTPS URL; the notification page displays the validation error. Existing stored HTTP URLs still load, test and deliver, but must be upgraded on the next save. Masked device keys remain web-editable. Pages adds only same-origin framing restrictions, not a full CSP that could break mail rendering.
+- **Deferred audit finding (PR notes):** bridge HMAC still signs only the recipient; a disclosed signature can be replayed. This change deliberately leaves the bridge protocol unchanged. A future coordinated sender/receiver upgrade should sign recipient, timestamp and body digest; strict single-use replay prevention requires shared-state writes outside these constraints.
+
 ## 网页统计 / Web statistics
 
 - 「统计」按 UTC 今天及前六天展示收发封数，删信、清空邮箱及自动清理邮件不会减少数量。只保留本地邮箱、UTC 入库日期和数量，不留正文或对方地址；排行含已登记的零封邮箱及本期有收发的地址，并列按地址排序，每页 20 项。发信以成功保存的发件记录为准；收信含站内通知，拒收及记录未保存成功的不计。

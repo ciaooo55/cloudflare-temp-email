@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import i18n from '../i18n/index.ts';
 import utils, { getBooleanValue, requireTurnstile } from '../utils.ts';
 import { Jwt } from 'hono/utils/jwt';
+import { secretEquals } from '../secret_compare.ts';
 
 export default {
     // 修改地址密码
@@ -58,12 +59,9 @@ export default {
             `SELECT * FROM address WHERE name = ?`
         ).bind(email).first();
 
-        if (!address) {
-            return c.text(msgs.AddressNotFoundMsg, 404);
-        }
-
         // NOTE: password is the frontend SHA-256 hash, compared directly with address.password.
-        if (address.password !== password) {
+        const validPassword = secretEquals(password, typeof address?.password === 'string' ? address.password : '');
+        if (!address || !validPassword) {
             return c.text(msgs.InvalidEmailOrPasswordMsg, 401);
         }
 

@@ -17,7 +17,9 @@ import i18n from './i18n/index.ts';
 import { ErrorCode } from './error_codes.ts';
 import { email } from './email/index.ts';
 import { scheduled } from './scheduled.ts';
-import { getPasswords, getBooleanValue, getDomains, checkIsAdmin, getEnvStringList } from './utils.ts';
+import { getDomains } from './utils.ts';
+import { isValidJwtSecret } from './secret_compare.ts';
+import { limitAuthentication, requireAdminPolicy, requireSitePassword } from './auth_policy.ts';
 import { checkAccessControl } from './ip_blacklist.ts';
 import { quotaRetryAfter, reserveHttpUsage } from './usage_budget.ts';
 import { getAbuseSettings, type AbuseSettings } from './abuse_settings.ts';
@@ -38,7 +40,7 @@ app.use('/*', cors());
 // error handler
 app.onError((err, c) => {
 	console.error(err)
-	return c.json({ code: ErrorCode.INTERNAL_SERVER_ERROR, message: `${err.name} ${err.message}` }, 500)
+	return c.json({ code: ErrorCode.INTERNAL_SERVER_ERROR, message: 'Internal server error' }, 500)
 })
 // global middlewares
 app.use('/*', async (c, next) => {
@@ -58,12 +60,19 @@ app.use('/*', async (c, next) => {
 	const msgs = i18n.getMessages(lang || c.env.DEFAULT_LANG);
 
 	// check header x-custom-auth
-	const passwords = getPasswords(c);
-	if (!c.req.path.startsWith("/open_api") && !c.req.path.startsWith("/telegram/") && !c.req.path.startsWith("/m/") && passwords && passwords.length > 0) {
-		const auth = c.req.raw.headers.get("x-custom-auth");
-		if (!auth || !passwords.includes(auth)) {
-			return c.json({ code: ErrorCode.AUTH_SITE_PASSWORD_INVALID, message: msgs.CustomAuthPasswordMsg }, 401)
+	for (const [header, scope, loginPath] of [
+		['x-custom-auth', 'site', '/open_api/site_login'],
+		['x-admin-auth', 'admin', '/open_api/admin_login'],
+		['', 'mailbox', '/api/address_login'],
+	] as const) {
+		if ((header && c.req.header(header)) || c.req.path === loginPath) {
+			const limited = await limitAuthentication(c, scope);
+			if (limited) return limited;
 		}
+	}
+	if (!c.req.path.startsWith("/open_api") && !c.req.path.startsWith("/telegram/") && !c.req.path.startsWith("/m/")) {
+		const denied = requireSitePassword(c);
+		if (denied) return denied;
 	}
 
 	// rate limit for specific endpoints
@@ -85,7 +94,7 @@ app.use('/*', async (c, next) => {
 	if (!c.env.DB) {
 		return c.text(msgs.DBNotAvailableMsg, 400);
 	}
-	if (!c.env.JWT_SECRET) {
+	if (!isValidJwtSecret(c.env.JWT_SECRET)) {
 		return c.text(msgs.JWTSecretNotSetMsg, 400);
 	}
 	await next()
@@ -161,35 +170,9 @@ app.use('/api/*', async (c, next) => {
 });
 // admin auth
 app.use('/admin/*', async (c, next) => {
-	const lang = c.req.raw.headers.get("x-lang") || c.env.DEFAULT_LANG;
-	const msgs = i18n.getMessages(lang);
-	try {
-		const ipWhitelist = getEnvStringList(c.env.ADMIN_API_IP_WHITELIST)
-			.filter(ip => typeof ip === "string")
-			.map(ip => ip.trim())
-			.filter(Boolean);
-		if (ipWhitelist.length > 0) {
-			const reqIp = c.req.raw.headers.get("cf-connecting-ip")?.trim();
-			if (!reqIp || !ipWhitelist.includes(reqIp)) {
-				return c.text(msgs.AdminApiIpNotAllowedMsg, 403);
-			}
-		}
-	} catch (e) {
-		console.error("Failed to check admin API IP whitelist", e);
-	}
-
-	// check header x-admin-auth
-	if (checkIsAdmin(c)) {
-		await next();
-		return;
-	}
-	// disable admin api check
-	if (getBooleanValue(c.env.DISABLE_ADMIN_PASSWORD_CHECK)) {
-		await next();
-		return;
-	}
-
-	return c.json({ code: ErrorCode.AUTH_ADMIN_CREDENTIAL_INVALID, message: msgs.NeedAdminPasswordMsg }, 401)
+	const denied = requireAdminPolicy(c);
+	if (denied) return denied;
+	await next();
 });
 
 app.use('/*', async (c, next) => {
@@ -261,7 +244,7 @@ const health_check = async (c: Context<HonoCustomType>) => {
 	if (!c.env.DB) {
 		return c.text(msgs.DBNotAvailableMsg, 400);
 	}
-	if (!c.env.JWT_SECRET) {
+	if (!isValidJwtSecret(c.env.JWT_SECRET)) {
 		return c.text(msgs.JWTSecretNotSetMsg, 400);
 	}
 	if (getDomains(c).length === 0) {

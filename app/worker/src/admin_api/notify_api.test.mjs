@@ -162,6 +162,56 @@ test('default Telegram webhook persists verification secret; status and disablin
     assert.deepEqual(methods, ['setWebhook', 'getWebhookInfo', 'deleteWebhook']);
 });
 
+test('webhook setup generates a secret and failed registration preserves the working secret', async () => {
+    const db = makeDb();
+    const ctx = makeCtx({ db, params: { id: 'env' }, envExtra: { TELEGRAM_BOT_TOKEN: '333:default' } });
+    let registeredSecret;
+    globalThis.fetch = async (_url, init) => {
+        registeredSecret = JSON.parse(init.body).secret_token;
+        return { ok: true, json: async () => ({ ok: true }) };
+    };
+    const response = await bodyOf(await notifyApi.setTelegramBotWebhook(ctx));
+    assert.equal(response.data.ok, true);
+    assert.match(registeredSecret, /^[a-f0-9]{64}$/);
+    assert.equal(JSON.stringify(response.data).includes(registeredSecret), false);
+    assert.equal(storeEntry(db, 'telegram:webhook-secret:default').value, registeredSecret);
+    globalThis.fetch = async () => ({ ok: false, status: 401, json: async () => ({ ok: false, description: 'Unauthorized' }) });
+    assert.equal((await bodyOf(await notifyApi.setTelegramBotWebhook(ctx))).data.ok, false);
+    assert.equal(storeEntry(db, 'telegram:webhook-secret:default').value, registeredSecret);
+    globalThis.fetch = async () => { throw new Error('network unavailable'); };
+    assert.equal((await bodyOf(await notifyApi.setTelegramBotWebhook(ctx))).data.ok, false);
+    assert.equal(storeEntry(db, 'telegram:webhook-secret:default').value, registeredSecret);
+    db.sqlite.close();
+});
+
+test('Bark saves require HTTPS, reject invalid URLs without writes, and retain legacy delivery', async () => {
+    const db = makeDb();
+    const save = pushUrl => notifyApi.saveBark(makeCtx({ db, body: { pushUrl, devices: [] } }));
+    const before = db.sqlite.prepare('SELECT total_changes() AS n').get().n;
+    for (const url of ['http://bark.example.com', 'javascript:alert(1)', 'not a URL', '//bark.example.com']) {
+        const response = await bodyOf(await save(url));
+        assert.equal(response.status, 400);
+        assert.match(response.data.message, /HTTPS/);
+    }
+    assert.equal(db.sqlite.prepare('SELECT total_changes() AS n').get().n, before);
+    assert.equal((await save('https://bark.example.com')).status, 200);
+    assert.equal((await save('')).status, 200);
+    db.sqlite.prepare('UPDATE settings SET value = ? WHERE key = ?').run(JSON.stringify({
+        pushUrl: 'http://legacy.example.com', devices: [{ id: 'old', name: 'old', keys: 'legacy-key', enabled: true }],
+    }), 'bark_settings');
+    const loaded = await bodyOf(await notifyApi.getBark(makeCtx({ db })));
+    assert.equal(loaded.data.pushUrl, 'http://legacy.example.com');
+    let called = false;
+    globalThis.fetch = async url => {
+        assert.equal(new URL(url).origin, 'http://legacy.example.com');
+        called = true;
+        return { ok: true };
+    };
+    assert.equal((await bodyOf(await notifyApi.testBark(makeCtx({ db, body: {} })))).data.ok, true);
+    assert.equal(called, true);
+    db.sqlite.close();
+});
+
 test("Bark: 多设备配置、脱敏、测试", async () => {
     const db = makeDb();
     let r = await bodyOf(await notifyApi.getBark(makeCtx({ db })));
